@@ -35,6 +35,11 @@ export class Character {
             })
         );
         this.mesh.add(this.colliderMesh);
+
+        // Añadir estado de agua
+        this.normalHeight = 1.5;
+        this.waterHeight = 0.75; // Mitad de la altura normal
+        this.inWater = false;
     }
 
     createTemporaryModel() {
@@ -108,14 +113,31 @@ export class Character {
             newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
             newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
 
-            // Verificar si la nueva posición está dentro de los límites
+            // Verificar si la nueva posición está dentro de los límites del océano
             if (this.terrain && this.terrain.isInBounds(newPosition)) {
                 this.mesh.position.copy(newPosition);
+                
+                // Comprobar si está en el agua y ajustar altura
+                const wasInWater = this.inWater;
+                this.inWater = this.terrain.isInWater(this.mesh.position);
+                
+                if (this.inWater !== wasInWater) {
+                    // Transición suave de altura
+                    const targetY = this.inWater ? this.waterHeight : this.normalHeight;
+                    this.mesh.position.y = targetY;
+                }
             }
         }
     }
 
     updateJump(deltaTime, inputManager) {
+        // No permitir salto en el agua
+        if (this.inWater) {
+            this.velocity.y = 0;
+            this.isJumping = false;
+            return;
+        }
+
         // Aplicar gravedad
         this.velocity.y += this.gravity * deltaTime;
 
