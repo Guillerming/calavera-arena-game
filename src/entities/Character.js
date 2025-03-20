@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+// import {Logger as GameLogger} from '../utils/Logger.js';
 
 export class Character {
     constructor(team = 'blue', modelVariant = 0, terrain) {
@@ -123,6 +124,15 @@ export class Character {
                 // Mantener la altura normal por ahora
                 this.mesh.position.y = this.normalHeight;
             }
+
+            // Log para debugging
+            // GameLogger.log("Posición actualizada", {
+            //     posY: this.mesh.position.y.toFixed(2),
+            //     terrainHeight: this.terrain.getHeightAt(
+            //         this.mesh.position.x,
+            //         this.mesh.position.z
+            //     ).toFixed(2)
+            // });
         }
     }
 
