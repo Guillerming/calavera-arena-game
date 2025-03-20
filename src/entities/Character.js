@@ -38,7 +38,7 @@ export class Character {
 
         // Añadir estado de agua
         this.normalHeight = 1.5;
-        this.waterHeight = 0.75; // Mitad de la altura normal
+        this.waterHeight = 0.5; // Más hundido en el agua
         this.inWater = false;
     }
 
@@ -49,6 +49,8 @@ export class Character {
             color: this.team === 'blue' ? 0x0000ff : 0xff0000 
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.castShadow = true;
+        body.receiveShadow = true;
 
         // Crear indicador frontal (un triángulo más claro en la parte delantera)
         const frontMarkerGeometry = new THREE.ConeGeometry(0.2, 0.4, 3);
@@ -56,15 +58,17 @@ export class Character {
             color: this.team === 'blue' ? 0x4444ff : 0xff4444 
         });
         const frontMarker = new THREE.Mesh(frontMarkerGeometry, frontMarkerMaterial);
-        frontMarker.position.set(0, 0.5, -0.5); // Colocar en la parte frontal
-        frontMarker.rotation.x = Math.PI / 2; // Rotar para que apunte hacia adelante
+        frontMarker.position.set(0, 0.5, -0.5);
+        frontMarker.rotation.x = Math.PI / 2;
+        frontMarker.castShadow = true;
+        frontMarker.receiveShadow = true;
 
-        // Crear un grupo para contener ambas partes
         const modelGroup = new THREE.Group();
         modelGroup.add(body);
         modelGroup.add(frontMarker);
         
-        modelGroup.position.y = 1.5;
+        // Ajustar posición inicial
+        modelGroup.position.y = this.normalHeight;
         return modelGroup;
     }
 
@@ -113,19 +117,11 @@ export class Character {
             newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
             newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
 
-            // Verificar si la nueva posición está dentro de los límites del océano
+            // Verificar si la nueva posición está dentro de los límites
             if (this.terrain && this.terrain.isInBounds(newPosition)) {
                 this.mesh.position.copy(newPosition);
-                
-                // Comprobar si está en el agua y ajustar altura
-                const wasInWater = this.inWater;
-                this.inWater = this.terrain.isInWater(this.mesh.position);
-                
-                if (this.inWater !== wasInWater) {
-                    // Transición suave de altura
-                    const targetY = this.inWater ? this.waterHeight : this.normalHeight;
-                    this.mesh.position.y = targetY;
-                }
+                // Mantener la altura normal por ahora
+                this.mesh.position.y = this.normalHeight;
             }
         }
     }

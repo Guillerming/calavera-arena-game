@@ -18,13 +18,30 @@ class Game {
     }
 
     setupWorld() {
-        // Añadir iluminación básica
-        const light = new THREE.DirectionalLight(0xffffff, 1);
-        light.position.set(0, 10, 5);
-        this.engine.scene.add(light);
+        // Luz direccional (sol)
+        const sun = new THREE.DirectionalLight(0xffffff, 1.0);
+        sun.position.set(20, 30, 20);
+        sun.castShadow = true;
         
-        // Añadir luz ambiental
-        const ambient = new THREE.AmbientLight(0x404040);
+        // Ajustar sombras para que sean más suaves
+        sun.shadow.camera.left = -30;
+        sun.shadow.camera.right = 30;
+        sun.shadow.camera.top = 30;
+        sun.shadow.camera.bottom = -30;
+        sun.shadow.camera.near = 1;
+        sun.shadow.camera.far = 100;
+        sun.shadow.mapSize.width = 2048;
+        sun.shadow.mapSize.height = 2048;
+        sun.shadow.bias = -0.001;
+        
+        // Hacer las sombras más suaves y menos intensas
+        sun.shadow.radius = 2;
+        sun.shadow.darkness = 0.3;
+
+        this.engine.scene.add(sun);
+        
+        // Aumentar la luz ambiental para reducir el contraste
+        const ambient = new THREE.AmbientLight(0x404040, 0.7);
         this.engine.scene.add(ambient);
 
         // Crear y añadir el terreno

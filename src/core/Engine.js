@@ -5,7 +5,7 @@ export class Engine {
     constructor() {
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        this.renderer = new THREE.WebGLRenderer();
+        this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.cameraController = new CameraController(this.camera);
         
         this.init();
@@ -15,9 +15,14 @@ export class Engine {
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(this.renderer.domElement);
         
+        // Configuración de sombras
+        this.renderer.shadowMap.enabled = true;
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        
         // Configuración básica de la escena
         this.scene.background = new THREE.Color(0x87ceeb); // Color cielo
-        this.camera.position.set(0, 5, 10);
+        this.camera.position.set(0, 20, 40); // Posición más elevada y alejada
+        this.camera.lookAt(0, 0, 0);
         
         // Manejo de redimensionamiento
         window.addEventListener('resize', () => this.onWindowResize());
