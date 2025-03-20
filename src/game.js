@@ -3,6 +3,7 @@ import { InputManager } from './core/InputManager.js';
 import { Terrain } from './world/Terrain.js';
 import { CharacterManager } from './managers/CharacterManager.js';
 import * as THREE from 'three';
+import { DebugUI } from './utils/DebugUI.js';
 
 class Game {
     constructor() {
@@ -15,6 +16,7 @@ class Game {
         this.setupWorld();
         this.setupTestCharacters();
         this.startGameLoop();
+        this.debugUI = new DebugUI();
     }
 
     setupWorld() {
@@ -127,6 +129,11 @@ class Game {
         }
 
         this.engine.update(deltaTime, this.input);
+
+        // Actualizar el debug UI si existe un jugador local
+        if (this.localPlayer) {
+            this.debugUI.update(this.localPlayer, this.terrain);
+        }
     }
 }
 
