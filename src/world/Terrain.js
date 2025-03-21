@@ -6,6 +6,8 @@ export class Terrain {
         this.islandRadius = 30;
         this.islandHeight = 1;
         this.maxWaterDepth = -2;
+        this.noiseScale = 0.2;  // Escala del ruido para rugosidad
+        this.noiseAmplitude = 0.2;  // Amplitud de la rugosidad
         this.createTerrain();
     }
 
@@ -18,6 +20,7 @@ export class Terrain {
         
         // Crear una rejilla de vértices
         const vertices = [];
+        const uvs = []; // Coordenadas UV para la textura
         const halfWidth = this.size.width / 2;
         const halfDepth = this.size.depth / 2;
         
@@ -31,16 +34,23 @@ export class Terrain {
                 let y;
                 
                 if (distanceFromCenter <= this.islandRadius) {
-                    // Dentro de la isla
-                    y = this.islandHeight;
+                    // Dentro de la isla - altura base + rugosidad
+                    y = this.islandHeight + this.generateNoise(x, z);
                 } else {
                     // Pendiente gradual hacia la profundidad máxima
                     const t = (distanceFromCenter - this.islandRadius) / 
                             (halfWidth - this.islandRadius);
-                    y = this.islandHeight - (t * (this.islandHeight - this.maxWaterDepth));
+                    const baseHeight = this.islandHeight - (t * (this.islandHeight - this.maxWaterDepth));
+                    
+                    // Añadir menos rugosidad en las zonas sumergidas
+                    const noiseMultiplier = Math.max(0, 1 - t * 2); // Reducir el ruido gradualmente
+                    y = baseHeight + this.generateNoise(x, z) * noiseMultiplier;
                 }
                 
                 vertices.push(x, y, z);
+                
+                // Coordenadas UV para la textura (normalizadas de 0 a 1)
+                uvs.push(j / segments, i / segments);
             }
         }
 
@@ -64,12 +74,28 @@ export class Terrain {
             'position',
             new THREE.Float32BufferAttribute(vertices, 3)
         );
+        terrainGeometry.setAttribute(
+            'uv',
+            new THREE.Float32BufferAttribute(uvs, 2)
+        );
         terrainGeometry.setIndex(indices);
         terrainGeometry.computeVertexNormals();
 
-        // Material para el terreno
-        const terrainMaterial = new THREE.MeshPhongMaterial({
-            color: 0xf2e4bb,
+        // Cargar textura de arena
+        const textureLoader = new THREE.TextureLoader();
+        const sandTexture = textureLoader.load('./assets/textures/sand.png');
+        
+        // Configurar repetición de la textura
+        sandTexture.wrapS = THREE.RepeatWrapping;
+        sandTexture.wrapT = THREE.RepeatWrapping;
+        sandTexture.repeat.set(8, 8); // Repetir la textura para mayor detalle
+        
+        // Material para el terreno con textura
+        const terrainMaterial = new THREE.MeshStandardMaterial({
+            map: sandTexture,
+            color: 0xf0d6a3, // Color base arena más cálido (se mezcla con la textura)
+            roughness: 0.9,
+            metalness: 0.05,
             side: THREE.DoubleSide,
             shadowSide: THREE.DoubleSide
         });
@@ -79,6 +105,15 @@ export class Terrain {
 
         // Añadir el terreno al grupo
         this.mesh.add(this.terrain);
+    }
+
+    // Función de ruido para generar rugosidad
+    generateNoise(x, z) {
+        // Implementación simple de ruido usando seno y coseno
+        // Para un ruido más realista se podría usar Perlin o Simplex noise
+        const noiseX = Math.sin(x * this.noiseScale) * Math.cos(z * this.noiseScale * 0.8);
+        const noiseZ = Math.sin(z * this.noiseScale * 1.2) * Math.cos(x * this.noiseScale * 0.6);
+        return (noiseX + noiseZ) * this.noiseAmplitude;
     }
 
     isInBounds(position) {
@@ -174,4 +209,4 @@ export class Terrain {
         
         return { a, b, c };
     }
-} 
+}

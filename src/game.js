@@ -39,13 +39,17 @@ class Game {
         // Hacer las sombras más suaves y menos intensas
         sun.shadow.radius = 2;
         sun.shadow.darkness = 0.3;
-
+    
         this.engine.scene.add(sun);
         
-        // Aumentar la luz ambiental para reducir el contraste
+        // Aumentar la luz ambiental para reducir el contraste y mostrar mejor las texturas
         const ambient = new THREE.AmbientLight(0x404040, 0.7);
         this.engine.scene.add(ambient);
-
+    
+        // Añadir una luz hemisférica para mejorar la iluminación global
+        const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
+        this.engine.scene.add(hemiLight);
+    
         // Crear y añadir el terreno
         this.terrain = new Terrain();
         this.engine.scene.add(this.terrain.mesh);
