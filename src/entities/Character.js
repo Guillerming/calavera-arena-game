@@ -38,7 +38,7 @@ export class Character {
         this.mesh.add(this.colliderMesh);
 
         // Añadir estado de agua
-        this.normalHeight = 1.5;
+        this.normalHeight = 1;
         this.waterHeight = 0.5; // Más hundido en el agua
         this.inWater = false;
     }
@@ -90,6 +90,7 @@ export class Character {
         }
     }
 
+    // En el método updateMovement de Character.js
     updateMovement(deltaTime, inputManager) {
         // Reiniciar la dirección
         this.direction.set(0, 0, 0);
@@ -121,22 +122,38 @@ export class Character {
             // Verificar si la nueva posición está dentro de los límites
             if (this.terrain && this.terrain.isInBounds(newPosition)) {
                 this.mesh.position.copy(newPosition);
-                // Mantener la altura normal por ahora
-                this.mesh.position.y = this.normalHeight;
+                
+                // Obtener la altura del terreno en la nueva posición
+                if (this.terrain) {
+                    const terrainHeight = this.terrain.getHeightAt(
+                        this.mesh.position.x,
+                        this.mesh.position.z
+                    );
+                    
+                    // Ajustar la altura del personaje según el terreno
+                    // Sumamos this.normalHeight para que los pies estén sobre el terreno
+                    if (!this.isJumping) {
+                        this.mesh.position.y = terrainHeight + this.normalHeight;
+                    }
+                    
+                    // Detectar si estamos en agua (si la altura es menor que cierto umbral)
+                    this.inWater = terrainHeight < 0.1; // Ajusta este valor según tu terreno
+                }
             }
-
-            // Log para debugging
-            // GameLogger.log("Posición actualizada", {
-            //     posY: this.mesh.position.y.toFixed(2),
-            //     terrainHeight: this.terrain.getHeightAt(
-            //         this.mesh.position.x,
-            //         this.mesh.position.z
-            //     ).toFixed(2)
-            // });
         }
     }
 
+    // En el método updateJump de Character.js
     updateJump(deltaTime, inputManager) {
+        // Obtener la altura actual del terreno
+        const terrainHeight = this.terrain ? this.terrain.getHeightAt(
+            this.mesh.position.x, 
+            this.mesh.position.z
+        ) : 0;
+        
+        // Altura mínima a la que puede descender (terreno + altura base)
+        const minHeight = terrainHeight + this.normalHeight;
+        
         // No permitir salto en el agua
         if (this.inWater) {
             this.velocity.y = 0;
@@ -156,9 +173,9 @@ export class Character {
         // Actualizar posición vertical
         this.mesh.position.y += this.velocity.y * deltaTime;
 
-        // Detectar colisión con el suelo (temporal)
-        if (this.mesh.position.y <= 1.5) {
-            this.mesh.position.y = 1.5;
+        // Detectar colisión con el suelo (basado en la altura del terreno)
+        if (this.mesh.position.y <= minHeight) {
+            this.mesh.position.y = minHeight;
             this.velocity.y = 0;
             this.isJumping = false;
         }
