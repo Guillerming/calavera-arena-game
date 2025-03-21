@@ -35,7 +35,6 @@ export class Character {
                 visible: false // Cambiar a true para ver los colliders
             })
         );
-        console.log('mesh', this.mesh)
         this.mesh.add(this.colliderMesh);
 
         // Añadir estado de agua
