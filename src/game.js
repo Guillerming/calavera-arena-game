@@ -1,6 +1,7 @@
 import { Engine } from './core/Engine.js';
 import { InputManager } from './core/InputManager.js';
 import { Terrain } from './world/Terrain.js';
+import { Water } from './world/Water.js';  // Importar la nueva clase Water
 import { CharacterManager } from './managers/CharacterManager.js';
 import * as THREE from 'three';
 import { DebugUI } from './utils/DebugUI.js';
@@ -39,21 +40,28 @@ class Game {
         // Hacer las sombras más suaves y menos intensas
         sun.shadow.radius = 2;
         sun.shadow.darkness = 0.3;
-    
+
         this.engine.scene.add(sun);
         
-        // Aumentar la luz ambiental para reducir el contraste y mostrar mejor las texturas
+        // Aumentar la luz ambiental para reducir el contraste
         const ambient = new THREE.AmbientLight(0x404040, 0.7);
         this.engine.scene.add(ambient);
-    
+
         // Añadir una luz hemisférica para mejorar la iluminación global
         const hemiLight = new THREE.HemisphereLight(0xffffbb, 0x080820, 0.5);
         this.engine.scene.add(hemiLight);
-    
+
         // Crear y añadir el terreno
         this.terrain = new Terrain();
         this.engine.scene.add(this.terrain.mesh);
+        
+        // Crear y añadir el agua
+        this.water = new Water(this.terrain.size, -0.1); // Un poco por debajo de la línea de costa
+        this.engine.scene.add(this.water.mesh);
     }
+
+    // ... resto del código sin cambios ...
+
 
     setupTestCharacters() {
         // Crear algunos personajes de prueba
@@ -128,7 +136,7 @@ class Game {
         };
         requestAnimationFrame(gameLoop);
     }
-
+    
     update(deltaTime) {
         // Actualizar el jugador local
         if (this.localPlayer) {
@@ -148,6 +156,11 @@ class Game {
             }
         }
 
+        // Actualizar el agua (animación de olas)
+        if (this.water) {
+            this.water.update(deltaTime);
+        }
+
         this.engine.update(deltaTime, this.input);
 
         // Actualizar el debug UI si existe un jugador local
@@ -159,4 +172,4 @@ class Game {
 
 window.addEventListener('load', () => {
     const game = new Game();
-}); 
+});
