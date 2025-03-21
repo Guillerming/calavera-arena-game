@@ -8,6 +8,10 @@ export class CharacterManager {
     createCharacter(id, team, modelVariant, terrain) {
         const character = new Character(team, modelVariant, terrain);
         this.characters.set(id, character);
+        
+        // No modificamos la posición aquí, lo dejaremos para el método que llama a createCharacter
+        // para que tenga un control más explícito de la ubicación
+        
         return character;
     }
 
@@ -28,4 +32,4 @@ export class CharacterManager {
             character.update(deltaTime);
         }
     }
-} 
+}

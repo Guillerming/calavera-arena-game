@@ -35,11 +35,12 @@ export class Character {
                 visible: false // Cambiar a true para ver los colliders
             })
         );
+        console.log('mesh', this.mesh)
         this.mesh.add(this.colliderMesh);
 
         // Añadir estado de agua
         this.normalHeight = 1;
-        this.waterHeight = 0.5; // Más hundido en el agua
+        this.waterHeight = 0.3; // Más hundido en el agua
         this.inWater = false;
     }
 
@@ -54,22 +55,22 @@ export class Character {
         body.receiveShadow = true;
 
         // Crear indicador frontal (un triángulo más claro en la parte delantera)
-        const frontMarkerGeometry = new THREE.ConeGeometry(0.2, 0.4, 3);
-        const frontMarkerMaterial = new THREE.MeshPhongMaterial({ 
-            color: this.team === 'blue' ? 0x4444ff : 0xff4444 
-        });
-        const frontMarker = new THREE.Mesh(frontMarkerGeometry, frontMarkerMaterial);
-        frontMarker.position.set(0, 0.5, -0.5);
-        frontMarker.rotation.x = Math.PI / 2;
-        frontMarker.castShadow = true;
-        frontMarker.receiveShadow = true;
+        // const frontMarkerGeometry = new THREE.ConeGeometry(0.2, 0.4, 3);
+        // const frontMarkerMaterial = new THREE.MeshPhongMaterial({ 
+        //     color: this.team === 'blue' ? 0x4444ff : 0xff4444 
+        // });
+        // const frontMarker = new THREE.Mesh(frontMarkerGeometry, frontMarkerMaterial);
+        // frontMarker.position.set(0, 0.5, -0.5);
+        // frontMarker.rotation.x = Math.PI / 2;
+        // frontMarker.castShadow = true;
+        // frontMarker.receiveShadow = true;
 
         const modelGroup = new THREE.Group();
         modelGroup.add(body);
-        modelGroup.add(frontMarker);
+        // modelGroup.add(frontMarker);
         
         // Ajustar posición inicial
-        modelGroup.position.y = this.normalHeight;
+        // modelGroup.position.y = this.normalHeight;
         return modelGroup;
     }
 
@@ -94,15 +95,15 @@ export class Character {
     updateMovement(deltaTime, inputManager) {
         // Reiniciar la dirección
         this.direction.set(0, 0, 0);
-
+    
         // Movimiento adelante/atrás
         if (inputManager.isKeyPressed('KeyW')) this.direction.z -= 1;
         if (inputManager.isKeyPressed('KeyS')) this.direction.z += 1;
-
+    
         // Movimiento izquierda/derecha
         if (inputManager.isKeyPressed('KeyA')) this.direction.x -= 1;
         if (inputManager.isKeyPressed('KeyD')) this.direction.x += 1;
-
+    
         // Normalizar la dirección para movimiento consistente en diagonales
         if (this.direction.length() > 0) {
             this.direction.normalize();
@@ -118,7 +119,7 @@ export class Character {
             const newPosition = this.mesh.position.clone();
             newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
             newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
-
+    
             // Verificar si la nueva posición está dentro de los límites
             if (this.terrain && this.terrain.isInBounds(newPosition)) {
                 this.mesh.position.copy(newPosition);
@@ -131,9 +132,11 @@ export class Character {
                     );
                     
                     // Ajustar la altura del personaje según el terreno
-                    // Sumamos this.normalHeight para que los pies estén sobre el terreno
+                    // Importante: Aquí es donde está el problema. El modelo tiene origen en su centro,
+                    // así que necesitamos añadir la mitad de su altura para que los pies estén en el terreno
                     if (!this.isJumping) {
-                        this.mesh.position.y = terrainHeight + this.normalHeight;
+                        // Usar this.height / 2 en lugar de this.normalHeight
+                        this.mesh.position.y = terrainHeight + this.height / 2;
                     }
                     
                     // Detectar si estamos en agua (si la altura es menor que cierto umbral)
@@ -151,8 +154,8 @@ export class Character {
             this.mesh.position.z
         ) : 0;
         
-        // Altura mínima a la que puede descender (terreno + altura base)
-        const minHeight = terrainHeight + this.normalHeight;
+        // Altura mínima a la que puede descender (terreno + mitad de la altura del personaje)
+        const minHeight = terrainHeight + this.height / 2;
         
         // No permitir salto en el agua
         if (this.inWater) {
@@ -160,19 +163,19 @@ export class Character {
             this.isJumping = false;
             return;
         }
-
+    
         // Aplicar gravedad
         this.velocity.y += this.gravity * deltaTime;
-
+    
         // Procesar salto
         if (inputManager.isKeyPressed('Space') && !this.isJumping) {
             this.velocity.y = this.jumpForce;
             this.isJumping = true;
         }
-
+    
         // Actualizar posición vertical
         this.mesh.position.y += this.velocity.y * deltaTime;
-
+    
         // Detectar colisión con el suelo (basado en la altura del terreno)
         if (this.mesh.position.y <= minHeight) {
             this.mesh.position.y = minHeight;
@@ -180,8 +183,11 @@ export class Character {
             this.isJumping = false;
         }
     }
-
+    
+    // También modifica el método setPosition para que sea consistente:
     setPosition(x, y, z) {
+        // Asegurarse de que Y es la posición del centro del personaje
+        // y no la de sus pies
         this.mesh.position.set(x, y, z);
     }
 

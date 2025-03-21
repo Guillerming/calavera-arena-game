@@ -59,14 +59,30 @@ class Game {
             { x: -5, z: -1 },
             { x: -5, z: 1 }
         ];
-
+    
         const redTeamPositions = [
             { x: 5, z: -5 },
             { x: 5, z: -3 },
             { x: 5, z: -1 },
             { x: 5, z: 1 }
         ];
-
+    
+        // Crear personaje principal
+        const mainCharacter = this.characterManager.createCharacter(
+            'main_character',
+            'blue',
+            0,
+            this.terrain
+        );
+        // Posicionar personaje principal
+        const mainTerrainHeight = this.terrain.getHeightAt(0, 0);
+        mainCharacter.setPosition(0, mainTerrainHeight + mainCharacter.height / 2, 0);
+        this.engine.scene.add(mainCharacter.mesh);
+        
+        // Asignar el personaje principal como jugador local
+        this.localPlayer = this.characterManager.getCharacter('main_character');
+        this.engine.setPlayerTarget(this.localPlayer);
+    
         // Crear equipo azul
         blueTeamPositions.forEach((pos, index) => {
             const character = this.characterManager.createCharacter(
@@ -75,10 +91,12 @@ class Game {
                 index,
                 this.terrain
             );
-            character.setPosition(pos.x, 1.5, pos.z);
+            // Importante: Calcular la altura del terreno y posicionar correctamente
+            const terrainHeight = this.terrain.getHeightAt(pos.x, pos.z);
+            character.setPosition(pos.x, terrainHeight + character.height / 2, pos.z);
             this.engine.scene.add(character.mesh);
         });
-
+    
         // Crear equipo rojo
         redTeamPositions.forEach((pos, index) => {
             const character = this.characterManager.createCharacter(
@@ -87,13 +105,11 @@ class Game {
                 index,
                 this.terrain
             );
-            character.setPosition(pos.x, 1.5, pos.z);
+            // Importante: Calcular la altura del terreno y posicionar correctamente
+            const terrainHeight = this.terrain.getHeightAt(pos.x, pos.z);
+            character.setPosition(pos.x, terrainHeight + character.height / 2, pos.z);
             this.engine.scene.add(character.mesh);
         });
-
-        // Asignar el primer personaje del equipo azul como jugador local
-        this.localPlayer = this.characterManager.getCharacter('blue_0');
-        this.engine.setPlayerTarget(this.localPlayer);
     }
 
     startGameLoop() {
