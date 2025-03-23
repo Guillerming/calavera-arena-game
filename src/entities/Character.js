@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-// import {Logger as GameLogger} from '../utils/Logger.js';
+import { SpeedIndicator } from '../utils/SpeedIndicator.js';
 
 export class Character {
     constructor(team = 'blue', modelVariant = 0, terrain) {
@@ -15,6 +15,9 @@ export class Character {
         this.speedChangeRate = 5; // Velocidad de cambio de velocidad
         this.velocity = new THREE.Vector3();
         this.direction = new THREE.Vector3();
+        
+        // Crear el indicador de velocidad
+        this.speedIndicator = new SpeedIndicator();
         
         // Parámetros de salto
         this.isJumping = false;
@@ -112,6 +115,9 @@ export class Character {
                 this.currentSpeed = Math.max(this.minSpeed, this.currentSpeed - this.speedChangeRate * deltaTime);
             }
         }
+
+        // Actualizar el indicador de velocidad
+        this.speedIndicator.update(this.currentSpeed, this.maxSpeed, this.minSpeed);
 
         const currentPosition = this.mesh.position.clone();
         
