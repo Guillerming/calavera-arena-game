@@ -9,7 +9,10 @@ export class Character {
         this.mesh = this.createTemporaryModel();
         
         // Parámetros de movimiento
-        this.moveSpeed = 10;
+        this.maxSpeed = 10;
+        this.minSpeed = -2; // 1/5 de la velocidad máxima en reversa
+        this.currentSpeed = this.maxSpeed;
+        this.speedChangeRate = 5; // Velocidad de cambio de velocidad
         this.velocity = new THREE.Vector3();
         this.direction = new THREE.Vector3();
         
@@ -101,9 +104,18 @@ export class Character {
     updateMovement(deltaTime, inputManager) {
         if (!this.terrain) return;
 
+        // Control de velocidad con W/S
+        if (inputManager) {
+            if (inputManager.isKeyPressed('KeyW')) {
+                this.currentSpeed = Math.min(this.maxSpeed, this.currentSpeed + this.speedChangeRate * deltaTime);
+            } else if (inputManager.isKeyPressed('KeyS')) {
+                this.currentSpeed = Math.max(this.minSpeed, this.currentSpeed - this.speedChangeRate * deltaTime);
+            }
+        }
+
         const currentPosition = this.mesh.position.clone();
         
-        // Siempre moverse hacia adelante (dirección negativa en el eje Z)
+        // Siempre moverse en la dirección actual
         this.direction.set(0, 0, -1);
         
         // Aplicar la rotación actual del barco
@@ -112,8 +124,8 @@ export class Character {
         this.direction.applyMatrix4(rotationMatrix);
         
         const newPosition = currentPosition.clone();
-        newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
-        newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
+        newPosition.x += this.direction.x * this.currentSpeed * deltaTime;
+        newPosition.z += this.direction.z * this.currentSpeed * deltaTime;
 
         // Comprobar colisiones en múltiples puntos alrededor del barco
         const boatWidth = 1.2;  // Mitad del ancho total (2.4 unidades)
