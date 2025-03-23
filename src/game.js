@@ -73,8 +73,8 @@ class Game {
             this.terrain
         );
         
-        // Posicionar la barca en el agua
-        boat.mesh.position.set(0, 0, 40); // Ajusta estas coordenadas según tu mapa
+        // Posicionar la barca en el agua, siempre a y = 0
+        boat.mesh.position.set(0, 0, 40);
         this.engine.scene.add(boat.mesh);
         this.localPlayer = boat;
         

@@ -9,7 +9,7 @@ export class Character {
         this.mesh = this.createTemporaryModel();
         
         // Parámetros de movimiento
-        this.moveSpeed = 5;
+        this.moveSpeed = 10;
         this.velocity = new THREE.Vector3();
         this.direction = new THREE.Vector3();
         
@@ -93,7 +93,7 @@ export class Character {
     update(deltaTime, inputManager) {
         if (inputManager) {
             this.updateMovement(deltaTime, inputManager);
-            this.updateJump(deltaTime, inputManager);
+            // this.updateJump(deltaTime, inputManager);
         }
     }
 
@@ -107,9 +107,9 @@ export class Character {
         // Calcular el movimiento deseado
         this.direction.set(0, 0, 0);
         if (inputManager.isKeyPressed('KeyW')) this.direction.z -= 1;
-        if (inputManager.isKeyPressed('KeyS')) this.direction.z += 1;
-        if (inputManager.isKeyPressed('KeyA')) this.direction.x -= 1;
-        if (inputManager.isKeyPressed('KeyD')) this.direction.x += 1;
+        // if (inputManager.isKeyPressed('KeyS')) this.direction.z += 1;
+        // if (inputManager.isKeyPressed('KeyA')) this.direction.x -= 1;
+        // if (inputManager.isKeyPressed('KeyD')) this.direction.x += 1;
 
         if (this.direction.length() > 0) {
             this.direction.normalize();
@@ -124,17 +124,10 @@ export class Character {
             newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
             newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
             
-            // Obtener altura del terreno en la nueva posición
-            const terrainHeight = this.terrain.getHeightAt(newPosition.x, newPosition.z);
+            // El barco siempre está a nivel del mar (y = 0)
+            newPosition.y = 0;
             
-            // Solo permitir movimiento si estamos en agua
-            if (terrainHeight <= 0) { // 0 es el nivel del agua
-                // Suavizar el movimiento vertical (flotación)
-                const targetY = 0; // Nivel del agua
-                newPosition.y += (targetY - newPosition.y) * 0.1; // Efecto de flotación suave
-                
-                this.mesh.position.copy(newPosition);
-            }
+            this.mesh.position.copy(newPosition);
         }
     }
 
@@ -177,10 +170,10 @@ export class Character {
     }
     
     // También modifica el método setPosition para que sea consistente:
-    setPosition(x, y, z) {
-        // Asegurarse de que Y es la posición del centro del personaje
-        // y no la de sus pies
-        this.mesh.position.set(x, y, z);
+    setPosition(x, z) {
+        if (this.mesh) {
+            this.mesh.position.set(x, 0, z); // Siempre y = 0
+        }
     }
 
     checkCollision(otherCharacter) {
