@@ -7,6 +7,8 @@ export class DebugUI {
         const container = document.createElement('div');
         container.id = 'debug-container';
         container.innerHTML = `
+            <div class="debug-value">Posición X: <span id="position-x">0.00</span></div>
+            <div class="debug-value">Posición Z: <span id="position-z">0.00</span></div>
             <div class="debug-value">Altura Personaje: <span id="character-y">0.00</span></div>
             <div class="debug-value">Altura Terreno: <span id="terrain-height">0.00</span></div>
             <div class="debug-value">Diferencia: <span id="height-diff">0.00</span></div>
@@ -16,16 +18,20 @@ export class DebugUI {
         return container;
     }
 
-    update(character, terrain) {
+    update(character) {
         if (!character) {
             document.getElementById('debug-status').textContent = 'No hay personaje';
             return;
         }
 
         const position = character.mesh.position;
+        
+        // Actualizar coordenadas X y Z
+        document.getElementById('position-x').textContent = position.x.toFixed(2);
+        document.getElementById('position-z').textContent = position.z.toFixed(2);
         document.getElementById('character-y').textContent = position.y.toFixed(2);
 
-        if (!terrain) {
+        if (!character.terrain) {
             document.getElementById('debug-status').textContent = 'No hay terreno';
             document.getElementById('terrain-height').textContent = 'N/A';
             document.getElementById('height-diff').textContent = 'N/A';
@@ -33,7 +39,7 @@ export class DebugUI {
         }
 
         try {
-            const terrainHeight = terrain.getHeightAt(position.x, position.z);
+            const terrainHeight = character.terrain.getHeightAt(position.x, position.z);
             const difference = position.y - terrainHeight;
 
             document.getElementById('terrain-height').textContent = terrainHeight.toFixed(2);
@@ -41,8 +47,7 @@ export class DebugUI {
             document.getElementById('debug-status').textContent = 'OK';
         } catch (error) {
             document.getElementById('debug-status').textContent = 
-                `Error: ${error.message} (${typeof terrain})`;
-            // console.log('Terrain object:', terrain);
+                `Error: ${error.message} (${typeof character.terrain})`;
         }
     }
 } 
