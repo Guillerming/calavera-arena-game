@@ -5,7 +5,6 @@ import { Water } from './world/Water.js';  // Importar la nueva clase Water
 import { CharacterManager } from './managers/CharacterManager.js';
 import * as THREE from 'three';
 import { DebugUI } from './utils/DebugUI.js';
-import { TerrainEditor } from './utils/TerrainEditor.js';
 
 class Game {
     constructor() {
@@ -19,9 +18,6 @@ class Game {
         this.setupTestCharacters();
         this.startGameLoop();
         this.debugUI = new DebugUI();
-        
-        // Inicializar editor de terreno con terrain y engine
-        this.terrainEditor = new TerrainEditor(this.terrain, this.engine);
     }
 
     async setupWorld() {
