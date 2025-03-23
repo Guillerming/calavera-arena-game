@@ -87,12 +87,57 @@ export class Terrain {
         );
         geometry.rotateX(-Math.PI / 2);
 
-        // Aplicar alturas del heightmap
         const vertices = geometry.attributes.position.array;
+        
+        // Primer paso: aplicar heightmap
         for (let i = 0; i < vertices.length; i += 3) {
             const x = vertices[i];
             const z = vertices[i + 2];
             vertices[i + 1] = this.getHeightAt(x, z);
+        }
+
+        // Segundo paso: suavizar vértices
+        const smoothIterations = 5; // Aumenta para más suavizado
+        const smoothIntensity = 0.5; // Ajusta entre 0 y 1
+        
+        for (let iteration = 0; iteration < smoothIterations; iteration++) {
+            const tempHeights = new Float32Array(vertices.length / 3);
+            
+            for (let i = 0; i < vertices.length; i += 3) {
+                const idx = i / 3;
+                const row = Math.floor(idx / (this.segments + 1));
+                const col = idx % (this.segments + 1);
+                
+                let sum = vertices[i + 1]; // Altura actual
+                let count = 1;
+                
+                // Comprobar vecinos
+                const neighbors = [
+                    [-1, -1], [-1, 0], [-1, 1],
+                    [0, -1],           [0, 1],
+                    [1, -1],  [1, 0],  [1, 1]
+                ];
+                
+                for (const [dr, dc] of neighbors) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    
+                    if (newRow >= 0 && newRow <= this.segments && 
+                        newCol >= 0 && newCol <= this.segments) {
+                        const neighborIdx = (newRow * (this.segments + 1) + newCol) * 3;
+                        sum += vertices[neighborIdx + 1];
+                        count++;
+                    }
+                }
+                
+                tempHeights[idx] = vertices[i + 1] * (1 - smoothIntensity) + 
+                                  (sum / count) * smoothIntensity;
+            }
+            
+            // Aplicar alturas suavizadas
+            for (let i = 0; i < vertices.length; i += 3) {
+                vertices[i + 1] = tempHeights[i / 3];
+            }
         }
 
         geometry.computeVertexNormals();

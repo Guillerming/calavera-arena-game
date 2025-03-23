@@ -74,7 +74,7 @@ class Game {
         );
         
         // Posicionar la barca en el agua, siempre a y = 0
-        boat.mesh.position.set(0, 0, 40);
+        boat.mesh.position.set(45, 0, -14);
         this.engine.scene.add(boat.mesh);
         this.localPlayer = boat;
         
