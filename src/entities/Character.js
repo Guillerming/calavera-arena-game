@@ -101,49 +101,83 @@ export class Character {
     updateMovement(deltaTime, inputManager) {
         if (!this.terrain) return;
 
-        // Obtener la posición actual
         const currentPosition = this.mesh.position.clone();
         
-        // Calcular el movimiento deseado
         this.direction.set(0, 0, 0);
         if (inputManager.isKeyPressed('KeyW')) this.direction.z -= 1;
-        // if (inputManager.isKeyPressed('KeyS')) this.direction.z += 1;
+        if (inputManager.isKeyPressed('KeyS')) this.direction.z += 1;
         // if (inputManager.isKeyPressed('KeyA')) this.direction.x -= 1;
         // if (inputManager.isKeyPressed('KeyD')) this.direction.x += 1;
 
         if (this.direction.length() > 0) {
             this.direction.normalize();
             
-            // Aplicar rotación
             const rotationMatrix = new THREE.Matrix4();
             rotationMatrix.makeRotationY(this.mesh.rotation.y);
             this.direction.applyMatrix4(rotationMatrix);
             
-            // Calcular nueva posición
             const newPosition = currentPosition.clone();
             newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
             newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
+
+            // Comprobar colisiones en múltiples puntos alrededor del barco
+            const boatWidth = 1.2;  // Mitad del ancho total (2.4 unidades)
+            const boatLength = 2.2; // Mitad del largo total (4.4 unidades)
             
-            // Comprobar si la nueva posición está en agua
-            const terrainHeight = this.terrain.getHeightAt(newPosition.x, newPosition.z);
+            // Crear puntos de colisión rotados según la orientación del barco
+            const cosRotation = Math.cos(this.mesh.rotation.y);
+            const sinRotation = Math.sin(this.mesh.rotation.y);
             
-            // Solo permitir el movimiento si estamos en agua (altura <= 0)
-            if (terrainHeight <= 0) {
-                newPosition.y = 0; // Mantener el barco a nivel del mar
-                this.mesh.position.copy(newPosition);
-            } else {
-                // Opcional: Añadir un pequeño rebote o deslizamiento al chocar
-                // Encontrar una dirección alternativa que nos mantenga en el agua
-                const slideDirection = new THREE.Vector3();
-                
-                // Intentar deslizarse a lo largo de la costa
-                if (this.terrain.getHeightAt(currentPosition.x, newPosition.z) <= 0) {
-                    // Podemos movernos en Z
-                    this.mesh.position.z = newPosition.z;
-                } else if (this.terrain.getHeightAt(newPosition.x, currentPosition.z) <= 0) {
-                    // Podemos movernos en X
-                    this.mesh.position.x = newPosition.x;
+            const collisionPoints = [
+                // Centro
+                { x: newPosition.x, z: newPosition.z },
+                // Proa y popa
+                { 
+                    x: newPosition.x + (boatLength * sinRotation), 
+                    z: newPosition.z + (boatLength * cosRotation)
+                },
+                { 
+                    x: newPosition.x - (boatLength * sinRotation), 
+                    z: newPosition.z - (boatLength * cosRotation)
+                },
+                // Babor y estribor
+                { 
+                    x: newPosition.x + (boatWidth * cosRotation), 
+                    z: newPosition.z - (boatWidth * sinRotation)
+                },
+                { 
+                    x: newPosition.x - (boatWidth * cosRotation), 
+                    z: newPosition.z + (boatWidth * sinRotation)
+                },
+                // Esquinas
+                { 
+                    x: newPosition.x + (boatLength * sinRotation) + (boatWidth * cosRotation), 
+                    z: newPosition.z + (boatLength * cosRotation) - (boatWidth * sinRotation)
+                },
+                { 
+                    x: newPosition.x + (boatLength * sinRotation) - (boatWidth * cosRotation), 
+                    z: newPosition.z + (boatLength * cosRotation) + (boatWidth * sinRotation)
+                },
+                { 
+                    x: newPosition.x - (boatLength * sinRotation) + (boatWidth * cosRotation), 
+                    z: newPosition.z - (boatLength * cosRotation) - (boatWidth * sinRotation)
+                },
+                { 
+                    x: newPosition.x - (boatLength * sinRotation) - (boatWidth * cosRotation), 
+                    z: newPosition.z - (boatLength * cosRotation) + (boatWidth * sinRotation)
                 }
+            ];
+
+            // Comprobar si algún punto colisiona con tierra
+            const collision = collisionPoints.some(point => {
+                const terrainHeight = this.terrain.getHeightAt(point.x, point.z);
+                return terrainHeight > 0;
+            });
+
+            // Si no hay colisión, permitir el movimiento
+            if (!collision) {
+                newPosition.y = 0;
+                this.mesh.position.copy(newPosition);
             }
         }
 
