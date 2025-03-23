@@ -5,6 +5,7 @@ import { Water } from './world/Water.js';  // Importar la nueva clase Water
 import { CharacterManager } from './managers/CharacterManager.js';
 import * as THREE from 'three';
 import { DebugUI } from './utils/DebugUI.js';
+import { TerrainEditor } from './utils/TerrainEditor.js';
 
 class Game {
     constructor() {
@@ -18,9 +19,12 @@ class Game {
         this.setupTestCharacters();
         this.startGameLoop();
         this.debugUI = new DebugUI();
+        
+        // Inicializar editor de terreno con terrain y engine
+        this.terrainEditor = new TerrainEditor(this.terrain, this.engine);
     }
 
-    setupWorld() {
+    async setupWorld() {
         // Luz direccional (sol)
         const sun = new THREE.DirectionalLight(0xffffff, 1.0);
         sun.position.set(20, 30, 20);
@@ -53,15 +57,16 @@ class Game {
 
         // Crear y añadir el terreno
         this.terrain = new Terrain();
-        this.engine.scene.add(this.terrain.mesh);
-        
-        // Crear y añadir el agua
+        const terrainGroup = await this.terrain.initialize();
+        if (terrainGroup) {
+            this.engine.scene.add(terrainGroup);
+        }
+
         this.water = new Water(this.terrain.size, -0.1); // Un poco por debajo de la línea de costa
         this.engine.scene.add(this.water.mesh);
+        // Continuar con el resto de la inicialización
+        this.setupTestCharacters();
     }
-
-    // ... resto del código sin cambios ...
-
 
     setupTestCharacters() {
         // Crear algunos personajes de prueba

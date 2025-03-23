@@ -2,118 +2,148 @@ import * as THREE from 'three';
 
 export class Terrain {
     constructor() {
-        this.size = { width: 100, depth: 100 };
-        this.islandRadius = 30;
-        this.islandHeight = 1;
-        this.maxWaterDepth = -2;
-        this.noiseScale = 0.2;  // Escala del ruido para rugosidad
-        this.noiseAmplitude = 0.2;  // Amplitud de la rugosidad
-        this.createTerrain();
+        this.size = { width: 400, depth: 400 };
+        this.segments = 128;
+        
+        // Definir alturas mínima y máxima
+        this.minHeight = -10; // Profundidad máxima del agua
+        this.maxHeight = 30;  // Altura máxima del terreno
+        
+        // Nivel del agua
+        this.waterLevel = 0;
+        
+        this.heightData = null;
+        this.mesh = null;
+        this.textureRepeat = 8;
+    }
+
+    async initialize() {
+        try {
+            await this.loadHeightmap('/assets/heightmap.jpg');
+            await this.loadTextures();
+            this.createTerrain();
+            return this.group;
+        } catch (error) {
+            console.error('Error inicializando el terreno:', error);
+        }
+    }
+
+    loadHeightmap(url) {
+        return new Promise((resolve, reject) => {
+            const image = new Image();
+            image.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = image.width;
+                canvas.height = image.height;
+                
+                const context = canvas.getContext('2d');
+                context.drawImage(image, 0, 0);
+                
+                const imageData = context.getImageData(0, 0, image.width, image.height).data;
+                this.heightData = new Float32Array(image.width * image.height);
+                
+                for(let i = 0; i < this.heightData.length; i++) {
+                    const r = imageData[i * 4];
+                    const g = imageData[i * 4 + 1];
+                    const b = imageData[i * 4 + 2];
+                    
+                    // Convertir el valor de gris (0-255) al rango de altura deseado
+                    const normalizedHeight = ((r + g + b) / 3) / 255.0;
+                    this.heightData[i] = this.minHeight + (normalizedHeight * (this.maxHeight - this.minHeight));
+                }
+                
+                this.segments = image.width - 1;
+                resolve();
+            };
+            image.onerror = reject;
+            image.src = url;
+        });
+    }
+
+    loadTextures() {
+        return new Promise((resolve, reject) => {
+            const textureLoader = new THREE.TextureLoader();
+            textureLoader.load(
+                './assets/textures/sand.png',
+                (texture) => {
+                    this.sandTexture = texture;
+                    this.sandTexture.wrapS = THREE.RepeatWrapping;
+                    this.sandTexture.wrapT = THREE.RepeatWrapping;
+                    this.sandTexture.repeat.set(this.textureRepeat, this.textureRepeat);
+                    resolve();
+                },
+                undefined,
+                reject
+            );
+        });
     }
 
     createTerrain() {
-        this.mesh = new THREE.Group();
+        const geometry = new THREE.PlaneGeometry(
+            this.size.width, 
+            this.size.depth, 
+            this.segments, 
+            this.segments
+        );
+        geometry.rotateX(-Math.PI / 2);
 
-        // Crear el terreno base
-        const segments = 50;
-        const terrainGeometry = new THREE.BufferGeometry();
-        
-        // Crear una rejilla de vértices
-        const vertices = [];
-        const uvs = []; // Coordenadas UV para la textura
-        const halfWidth = this.size.width / 2;
-        const halfDepth = this.size.depth / 2;
-        
-        for (let i = 0; i <= segments; i++) {
-            const z = (i / segments) * this.size.depth - halfDepth;
-            for (let j = 0; j <= segments; j++) {
-                const x = (j / segments) * this.size.width - halfWidth;
-                
-                // Calcular altura basada en la distancia al centro
-                const distanceFromCenter = Math.sqrt(x * x + z * z);
-                let y;
-                
-                if (distanceFromCenter <= this.islandRadius) {
-                    // Dentro de la isla - altura base + rugosidad
-                    y = this.islandHeight + this.generateNoise(x, z);
-                } else {
-                    // Pendiente gradual hacia la profundidad máxima
-                    const t = (distanceFromCenter - this.islandRadius) / 
-                            (halfWidth - this.islandRadius);
-                    const baseHeight = this.islandHeight - (t * (this.islandHeight - this.maxWaterDepth));
-                    
-                    // Añadir menos rugosidad en las zonas sumergidas
-                    const noiseMultiplier = Math.max(0, 1 - t * 2); // Reducir el ruido gradualmente
-                    y = baseHeight + this.generateNoise(x, z) * noiseMultiplier;
-                }
-                
-                vertices.push(x, y, z);
-                
-                // Coordenadas UV para la textura (normalizadas de 0 a 1)
-                uvs.push(j / segments, i / segments);
-            }
+        // Aplicar alturas del heightmap
+        const vertices = geometry.attributes.position.array;
+        for (let i = 0; i < vertices.length; i += 3) {
+            const x = vertices[i];
+            const z = vertices[i + 2];
+            vertices[i + 1] = this.getHeightAt(x, z);
         }
 
-        // Crear índices para los triángulos
-        const indices = [];
-        const verticesPerRow = segments + 1;
-        
-        for (let i = 0; i < segments; i++) {
-            for (let j = 0; j < segments; j++) {
-                const a = i * verticesPerRow + j;
-                const b = a + 1;
-                const c = a + verticesPerRow;
-                const d = c + 1;
-                
-                indices.push(a, b, c);
-                indices.push(b, d, c);
-            }
-        }
+        geometry.computeVertexNormals();
 
-        terrainGeometry.setAttribute(
-            'position',
-            new THREE.Float32BufferAttribute(vertices, 3)
-        );
-        terrainGeometry.setAttribute(
-            'uv',
-            new THREE.Float32BufferAttribute(uvs, 2)
-        );
-        terrainGeometry.setIndex(indices);
-        terrainGeometry.computeVertexNormals();
-
-        // Cargar textura de arena
-        const textureLoader = new THREE.TextureLoader();
-        const sandTexture = textureLoader.load('./assets/textures/sand.png');
-        
-        // Configurar repetición de la textura
-        sandTexture.wrapS = THREE.RepeatWrapping;
-        sandTexture.wrapT = THREE.RepeatWrapping;
-        sandTexture.repeat.set(8, 8); // Repetir la textura para mayor detalle
-        
-        // Material para el terreno con textura
-        const terrainMaterial = new THREE.MeshStandardMaterial({
-            map: sandTexture,
-            color: 0xf0d6a3, // Color base arena más cálido (se mezcla con la textura)
+        // Crear material con textura
+        const material = new THREE.MeshStandardMaterial({
+            map: this.sandTexture,
+            color: 0xf0d6a3,
             roughness: 0.9,
             metalness: 0.05,
             side: THREE.DoubleSide,
             shadowSide: THREE.DoubleSide
         });
 
-        this.terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
-        this.terrain.receiveShadow = true;
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.receiveShadow = true;
 
-        // Añadir el terreno al grupo
-        this.mesh.add(this.terrain);
+        // Crear el agua
+        const waterGeometry = new THREE.PlaneGeometry(this.size.width, this.size.depth);
+        const waterMaterial = new THREE.MeshPhongMaterial({
+            color: 0x0066ff,
+            transparent: true,
+            opacity: 0.6
+        });
+        
+        this.waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+        this.waterMesh.rotation.x = -Math.PI / 2;
+        this.waterMesh.position.y = this.waterLevel;
+        
+        // Grupo para contener terreno y agua
+        this.group = new THREE.Group();
+        this.group.add(this.mesh);
+        this.group.add(this.waterMesh);
+        
+        return this.group;
     }
 
-    // Función de ruido para generar rugosidad
-    generateNoise(x, z) {
-        // Implementación simple de ruido usando seno y coseno
-        // Para un ruido más realista se podría usar Perlin o Simplex noise
-        const noiseX = Math.sin(x * this.noiseScale) * Math.cos(z * this.noiseScale * 0.8);
-        const noiseZ = Math.sin(z * this.noiseScale * 1.2) * Math.cos(x * this.noiseScale * 0.6);
-        return (noiseX + noiseZ) * this.noiseAmplitude;
+    getHeightAt(x, z) {
+        if (!this.heightData) return 0;
+
+        const halfWidth = this.size.width / 2;
+        const halfDepth = this.size.depth / 2;
+        
+        const normalizedX = (x + halfWidth) / this.size.width;
+        const normalizedZ = (z + halfDepth) / this.size.depth;
+        
+        const ix = Math.floor(normalizedX * this.segments);
+        const iz = Math.floor(normalizedZ * this.segments);
+        
+        const index = iz * (this.segments + 1) + ix;
+        return this.heightData[index];
     }
 
     isInBounds(position) {
@@ -123,90 +153,5 @@ export class Terrain {
                position.x <= halfWidth && 
                position.z >= -halfDepth && 
                position.z <= halfDepth;
-    }
-
-    getHeightAt(x, z) {
-        // Get terrain geometry and vertices
-        const geometry = this.terrain.geometry;
-        const positionAttribute = geometry.getAttribute('position');
-        const vertices = positionAttribute.array;
-        const indices = geometry.index.array;
-        
-        // Find which triangle the point (x, z) falls into
-        const verticesPerRow = Math.sqrt(positionAttribute.count);
-        const segmentSize = this.size.width / (verticesPerRow - 1);
-        
-        // Convert world coordinates to grid coordinates
-        const halfWidth = this.size.width / 2;
-        const halfDepth = this.size.depth / 2;
-        const gridX = Math.floor((x + halfWidth) / segmentSize);
-        const gridZ = Math.floor((z + halfDepth) / segmentSize);
-        
-        // Make sure we're in bounds
-        if (gridX < 0 || gridX >= verticesPerRow - 1 || gridZ < 0 || gridZ >= verticesPerRow - 1) {
-            return 0; // Or return a default height
-        }
-        
-        // Find the two triangles in this grid cell
-        const cellIndex = gridZ * (verticesPerRow - 1) + gridX;
-        const triangleIndex1 = cellIndex * 6; // Each cell has 6 indices (2 triangles)
-        
-        // Get local coordinates within the grid cell (0 to 1)
-        const localX = (x + halfWidth) / segmentSize - gridX;
-        const localZ = (z + halfDepth) / segmentSize - gridZ;
-        
-        // Determine which of the two triangles the point is in
-        let triangleIndices;
-        if (localX + localZ <= 1) {
-            // Lower triangle
-            triangleIndices = [
-                indices[triangleIndex1],
-                indices[triangleIndex1 + 1],
-                indices[triangleIndex1 + 2]
-            ];
-        } else {
-            // Upper triangle
-            triangleIndices = [
-                indices[triangleIndex1 + 3],
-                indices[triangleIndex1 + 4],
-                indices[triangleIndex1 + 5]
-            ];
-        }
-        
-        // Get the vertices of the triangle
-        const triangle = [];
-        for (let i = 0; i < 3; i++) {
-            const vertexIndex = triangleIndices[i] * 3;
-            triangle.push(new THREE.Vector3(
-                vertices[vertexIndex],
-                vertices[vertexIndex + 1],
-                vertices[vertexIndex + 2]
-            ));
-        }
-        
-        // Calculate barycentric coordinates to find height
-        const barycentricCoords = this.calculateBarycentricCoordinates(
-            x, z, 
-            triangle[0].x, triangle[0].z,
-            triangle[1].x, triangle[1].z,
-            triangle[2].x, triangle[2].z
-        );
-        
-        // Interpolate height using barycentric coordinates
-        const height = triangle[0].y * barycentricCoords.a + 
-                       triangle[1].y * barycentricCoords.b + 
-                       triangle[2].y * barycentricCoords.c;
-        
-        return height;
-    }
-    
-    // Helper function to calculate barycentric coordinates
-    calculateBarycentricCoordinates(px, pz, x1, z1, x2, z2, x3, z3) {
-        const det = (z2 - z3) * (x1 - x3) + (x3 - x2) * (z1 - z3);
-        const a = ((z2 - z3) * (px - x3) + (x3 - x2) * (pz - z3)) / det;
-        const b = ((z3 - z1) * (px - x3) + (x1 - x3) * (pz - z3)) / det;
-        const c = 1 - a - b;
-        
-        return { a, b, c };
     }
 }
