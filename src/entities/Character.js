@@ -124,11 +124,31 @@ export class Character {
             newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
             newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
             
-            // El barco siempre está a nivel del mar (y = 0)
-            newPosition.y = 0;
+            // Comprobar si la nueva posición está en agua
+            const terrainHeight = this.terrain.getHeightAt(newPosition.x, newPosition.z);
             
-            this.mesh.position.copy(newPosition);
+            // Solo permitir el movimiento si estamos en agua (altura <= 0)
+            if (terrainHeight <= 0) {
+                newPosition.y = 0; // Mantener el barco a nivel del mar
+                this.mesh.position.copy(newPosition);
+            } else {
+                // Opcional: Añadir un pequeño rebote o deslizamiento al chocar
+                // Encontrar una dirección alternativa que nos mantenga en el agua
+                const slideDirection = new THREE.Vector3();
+                
+                // Intentar deslizarse a lo largo de la costa
+                if (this.terrain.getHeightAt(currentPosition.x, newPosition.z) <= 0) {
+                    // Podemos movernos en Z
+                    this.mesh.position.z = newPosition.z;
+                } else if (this.terrain.getHeightAt(newPosition.x, currentPosition.z) <= 0) {
+                    // Podemos movernos en X
+                    this.mesh.position.x = newPosition.x;
+                }
+            }
         }
+
+        // Mantener siempre el barco a nivel del mar
+        this.mesh.position.y = 0;
     }
 
     // En el método updateJump de Character.js
