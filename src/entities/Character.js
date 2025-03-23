@@ -44,33 +44,40 @@ export class Character {
     }
 
     createTemporaryModel() {
-        // Crear el cuerpo principal
-        const bodyGeometry = this.createBodyGeometry();
-        const bodyMaterial = new THREE.MeshPhongMaterial({ 
-            color: this.team === 'blue' ? 0x0000ff : 0xff0000 
-        });
-        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.castShadow = true;
-        body.receiveShadow = true;
+        const boatGroup = new THREE.Group();
 
-        // Crear indicador frontal (un triángulo más claro en la parte delantera)
-        // const frontMarkerGeometry = new THREE.ConeGeometry(0.2, 0.4, 3);
-        // const frontMarkerMaterial = new THREE.MeshPhongMaterial({ 
-        //     color: this.team === 'blue' ? 0x4444ff : 0xff4444 
-        // });
-        // const frontMarker = new THREE.Mesh(frontMarkerGeometry, frontMarkerMaterial);
-        // frontMarker.position.set(0, 0.5, -0.5);
-        // frontMarker.rotation.x = Math.PI / 2;
-        // frontMarker.castShadow = true;
-        // frontMarker.receiveShadow = true;
-
-        const modelGroup = new THREE.Group();
-        modelGroup.add(body);
-        // modelGroup.add(frontMarker);
+        // Base de la barca (forma de U invertida)
+        const hullGeometry = new THREE.BoxGeometry(2, 0.5, 4);
+        const hullMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 }); // Marrón madera
+        const hull = new THREE.Mesh(hullGeometry, hullMaterial);
         
-        // Ajustar posición inicial
-        // modelGroup.position.y = this.normalHeight;
-        return modelGroup;
+        // Crear los lados de la barca
+        const sideGeometry = new THREE.BoxGeometry(0.2, 0.7, 4);
+        const leftSide = new THREE.Mesh(sideGeometry, hullMaterial);
+        const rightSide = new THREE.Mesh(sideGeometry, hullMaterial);
+        
+        // Posicionar los lados
+        leftSide.position.set(-0.9, 0.1, 0);
+        rightSide.position.set(0.9, 0.1, 0);
+        
+        // Añadir todo al grupo
+        boatGroup.add(hull);
+        boatGroup.add(leftSide);
+        boatGroup.add(rightSide);
+
+        // Configurar sombras
+        hull.castShadow = true;
+        leftSide.castShadow = true;
+        rightSide.castShadow = true;
+
+        // Marcador de dirección (proa)
+        const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
+        const markerMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
+        const frontMarker = new THREE.Mesh(markerGeometry, markerMaterial);
+        frontMarker.position.z = 2; // Colocar en la proa
+        boatGroup.add(frontMarker);
+
+        return boatGroup;
     }
 
     createBodyGeometry() {
@@ -92,55 +99,41 @@ export class Character {
 
     // En el método updateMovement de Character.js
     updateMovement(deltaTime, inputManager) {
-        // Reiniciar la dirección
+        if (!this.terrain) return;
+
+        // Obtener la posición actual
+        const currentPosition = this.mesh.position.clone();
+        
+        // Calcular el movimiento deseado
         this.direction.set(0, 0, 0);
-    
-        // Movimiento adelante/atrás
         if (inputManager.isKeyPressed('KeyW')) this.direction.z -= 1;
         if (inputManager.isKeyPressed('KeyS')) this.direction.z += 1;
-    
-        // Movimiento izquierda/derecha
         if (inputManager.isKeyPressed('KeyA')) this.direction.x -= 1;
         if (inputManager.isKeyPressed('KeyD')) this.direction.x += 1;
-    
-        // Normalizar la dirección para movimiento consistente en diagonales
+
         if (this.direction.length() > 0) {
             this.direction.normalize();
             
-            // Crear matriz de rotación basada en la rotación del personaje
+            // Aplicar rotación
             const rotationMatrix = new THREE.Matrix4();
             rotationMatrix.makeRotationY(this.mesh.rotation.y);
-            
-            // Aplicar la rotación a la dirección del movimiento
             this.direction.applyMatrix4(rotationMatrix);
             
-            // Calcular la nueva posición
-            const newPosition = this.mesh.position.clone();
+            // Calcular nueva posición
+            const newPosition = currentPosition.clone();
             newPosition.x += this.direction.x * this.moveSpeed * deltaTime;
             newPosition.z += this.direction.z * this.moveSpeed * deltaTime;
-    
-            // Verificar si la nueva posición está dentro de los límites
-            if (this.terrain && this.terrain.isInBounds(newPosition)) {
-                this.mesh.position.copy(newPosition);
+            
+            // Obtener altura del terreno en la nueva posición
+            const terrainHeight = this.terrain.getHeightAt(newPosition.x, newPosition.z);
+            
+            // Solo permitir movimiento si estamos en agua
+            if (terrainHeight <= 0) { // 0 es el nivel del agua
+                // Suavizar el movimiento vertical (flotación)
+                const targetY = 0; // Nivel del agua
+                newPosition.y += (targetY - newPosition.y) * 0.1; // Efecto de flotación suave
                 
-                // Obtener la altura del terreno en la nueva posición
-                if (this.terrain) {
-                    const terrainHeight = this.terrain.getHeightAt(
-                        this.mesh.position.x,
-                        this.mesh.position.z
-                    );
-                    
-                    // Ajustar la altura del personaje según el terreno
-                    // Importante: Aquí es donde está el problema. El modelo tiene origen en su centro,
-                    // así que necesitamos añadir la mitad de su altura para que los pies estén en el terreno
-                    if (!this.isJumping) {
-                        // Usar this.height / 2 en lugar de this.normalHeight
-                        this.mesh.position.y = terrainHeight + this.height / 2;
-                    }
-                    
-                    // Detectar si estamos en agua (si la altura es menor que cierto umbral)
-                    this.inWater = terrainHeight < 0.1; // Ajusta este valor según tu terreno
-                }
+                this.mesh.position.copy(newPosition);
             }
         }
     }

@@ -4,7 +4,7 @@ export class CameraController {
     constructor(camera) {
         this.camera = camera;
         this.target = null;
-        this.offset = new THREE.Vector3(0, 2, 5); // La cámara estará 5 unidades detrás y 2 arriba
+        this.offset = new THREE.Vector3(0, 8, 12); // La cámara estará 12 unidades detrás y 8 arriba
         this.smoothness = 0.1;
         
         // Parámetros de rotación

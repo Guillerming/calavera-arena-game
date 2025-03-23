@@ -65,64 +65,21 @@ class Game {
     }
 
     setupTestCharacters() {
-        // Crear algunos personajes de prueba
-        const blueTeamPositions = [
-            { x: -5, z: -5 },
-            { x: -5, z: -3 },
-            { x: -5, z: -1 },
-            { x: -5, z: 1 }
-        ];
-    
-        const redTeamPositions = [
-            { x: 5, z: -5 },
-            { x: 5, z: -3 },
-            { x: 5, z: -1 },
-            { x: 5, z: 1 }
-        ];
-    
-        // Crear personaje principal
-        const mainCharacter = this.characterManager.createCharacter(
-            'main_character',
+        // Crear solo la barca del jugador
+        const boat = this.characterManager.createCharacter(
+            'player',
             'blue',
             0,
             this.terrain
         );
-        // Posicionar personaje principal
-        const mainTerrainHeight = this.terrain.getHeightAt(0, 0);
-        mainCharacter.setPosition(0, mainTerrainHeight + mainCharacter.height / 2, 0);
-        this.engine.scene.add(mainCharacter.mesh);
         
-        // Asignar el personaje principal como jugador local
-        this.localPlayer = this.characterManager.getCharacter('main_character');
-        this.engine.setPlayerTarget(this.localPlayer);
-    
-        // Crear equipo azul
-        blueTeamPositions.forEach((pos, index) => {
-            const character = this.characterManager.createCharacter(
-                `blue_${index}`,
-                'blue',
-                index,
-                this.terrain
-            );
-            // Importante: Calcular la altura del terreno y posicionar correctamente
-            const terrainHeight = this.terrain.getHeightAt(pos.x, pos.z);
-            character.setPosition(pos.x, terrainHeight + character.height / 2, pos.z);
-            this.engine.scene.add(character.mesh);
-        });
-    
-        // Crear equipo rojo
-        redTeamPositions.forEach((pos, index) => {
-            const character = this.characterManager.createCharacter(
-                `red_${index}`,
-                'red',
-                index,
-                this.terrain
-            );
-            // Importante: Calcular la altura del terreno y posicionar correctamente
-            const terrainHeight = this.terrain.getHeightAt(pos.x, pos.z);
-            character.setPosition(pos.x, terrainHeight + character.height / 2, pos.z);
-            this.engine.scene.add(character.mesh);
-        });
+        // Posicionar la barca en el agua
+        boat.mesh.position.set(0, 0, 40); // Ajusta estas coordenadas según tu mapa
+        this.engine.scene.add(boat.mesh);
+        this.localPlayer = boat;
+        
+        // Asignar la barca como objetivo de la cámara
+        this.engine.cameraController.setTarget(boat);
     }
 
     startGameLoop() {
