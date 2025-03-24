@@ -38,7 +38,8 @@ export class CharacterManager {
         player.playerName = playerName;
         
         // Posicionar el barco en una posición inicial visible
-        player.mesh.position.set(0, 1, 0); // Y=1 para asegurar que está sobre el agua
+        // El agua está a nivel y=0.05, posicionamos el barco para que flote correctamente
+        player.mesh.position.set(0, 0.3, 0);
         
         // Añadir el barco a la escena
         this.scene.add(player.mesh);

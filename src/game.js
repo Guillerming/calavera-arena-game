@@ -92,11 +92,11 @@ export class Game {
             // Posicionar la cámara para seguir al jugador
             this.engine.setPlayerTarget(player);
             
-            // Mover la cámara más cerca del barco
+            // Mover la cámara más cerca del barco y con un buen ángulo
             this.engine.camera.position.set(
                 player.mesh.position.x, 
-                player.mesh.position.y + 10, // 10 unidades sobre el barco
-                player.mesh.position.z + 20  // 20 unidades detrás del barco
+                player.mesh.position.y + 5,  // 5 unidades sobre el barco
+                player.mesh.position.z + 10  // 10 unidades detrás del barco
             );
             this.engine.camera.lookAt(player.mesh.position);
             
@@ -135,6 +135,8 @@ export class Game {
         this.engine.update(deltaTime, this.inputManager);
         this.inputManager.update();
         this.characterManager.update(deltaTime);
+        
+        // Actualizar el agua - asegurando que se pasa el deltaTime correcto
         this.water.update(deltaTime);
         
         // Renderizar
