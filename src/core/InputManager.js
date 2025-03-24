@@ -8,9 +8,22 @@ export class InputManager {
     }
 
     init() {
-        window.addEventListener('keydown', (e) => this.onKeyDown(e));
-        window.addEventListener('keyup', (e) => this.onKeyUp(e));
-        window.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        // Eliminar posibles event listeners antiguos
+        window.removeEventListener('keydown', this.onKeyDown);
+        window.removeEventListener('keyup', this.onKeyUp);
+        window.removeEventListener('mousemove', this.onMouseMove);
+        
+        // Asegurarnos de que 'this' se refiere a esta instancia
+        this.onKeyDown = this.onKeyDown.bind(this);
+        this.onKeyUp = this.onKeyUp.bind(this);
+        this.onMouseMove = this.onMouseMove.bind(this);
+        
+        // Registrar nuevos event listeners
+        window.addEventListener('keydown', this.onKeyDown);
+        window.addEventListener('keyup', this.onKeyUp);
+        window.addEventListener('mousemove', this.onMouseMove);
+        
+        console.log("InputManager: Eventos de teclado y ratón inicializados");
         
         // Añadir control de bloqueo del puntero
         document.addEventListener('click', () => {
@@ -27,11 +40,13 @@ export class InputManager {
     onKeyDown(event) {
         if (!event.repeat) {
             this.keys.set(event.code, true);
+            console.log(`Tecla presionada: ${event.code}`);
         }
     }
 
     onKeyUp(event) {
         this.keys.set(event.code, false);
+        console.log(`Tecla liberada: ${event.code}`);
     }
 
     onMouseMove(event) {
@@ -47,7 +62,12 @@ export class InputManager {
     }
 
     isKeyPressed(keyCode) {
-        return this.keys.get(keyCode) || false;
+        const isPressed = this.keys.get(keyCode) || false;
+        // Mostrar solo para las teclas de movimiento para evitar spam en la consola
+        if (keyCode === 'KeyW' || keyCode === 'KeyS') {
+            console.log(`Tecla ${keyCode}: ${isPressed ? 'presionada' : 'no presionada'}`);
+        }
+        return isPressed;
     }
     
     update() {

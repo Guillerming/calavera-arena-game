@@ -6,6 +6,7 @@ export class CharacterManager {
         this.playerCharacter = null;
         this.scene = null; // Referencia a la escena
         this.terrain = null; // Referencia al terreno
+        this.inputManager = null; // Referencia al inputManager
     }
 
     setScene(scene) {
@@ -14,6 +15,10 @@ export class CharacterManager {
     
     setTerrain(terrain) {
         this.terrain = terrain;
+    }
+    
+    setInputManager(inputManager) {
+        this.inputManager = inputManager;
     }
 
     createCharacter(id, team, modelVariant, terrain) {
@@ -68,7 +73,12 @@ export class CharacterManager {
     
     updateAll(deltaTime) {
         for (const character of this.characters.values()) {
-            character.update(deltaTime);
+            // Pasar el inputManager solo al personaje del jugador
+            if (character === this.playerCharacter && this.inputManager) {
+                character.update(deltaTime, this.inputManager);
+            } else {
+                character.update(deltaTime);
+            }
         }
     }
 }

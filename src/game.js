@@ -20,8 +20,9 @@ export class Game {
         this.characterManager = new CharacterManager();
         this.debugUI = new DebugUI();
         
-        // Proporcionar la referencia a la escena al CharacterManager
+        // Proporcionar referencias al CharacterManager
         this.characterManager.setScene(this.engine.scene);
+        this.characterManager.setInputManager(this.inputManager);
         
         this.logger.end('constructor');
         
