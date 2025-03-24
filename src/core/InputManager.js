@@ -23,8 +23,6 @@ export class InputManager {
         window.addEventListener('keyup', this.onKeyUp);
         window.addEventListener('mousemove', this.onMouseMove);
         
-        console.log("InputManager: Eventos de teclado y ratón inicializados");
-        
         // Añadir control de bloqueo del puntero
         document.addEventListener('click', () => {
             if (!this.isPointerLocked) {
@@ -40,13 +38,11 @@ export class InputManager {
     onKeyDown(event) {
         if (!event.repeat) {
             this.keys.set(event.code, true);
-            console.log(`Tecla presionada: ${event.code}`);
         }
     }
 
     onKeyUp(event) {
         this.keys.set(event.code, false);
-        console.log(`Tecla liberada: ${event.code}`);
     }
 
     onMouseMove(event) {
@@ -62,12 +58,7 @@ export class InputManager {
     }
 
     isKeyPressed(keyCode) {
-        const isPressed = this.keys.get(keyCode) || false;
-        // Mostrar solo para las teclas de movimiento para evitar spam en la consola
-        if (keyCode === 'KeyW' || keyCode === 'KeyS') {
-            console.log(`Tecla ${keyCode}: ${isPressed ? 'presionada' : 'no presionada'}`);
-        }
-        return isPressed;
+        return this.keys.get(keyCode) || false;
     }
     
     update() {

@@ -10,24 +10,19 @@ export class Water {
         this.waveSpeed = 0.5;
         this.waveHeight = 0.05;
         this.time = 0;
-        
-        console.log("Water class initialized with size:", this.size);
     }
 
     async initialize() {
-        console.log("Water initialize started");
         this.mesh = this.createWater();
         
         // Crear un grupo para contener el agua
         const waterGroup = new THREE.Group();
         waterGroup.add(this.mesh);
         
-        console.log("Water initialized successfully");
         return waterGroup;
     }
 
     createWater() {
-        console.log("Creating water mesh");
         // Crear geometría plana para el agua
         const waterGeometry = new THREE.PlaneGeometry(
             this.size.width,
@@ -118,7 +113,6 @@ export class Water {
         // Posicionar el agua ligeramente por encima de 0 para evitar z-fighting
         waterMesh.position.y = 0.05;
         
-        console.log("Water mesh created with shader material");
         return waterMesh;
     }
 
@@ -129,8 +123,6 @@ export class Water {
         // Actualizar el tiempo en el shader
         if (this.mesh && this.mesh.material && this.mesh.material.uniforms) {
             this.mesh.material.uniforms.time.value = this.time;
-        } else if (this.mesh) {
-            console.warn("Water mesh exists but uniforms are not accessible");
         }
     }
 }

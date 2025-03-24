@@ -107,19 +107,11 @@ export class Character {
 
         // Control de velocidad con W/S
         if (inputManager) {
-            console.log("Input Manager presente, teclas presionadas:", 
-                "W:", inputManager.isKeyPressed('KeyW'), 
-                "S:", inputManager.isKeyPressed('KeyS'));
-                
             if (inputManager.isKeyPressed('KeyW')) {
                 this.currentSpeed = Math.min(this.maxSpeed, this.currentSpeed + this.speedChangeRate * deltaTime);
-                console.log("Incrementando velocidad:", this.currentSpeed);
             } else if (inputManager.isKeyPressed('KeyS')) {
                 this.currentSpeed = Math.max(this.minSpeed, this.currentSpeed - this.speedChangeRate * deltaTime);
-                console.log("Reduciendo velocidad:", this.currentSpeed);
             }
-        } else {
-            console.log("Input Manager no presente en Character.updateMovement");
         }
 
         // Actualizar el indicador de velocidad

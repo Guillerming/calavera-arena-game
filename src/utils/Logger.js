@@ -33,9 +33,6 @@ export class Logger {
         stats.count++;
         stats.max = Math.max(stats.max, duration);
         stats.min = Math.min(stats.min, duration);
-
-        // Mostrar tiempo actual y promedio
-        console.log(`${label}: ${duration.toFixed(2)}ms (promedio: ${(stats.total / stats.count).toFixed(2)}ms)`);
         
         this.startTimes.delete(label);
     }

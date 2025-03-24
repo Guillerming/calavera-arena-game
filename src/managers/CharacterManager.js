@@ -49,8 +49,6 @@ export class CharacterManager {
         // Añadir el barco a la escena
         this.scene.add(player.mesh);
         
-        console.log(`Jugador '${playerName}' creado en posición:`, player.mesh.position);
-        
         return player;
     }
 

@@ -33,7 +33,6 @@ export class Game {
         // Comenzar a cargar el mundo inmediatamente
         this.setupWorld().then(() => {
             this.worldInitialized = true;
-            console.log("Mundo cargado, esperando al jugador...");
             
             // Si el jugador ya ha introducido su nombre, iniciar el juego
             if (this.initialized) {
@@ -100,8 +99,6 @@ export class Game {
                 player.mesh.position.z + 10  // 10 unidades detrás del barco
             );
             this.engine.camera.lookAt(player.mesh.position);
-            
-            console.log("Juego iniciado con jugador:", this.playerName);
         } else {
             console.error("No se pudo crear el jugador");
         }
