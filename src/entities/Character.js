@@ -47,6 +47,18 @@ export class Character {
         this.normalHeight = 1;
         this.waterHeight = 0.3; // Más hundido en el agua
         this.inWater = false;
+        
+        // Parámetros de disparo
+        this.cannonReady = true;
+        this.cannonCooldown = 0.5; // Tiempo entre disparos en segundos
+        this.cannonTimer = 0;
+        this.projectiles = [];
+        this.projectileSpeed = 50; // Velocidad de los proyectiles
+        this.maxRange = 200; // Alcance máximo en unidades
+        
+        // Crear grupo para los proyectiles
+        this.projectilesGroup = new THREE.Group();
+        this.mesh.add(this.projectilesGroup);
     }
 
     createTemporaryModel() {
@@ -66,15 +78,36 @@ export class Character {
         leftSide.position.set(-0.9, 0.1, 0);
         rightSide.position.set(0.9, 0.1, 0);
         
+        // Añadir cañón en la proa
+        const cannonGeometry = new THREE.CylinderGeometry(0.15, 0.2, 0.8, 8);
+        const cannonMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 }); // Color oscuro para el cañón
+        const cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
+        
+        // Rotar y posicionar el cañón horizontalmente en la proa
+        cannon.rotation.x = Math.PI / 2; // Rotar para que apunte hacia adelante
+        cannon.position.set(0, 0.3, 1.8); // Colocar en la proa
+        
+        // Base para el cañón
+        const baseGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
+        const base = new THREE.Mesh(baseGeometry, hullMaterial);
+        base.position.set(0, 0.15, 1.8);
+        
         // Añadir todo al grupo
         boatGroup.add(hull);
         boatGroup.add(leftSide);
         boatGroup.add(rightSide);
+        boatGroup.add(base);
+        boatGroup.add(cannon);
+
+        // Guardar referencia al cañón
+        this.cannon = cannon;
 
         // Configurar sombras
         hull.castShadow = true;
         leftSide.castShadow = true;
         rightSide.castShadow = true;
+        cannon.castShadow = true;
+        base.castShadow = true;
 
         // Marcador de dirección (proa)
         const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
@@ -99,6 +132,8 @@ export class Character {
     update(deltaTime = 0.016, inputManager = null) {
         this.updateMovement(deltaTime, inputManager);
         // this.updateJump(deltaTime, inputManager);
+        this.updateCannon(deltaTime, inputManager);
+        this.updateProjectiles(deltaTime);
     }
 
     // En el método updateMovement de Character.js
@@ -259,5 +294,80 @@ export class Character {
             return true;
         }
         return false;
+    }
+
+    updateCannon(deltaTime, inputManager) {
+        // Actualizar el temporizador del cañón
+        if (!this.cannonReady) {
+            this.cannonTimer += deltaTime;
+            if (this.cannonTimer >= this.cannonCooldown) {
+                this.cannonReady = true;
+                this.cannonTimer = 0;
+            }
+        }
+        
+        // Verificar si se debe disparar
+        if (inputManager && inputManager.isMouseButtonPressed(0) && this.cannonReady) {
+            this.fireCannon();
+            this.cannonReady = false;
+        }
+    }
+    
+    fireCannon() {
+        // Crear el proyectil
+        const projectileGeometry = new THREE.SphereGeometry(0.2, 8, 8);
+        const projectileMaterial = new THREE.MeshPhongMaterial({ color: 0x111111 });
+        const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+        
+        // Posicionar el proyectil en la punta del cañón
+        const cannonWorldPos = new THREE.Vector3();
+        this.cannon.getWorldPosition(cannonWorldPos);
+        
+        // Calcular posición inicial del proyectil
+        const direction = new THREE.Vector3(0, 0, -1);
+        const rotationMatrix = new THREE.Matrix4();
+        rotationMatrix.makeRotationY(this.mesh.rotation.y);
+        direction.applyMatrix4(rotationMatrix);
+        
+        const startPos = cannonWorldPos.clone().add(direction.clone().multiplyScalar(0.5));
+        projectile.position.copy(startPos);
+        
+        // Añadir el proyectil a la escena global (no al barco)
+        if (this.mesh.parent) {
+            this.mesh.parent.add(projectile);
+        }
+        
+        // Agregar a la lista de proyectiles con su dirección y tiempo de creación
+        this.projectiles.push({
+            mesh: projectile,
+            direction: direction,
+            creationTime: performance.now() / 1000,
+            distance: 0
+        });
+        
+        // Efectos visuales y sonoros aquí (opcional)
+    }
+    
+    updateProjectiles(deltaTime) {
+        // Mover los proyectiles
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const projectile = this.projectiles[i];
+            
+            // Actualizar la posición
+            const movementVector = projectile.direction.clone().multiplyScalar(this.projectileSpeed * deltaTime);
+            projectile.mesh.position.add(movementVector);
+            
+            // Actualizar la distancia recorrida
+            projectile.distance += movementVector.length();
+            
+            // Verificar si ha alcanzado el rango máximo
+            if (projectile.distance >= this.maxRange) {
+                // Eliminar el proyectil
+                if (projectile.mesh.parent) {
+                    projectile.mesh.parent.remove(projectile.mesh);
+                }
+                this.projectiles.splice(i, 1);
+            }
+        }
     }
 } 
