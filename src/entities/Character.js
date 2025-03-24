@@ -55,6 +55,7 @@ export class Character {
         this.projectiles = [];
         this.projectileSpeed = 50; // Velocidad de los proyectiles
         this.maxRange = 200; // Alcance máximo en unidades
+        this.prevMouseDown = false; // Estado anterior del mouse para detectar cuando se suelta el botón
         
         // Crear grupo para los proyectiles
         this.projectilesGroup = new THREE.Group();
@@ -78,14 +79,14 @@ export class Character {
         leftSide.position.set(-0.9, 0.1, 0);
         rightSide.position.set(0.9, 0.1, 0);
         
-        // Añadir cañón en la proa
+        // Añadir cañón en la proa (parte delantera)
         const cannonGeometry = new THREE.CylinderGeometry(0.15, 0.2, 0.8, 8);
         const cannonMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 }); // Color oscuro para el cañón
         const cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
         
         // Rotar y posicionar el cañón horizontalmente en la proa
         cannon.rotation.x = Math.PI / 2; // Rotar para que apunte hacia adelante
-        cannon.position.set(0, 0.3, 1.8); // Colocar en la proa
+        cannon.position.set(0, 0.3, -1.8); // Colocar en la proa (valor z positivo para la parte delantera)
         
         // Base para el cañón
         const baseGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
@@ -306,11 +307,17 @@ export class Character {
             }
         }
         
-        // Verificar si se debe disparar
-        if (inputManager && inputManager.isMouseButtonPressed(0) && this.cannonReady) {
+        // Variable para almacenar si el botón del mouse está siendo presionado
+        const mouseDown = inputManager ? inputManager.isMouseButtonPressed(0) : false;
+        
+        // Verificar si se debe disparar cuando se suelta el botón izquierdo
+        if (inputManager && this.prevMouseDown && !mouseDown && this.cannonReady) {
             this.fireCannon();
             this.cannonReady = false;
         }
+        
+        // Actualizar el estado anterior del mouse
+        this.prevMouseDown = mouseDown;
     }
     
     fireCannon() {
