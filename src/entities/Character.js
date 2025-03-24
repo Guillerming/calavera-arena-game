@@ -13,10 +13,10 @@ export class Character {
         this.cannonCooldownTime = 0.6; // Duración del enfriamiento entre disparos
         this.cannonTimer = 0;
         this.projectiles = [];
-        this.projectileSpeed = 60; // Aumentar velocidad para trayectoria más plana
+        this.projectileSpeed = 80; // Aumentar velocidad para mayor alcance
         this.projectileGravity = 4.9; // Reducir gravedad para trayectoria más plana (mitad de la normal)
-        this.projectileMaxRange = 80; // Alcance máximo en unidades (metros)
-        this.cannonAngle = Math.PI / 30; // Reducir ángulo a 18 grados aprox. para trayectoria más plana
+        this.projectileMaxRange = 200; // Alcance máximo en unidades (metros) - Aumentado significativamente
+        this.cannonAngle = Math.PI / 65; // Ajustar a 10 grados para equilibrar alcance y trayectoria
         this.projectileInitialHeight = 0.5; // Altura inicial del proyectil sobre el nivel del mar
         this.prevMouseDown = false; // Estado anterior del mouse para detectar cuando se suelta el botón
         
@@ -610,16 +610,45 @@ export class Character {
             const dz = newPosition.z - projectile.initialPosition.z;
             const distanceTraveled = Math.sqrt(dx * dx + dz * dz);
             
-            // Verificar si el proyectil ha excedido el alcance máximo o ha caído al agua
-            if (distanceTraveled > this.projectileMaxRange || newPosition.y < 0) {
+            // Obtener la altura del terreno en la posición actual
+            const terrainHeight = this.terrain ? this.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
+            
+            // Verificar colisión con otros barcos (si tenemos una función para ello)
+            let hitShip = false;
+            if (typeof this.checkProjectileShipCollision === 'function') {
+                hitShip = this.checkProjectileShipCollision(projectile.mesh);
+            }
+            
+            // Verificar si el proyectil ha excedido el alcance máximo, ha caído al agua, ha golpeado el terreno o ha colisionado con un barco
+            if (distanceTraveled > this.projectileMaxRange || 
+                newPosition.y < 0 || 
+                (newPosition.y < terrainHeight && terrainHeight > 0) ||
+                hitShip) {
+                
+                // Determinar qué tipo de fin tuvo el proyectil
+                let hitType = 'maxRange'; // Por defecto, alcanzó el rango máximo
+                
+                if (newPosition.y < 0) {
+                    hitType = 'water'; // Impacto en agua
+                } else if (newPosition.y < terrainHeight && terrainHeight > 0) {
+                    hitType = 'terrain'; // Impacto en terreno
+                } else if (hitShip) {
+                    hitType = 'ship'; // Impacto en barco
+                }
+                
                 // Eliminar el proyectil de la escena
                 if (projectile.mesh.parent) {
                     projectile.mesh.parent.remove(projectile.mesh);
                 }
                 
-                // Crear efecto de splash si cae en el agua
-                if (newPosition.y < 0) {
+                // Crear efecto apropiado según el tipo de impacto
+                if (hitType === 'water') {
                     this.createSplashEffect(newPosition);
+                } else if (hitType === 'terrain') {
+                    this.createExplosionEffect(newPosition);
+                } else if (hitType === 'ship') {
+                    // Aquí podríamos tener un efecto especial para impacto en barco
+                    this.createExplosionEffect(newPosition);
                 }
                 
                 // Eliminar el proyectil de la lista
@@ -749,6 +778,193 @@ export class Character {
             
             // Iniciar la animación
             animateSplash();
+        }
+    }
+    
+    // Crear efecto de explosión cuando el proyectil impacta en tierra
+    createExplosionEffect(position) {
+        // Crear grupo para el efecto completo
+        const explosionGroup = new THREE.Group();
+        
+        // 1. Destello de explosión
+        const flashGeometry = new THREE.SphereGeometry(0.6, 12, 12);
+        const flashMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff6600,
+            transparent: true,
+            opacity: 1
+        });
+        const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+        explosionGroup.add(flash);
+        
+        // 2. Partículas de tierra/escombros
+        const debrisCount = 20;
+        const debrisParticles = [];
+        
+        for (let i = 0; i < debrisCount; i++) {
+            const debrisSize = 0.05 + Math.random() * 0.15;
+            const debrisGeometry = new THREE.BoxGeometry(debrisSize, debrisSize, debrisSize);
+            const debrisMaterial = new THREE.MeshBasicMaterial({
+                color: 0x8B4513, // Marrón para tierra
+                transparent: true,
+                opacity: 0.9
+            });
+            const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+            
+            // Posición inicial en el centro de la explosión
+            debris.position.set(0, 0, 0);
+            
+            // Velocidad inicial para simular proyección en todas direcciones
+            const speed = 0.5 + Math.random() * 1;
+            const angle = Math.random() * Math.PI * 2;
+            const elevationAngle = Math.random() * Math.PI;
+            
+            debrisParticles.push({
+                mesh: debris,
+                velocity: new THREE.Vector3(
+                    Math.cos(angle) * Math.sin(elevationAngle) * speed,
+                    Math.cos(elevationAngle) * speed,
+                    Math.sin(angle) * Math.sin(elevationAngle) * speed
+                ),
+                rotationSpeed: {
+                    x: (Math.random() - 0.5) * 0.2,
+                    y: (Math.random() - 0.5) * 0.2,
+                    z: (Math.random() - 0.5) * 0.2
+                },
+                gravity: 9.8
+            });
+            
+            explosionGroup.add(debris);
+        }
+        
+        // 3. Humo de la explosión
+        const smokeCount = 8;
+        const smokeParticles = [];
+        
+        for (let i = 0; i < smokeCount; i++) {
+            const size = 0.3 + Math.random() * 0.4;
+            const smokeGeometry = new THREE.SphereGeometry(size, 8, 8);
+            const smokeMaterial = new THREE.MeshBasicMaterial({
+                color: 0x666666,
+                transparent: true,
+                opacity: 0.7
+            });
+            const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+            
+            // Posición inicial con ligero offset
+            smoke.position.set(
+                (Math.random() - 0.5) * 0.2,
+                (Math.random() - 0.5) * 0.2 + 0.3,
+                (Math.random() - 0.5) * 0.2
+            );
+            
+            // Velocidad del humo (más lenta y ascendente)
+            const speed = 0.1 + Math.random() * 0.2;
+            const angle = Math.random() * Math.PI * 2;
+            
+            smokeParticles.push({
+                mesh: smoke,
+                velocity: new THREE.Vector3(
+                    Math.cos(angle) * speed * 0.5,
+                    speed,
+                    Math.sin(angle) * speed * 0.5
+                ),
+                rotationSpeed: (Math.random() - 0.5) * 0.02,
+                scale: 1 + Math.random() * 0.5
+            });
+            
+            explosionGroup.add(smoke);
+        }
+        
+        // Posicionar el grupo en el punto de impacto
+        explosionGroup.position.copy(position);
+        
+        // Añadir a la escena
+        if (this.mesh.parent) {
+            this.mesh.parent.add(explosionGroup);
+            
+            // Variables para animar
+            const initialTime = performance.now();
+            const duration = 1500; // ms
+            
+            // Función para animar la explosión
+            const animateExplosion = () => {
+                const now = performance.now();
+                const elapsed = now - initialTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                // Animar destello principal
+                if (progress < 0.2) {
+                    // Crecer y luego desaparecer rápidamente
+                    const flashScale = progress < 0.1 ? progress * 10 : 1 - (progress - 0.1) / 0.1;
+                    flash.scale.set(flashScale, flashScale, flashScale);
+                    flash.material.opacity = 1 - progress * 5;
+                } else {
+                    flash.visible = false;
+                }
+                
+                // Animar partículas de escombros
+                const deltaT = 1/60; // Simular 60fps
+                for (const particle of debrisParticles) {
+                    // Aplicar gravedad
+                    particle.velocity.y -= particle.gravity * deltaT;
+                    
+                    // Mover partícula
+                    particle.mesh.position.x += particle.velocity.x * deltaT;
+                    particle.mesh.position.y += particle.velocity.y * deltaT;
+                    particle.mesh.position.z += particle.velocity.z * deltaT;
+                    
+                    // Rotar
+                    particle.mesh.rotation.x += particle.rotationSpeed.x;
+                    particle.mesh.rotation.y += particle.rotationSpeed.y;
+                    particle.mesh.rotation.z += particle.rotationSpeed.z;
+                    
+                    // Detener en el suelo
+                    if (particle.mesh.position.y < 0) {
+                        particle.mesh.position.y = 0;
+                        particle.velocity.y = 0;
+                        particle.velocity.x *= 0.9; // Fricción
+                        particle.velocity.z *= 0.9; // Fricción
+                    }
+                    
+                    // Desvanecer gradualmente
+                    if (progress > 0.7) {
+                        particle.mesh.material.opacity = 0.9 * (1 - (progress - 0.7) / 0.3);
+                    }
+                }
+                
+                // Animar humo
+                for (const smoke of smokeParticles) {
+                    // Mover según velocidad
+                    smoke.mesh.position.x += smoke.velocity.x;
+                    smoke.mesh.position.y += smoke.velocity.y;
+                    smoke.mesh.position.z += smoke.velocity.z;
+                    
+                    // Rotar
+                    smoke.mesh.rotation.y += smoke.rotationSpeed;
+                    
+                    // Ralentizar
+                    smoke.velocity.multiplyScalar(0.98);
+                    
+                    // Expandir
+                    const scale = smoke.scale * (1 + progress * 0.5);
+                    smoke.mesh.scale.set(scale, scale, scale);
+                    
+                    // Desvanecer gradualmente
+                    smoke.mesh.material.opacity = 0.7 * (1 - progress);
+                }
+                
+                // Continuar animación o finalizar
+                if (progress < 1) {
+                    requestAnimationFrame(animateExplosion);
+                } else {
+                    if (explosionGroup.parent) {
+                        explosionGroup.parent.remove(explosionGroup);
+                    }
+                }
+            };
+            
+            // Iniciar animación
+            animateExplosion();
         }
     }
 } 
