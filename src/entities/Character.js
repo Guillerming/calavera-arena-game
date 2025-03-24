@@ -13,13 +13,12 @@ export class Character {
         this.cannonCooldownTime = 0.6; // Duración del enfriamiento entre disparos
         this.cannonTimer = 0;
         this.projectiles = [];
-        this.projectileSpeed = 80; // Aumentar velocidad para mayor alcance
-        this.projectileGravity = 4.9; // Reducir gravedad para trayectoria más plana (mitad de la normal)
-        this.projectileMaxRange = 200; // Alcance máximo en unidades (metros) - Aumentado significativamente
-        this.cannonAngle = Math.PI / 65; // Ajustar a 10 grados para equilibrar alcance y trayectoria
+        this.projectileSpeed = 80; // Velocidad inicial de los proyectiles
+        this.projectileGravity = 4.9; // Gravedad aplicada a los proyectiles (mitad de la normal)
+        this.cannonAngle = Math.PI / 65; // Ángulo de elevación del cañón
         this.projectileInitialHeight = 0.5; // Altura inicial del proyectil sobre el nivel del mar
         this.prevMouseDown = false; // Estado anterior del mouse para detectar cuando se suelta el botón
-        
+
         // Crear el modelo después de definir los parámetros
         this.mesh = this.createTemporaryModel();
         
@@ -605,11 +604,6 @@ export class Character {
             projectile.mesh.rotation.y += projectile.rotationSpeed.y * deltaTime;
             projectile.mesh.rotation.z += projectile.rotationSpeed.z * deltaTime;
             
-            // Calcular la distancia horizontal recorrida
-            const dx = newPosition.x - projectile.initialPosition.x;
-            const dz = newPosition.z - projectile.initialPosition.z;
-            const distanceTraveled = Math.sqrt(dx * dx + dz * dz);
-            
             // Obtener la altura del terreno en la posición actual
             const terrainHeight = this.terrain ? this.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
             
@@ -619,14 +613,13 @@ export class Character {
                 hitShip = this.checkProjectileShipCollision(projectile.mesh);
             }
             
-            // Verificar si el proyectil ha excedido el alcance máximo, ha caído al agua, ha golpeado el terreno o ha colisionado con un barco
-            if (distanceTraveled > this.projectileMaxRange || 
-                newPosition.y < 0 || 
+            // Verificar si el proyectil ha caído al agua, ha golpeado el terreno o ha colisionado con un barco
+            if (newPosition.y < 0 || 
                 (newPosition.y < terrainHeight && terrainHeight > 0) ||
                 hitShip) {
                 
                 // Determinar qué tipo de fin tuvo el proyectil
-                let hitType = 'maxRange'; // Por defecto, alcanzó el rango máximo
+                let hitType = 'none';
                 
                 if (newPosition.y < 0) {
                     hitType = 'water'; // Impacto en agua
@@ -652,6 +645,16 @@ export class Character {
                 }
                 
                 // Eliminar el proyectil de la lista
+                this.projectiles.splice(i, 1);
+            }
+            
+            // También eliminar proyectiles que estén muy lejos para optimizar rendimiento
+            // pero solo basado en consideraciones técnicas, no de gameplay
+            const distanceFromOrigin = newPosition.distanceTo(new THREE.Vector3(0, 0, 0));
+            if (distanceFromOrigin > 1000) { // Distancia de eliminación muy grande (1 kilómetro)
+                if (projectile.mesh.parent) {
+                    projectile.mesh.parent.remove(projectile.mesh);
+                }
                 this.projectiles.splice(i, 1);
             }
         }
