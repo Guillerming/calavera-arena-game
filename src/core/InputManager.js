@@ -49,4 +49,9 @@ export class InputManager {
     isKeyPressed(keyCode) {
         return this.keys.get(keyCode) || false;
     }
+    
+    update() {
+        // Reiniciar el delta del ratón después de cada frame
+        this.resetMouseDelta();
+    }
 } 

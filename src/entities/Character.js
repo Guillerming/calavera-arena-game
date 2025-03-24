@@ -96,15 +96,13 @@ export class Character {
         return geometries[this.modelVariant % geometries.length];
     }
 
-    update(deltaTime, inputManager) {
-        if (inputManager) {
-            this.updateMovement(deltaTime, inputManager);
-            // this.updateJump(deltaTime, inputManager);
-        }
+    update(deltaTime = 0.016, inputManager = null) {
+        this.updateMovement(deltaTime, inputManager);
+        // this.updateJump(deltaTime, inputManager);
     }
 
     // En el método updateMovement de Character.js
-    updateMovement(deltaTime, inputManager) {
+    updateMovement(deltaTime = 0.016, inputManager = null) {
         if (!this.terrain) return;
 
         // Control de velocidad con W/S
@@ -117,7 +115,9 @@ export class Character {
         }
 
         // Actualizar el indicador de velocidad
-        this.speedIndicator.update(this.currentSpeed, this.maxSpeed, this.minSpeed);
+        if (this.speedIndicator) {
+            this.speedIndicator.update(this.currentSpeed, this.maxSpeed, this.minSpeed);
+        }
 
         const currentPosition = this.mesh.position.clone();
         

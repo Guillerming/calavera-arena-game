@@ -20,9 +20,9 @@ export class CameraController {
     }
 
     update(deltaTime, inputManager) {
-        if (!this.target || !inputManager) return;
+        if (!this.target) return;
 
-        if (inputManager.isPointerLocked) {
+        if (inputManager && inputManager.isPointerLocked) {
             // Actualizar rotación basada en el movimiento del ratón
             this.rotationY -= inputManager.mouseDelta.x * this.sensitivity;
             this.rotationX += inputManager.mouseDelta.y * this.sensitivity;
@@ -34,6 +34,9 @@ export class CameraController {
             
             // El personaje siempre mira en la dirección de la cámara
             this.target.mesh.rotation.y = this.rotationY;
+            
+            // Reiniciar el delta del ratón
+            inputManager.resetMouseDelta();
         }
 
         // Calcular posición de la cámara siempre detrás del personaje
@@ -46,7 +49,5 @@ export class CameraController {
         
         this.camera.position.copy(targetPosition).add(cameraOffset);
         this.camera.lookAt(targetPosition);
-
-        inputManager.resetMouseDelta();
     }
 } 

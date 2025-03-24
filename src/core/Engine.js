@@ -38,8 +38,11 @@ export class Engine {
         this.cameraController.setTarget(player);
     }
 
-    update(deltaTime, inputManager) {
+    update(deltaTime = 0.016, inputManager = null) {
         this.cameraController.update(deltaTime, inputManager);
+    }
+    
+    render() {
         this.renderer.render(this.scene, this.camera);
     }
 } 

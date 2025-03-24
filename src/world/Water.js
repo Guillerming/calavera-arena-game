@@ -1,15 +1,25 @@
 import * as THREE from 'three';
 
 export class Water {
-    constructor(size = { width: 100, depth: 100 }, level = 0) {
+    constructor(size = { width: 400, depth: 400 }, level = 0) {
         this.size = size;
         this.waterLevel = level;
-        this.mesh = this.createWater();
+        this.mesh = null;
         
         // Propiedades de animación
         this.waveSpeed = 0.5;
         this.waveHeight = 0.05;
         this.time = 0;
+    }
+
+    async initialize() {
+        this.mesh = this.createWater();
+        
+        // Crear un grupo para contener el agua
+        const waterGroup = new THREE.Group();
+        waterGroup.add(this.mesh);
+        
+        return waterGroup;
     }
 
     createWater() {
@@ -107,11 +117,11 @@ export class Water {
     }
 
     // Método para actualizar la animación del agua
-    update(deltaTime) {
+    update(deltaTime = 0.016) { // Valor por defecto aproximado a 60fps
         this.time += deltaTime * this.waveSpeed;
         
         // Actualizar el tiempo en el shader
-        if (this.mesh.material.uniforms) {
+        if (this.mesh && this.mesh.material && this.mesh.material.uniforms) {
             this.mesh.material.uniforms.time.value = this.time;
         }
     }
