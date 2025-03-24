@@ -1,9 +1,11 @@
 import * as THREE from 'three';
+import { Logger } from '../utils/Logger.js';
 
 export class Terrain {
     constructor() {
         this.size = { width: 400, depth: 400 };
-        this.segments = 128;
+        this.segments = 32; // Resolución final
+        this.lowResSegments = 8; // Resolución inicial
         
         // Definir alturas mínima y máxima
         this.minHeight = -10; // Profundidad máxima del agua
@@ -14,17 +16,198 @@ export class Terrain {
         
         this.heightData = null;
         this.mesh = null;
+        this.lowResMesh = null;
         this.textureRepeat = 8;
+        this.isHighResLoaded = false;
+        
+        // Inicializar logger
+        this.logger = new Logger();
+        
+        // Crear Web Worker
+        this.worker = new Worker(new URL('../utils/TerrainWorker.js', import.meta.url));
+        this.worker.onmessage = (e) => this.handleWorkerMessage(e);
     }
 
     async initialize() {
         try {
-            await this.loadHeightmap('/assets/heightmap.jpg');
+            this.logger.start('initialize');
+            
+            this.logger.start('loadHeightmap');
+            await this.loadHeightmap('/assets/heightmap.png');
+            this.logger.end('loadHeightmap');
+            
+            this.logger.start('loadTextures');
             await this.loadTextures();
-            this.createTerrain();
+            this.logger.end('loadTextures');
+            
+            this.logger.start('createLowResTerrain');
+            this.createLowResTerrain();
+            this.logger.end('createLowResTerrain');
+            
+            this.logger.start('loadHighResTerrain');
+            this.loadHighResTerrain();
+            this.logger.end('loadHighResTerrain');
+            
+            this.logger.end('initialize');
             return this.group;
         } catch (error) {
             console.error('Error inicializando el terreno:', error);
+        }
+    }
+
+    createLowResTerrain() {
+        this.logger.start('createLowResTerrain_geometry');
+        const geometry = new THREE.PlaneGeometry(
+            this.size.width, 
+            this.size.depth, 
+            this.lowResSegments, 
+            this.lowResSegments
+        );
+        this.logger.end('createLowResTerrain_geometry');
+        
+        geometry.rotateX(-Math.PI / 2);
+
+        this.logger.start('createLowResTerrain_heightmap');
+        const vertices = geometry.attributes.position.array;
+        
+        // Aplicar heightmap
+        for (let i = 0; i < vertices.length; i += 3) {
+            const x = vertices[i];
+            const z = vertices[i + 2];
+            vertices[i + 1] = this.getHeightAt(x, z);
+        }
+        this.logger.end('createLowResTerrain_heightmap');
+
+        this.logger.start('createLowResTerrain_smooth');
+        // Suavizado temporalmente desactivado para pruebas de rendimiento
+        // this.smoothTerrain(vertices, this.lowResSegments, 2, 0.3);
+        this.logger.end('createLowResTerrain_smooth');
+
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshStandardMaterial({
+            map: this.sandTexture,
+            color: 0xf0d6a3,
+            roughness: 0.9,
+            metalness: 0.05,
+            side: THREE.DoubleSide,
+            shadowSide: THREE.DoubleSide
+        });
+
+        this.lowResMesh = new THREE.Mesh(geometry, material);
+        this.lowResMesh.receiveShadow = true;
+
+        // Crear el agua
+        const waterGeometry = new THREE.PlaneGeometry(this.size.width, this.size.depth);
+        const waterMaterial = new THREE.MeshPhongMaterial({
+            color: 0x0066ff,
+            transparent: true,
+            opacity: 0.6
+        });
+        
+        this.waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
+        this.waterMesh.rotation.x = -Math.PI / 2;
+        this.waterMesh.position.y = this.waterLevel;
+        
+        // Grupo inicial con versión de baja resolución
+        this.group = new THREE.Group();
+        this.group.add(this.lowResMesh);
+        this.group.add(this.waterMesh);
+    }
+
+    loadHighResTerrain() {
+        this.logger.start('loadHighResTerrain_geometry');
+        const geometry = new THREE.PlaneGeometry(
+            this.size.width, 
+            this.size.depth, 
+            this.segments, 
+            this.segments
+        );
+        this.logger.end('loadHighResTerrain_geometry');
+        
+        geometry.rotateX(-Math.PI / 2);
+        const vertices = geometry.attributes.position.array;
+        
+        // Enviar datos al Web Worker
+        this.worker.postMessage({
+            vertices,
+            segments: this.segments,
+            size: this.size,
+            heightData: this.heightData,
+            minHeight: this.minHeight,
+            maxHeight: this.maxHeight
+        });
+    }
+
+    handleWorkerMessage(e) {
+        const { vertices } = e.data;
+        
+        // Crear la geometría final
+        const geometry = new THREE.PlaneGeometry(
+            this.size.width, 
+            this.size.depth, 
+            this.segments, 
+            this.segments
+        );
+        geometry.rotateX(-Math.PI / 2);
+        geometry.attributes.position.array.set(vertices);
+        geometry.computeVertexNormals();
+
+        const material = new THREE.MeshStandardMaterial({
+            map: this.sandTexture,
+            color: 0xf0d6a3,
+            roughness: 0.9,
+            metalness: 0.05,
+            side: THREE.DoubleSide,
+            shadowSide: THREE.DoubleSide
+        });
+
+        this.mesh = new THREE.Mesh(geometry, material);
+        this.mesh.receiveShadow = true;
+
+        // Reemplazar la versión de baja resolución por la de alta resolución
+        this.group.remove(this.lowResMesh);
+        this.group.add(this.mesh);
+        this.isHighResLoaded = true;
+    }
+
+    smoothTerrain(vertices, segments, iterations, intensity) {
+        for (let iteration = 0; iteration < iterations; iteration++) {
+            const tempHeights = new Float32Array(vertices.length / 3);
+            
+            for (let i = 0; i < vertices.length; i += 3) {
+                const idx = i / 3;
+                const row = Math.floor(idx / (segments + 1));
+                const col = idx % (segments + 1);
+                
+                let sum = vertices[i + 1];
+                let count = 1;
+                
+                const neighbors = [
+                    [-1, -1], [-1, 0], [-1, 1],
+                    [0, -1],           [0, 1],
+                    [1, -1],  [1, 0],  [1, 1]
+                ];
+                
+                for (const [dr, dc] of neighbors) {
+                    const newRow = row + dr;
+                    const newCol = col + dc;
+                    
+                    if (newRow >= 0 && newRow <= segments && 
+                        newCol >= 0 && newCol <= segments) {
+                        const neighborIdx = (newRow * (segments + 1) + newCol) * 3;
+                        sum += vertices[neighborIdx + 1];
+                        count++;
+                    }
+                }
+                
+                tempHeights[idx] = vertices[i + 1] * (1 - intensity) + 
+                                  (sum / count) * intensity;
+            }
+            
+            for (let i = 0; i < vertices.length; i += 3) {
+                vertices[i + 1] = tempHeights[i / 3];
+            }
         }
     }
 
@@ -76,103 +259,6 @@ export class Terrain {
                 reject
             );
         });
-    }
-
-    createTerrain() {
-        const geometry = new THREE.PlaneGeometry(
-            this.size.width, 
-            this.size.depth, 
-            this.segments, 
-            this.segments
-        );
-        geometry.rotateX(-Math.PI / 2);
-
-        const vertices = geometry.attributes.position.array;
-        
-        // Primer paso: aplicar heightmap
-        for (let i = 0; i < vertices.length; i += 3) {
-            const x = vertices[i];
-            const z = vertices[i + 2];
-            vertices[i + 1] = this.getHeightAt(x, z);
-        }
-
-        // Segundo paso: suavizar vértices
-        const smoothIterations = 5; // Aumenta para más suavizado
-        const smoothIntensity = 0.5; // Ajusta entre 0 y 1
-        
-        for (let iteration = 0; iteration < smoothIterations; iteration++) {
-            const tempHeights = new Float32Array(vertices.length / 3);
-            
-            for (let i = 0; i < vertices.length; i += 3) {
-                const idx = i / 3;
-                const row = Math.floor(idx / (this.segments + 1));
-                const col = idx % (this.segments + 1);
-                
-                let sum = vertices[i + 1]; // Altura actual
-                let count = 1;
-                
-                // Comprobar vecinos
-                const neighbors = [
-                    [-1, -1], [-1, 0], [-1, 1],
-                    [0, -1],           [0, 1],
-                    [1, -1],  [1, 0],  [1, 1]
-                ];
-                
-                for (const [dr, dc] of neighbors) {
-                    const newRow = row + dr;
-                    const newCol = col + dc;
-                    
-                    if (newRow >= 0 && newRow <= this.segments && 
-                        newCol >= 0 && newCol <= this.segments) {
-                        const neighborIdx = (newRow * (this.segments + 1) + newCol) * 3;
-                        sum += vertices[neighborIdx + 1];
-                        count++;
-                    }
-                }
-                
-                tempHeights[idx] = vertices[i + 1] * (1 - smoothIntensity) + 
-                                  (sum / count) * smoothIntensity;
-            }
-            
-            // Aplicar alturas suavizadas
-            for (let i = 0; i < vertices.length; i += 3) {
-                vertices[i + 1] = tempHeights[i / 3];
-            }
-        }
-
-        geometry.computeVertexNormals();
-
-        // Crear material con textura
-        const material = new THREE.MeshStandardMaterial({
-            map: this.sandTexture,
-            color: 0xf0d6a3,
-            roughness: 0.9,
-            metalness: 0.05,
-            side: THREE.DoubleSide,
-            shadowSide: THREE.DoubleSide
-        });
-
-        this.mesh = new THREE.Mesh(geometry, material);
-        this.mesh.receiveShadow = true;
-
-        // Crear el agua
-        const waterGeometry = new THREE.PlaneGeometry(this.size.width, this.size.depth);
-        const waterMaterial = new THREE.MeshPhongMaterial({
-            color: 0x0066ff,
-            transparent: true,
-            opacity: 0.6
-        });
-        
-        this.waterMesh = new THREE.Mesh(waterGeometry, waterMaterial);
-        this.waterMesh.rotation.x = -Math.PI / 2;
-        this.waterMesh.position.y = this.waterLevel;
-        
-        // Grupo para contener terreno y agua
-        this.group = new THREE.Group();
-        this.group.add(this.mesh);
-        this.group.add(this.waterMesh);
-        
-        return this.group;
     }
 
     getHeightAt(x, z) {
