@@ -11,8 +11,8 @@ export class CameraController {
         this.rotationX = 0;
         this.rotationY = 0;
         this.sensitivity = 0.002;
-        this.minPolarAngle = -Math.PI / 3; // -60 grados
-        this.maxPolarAngle = Math.PI / 2.5; // 72 grados
+        this.minPolarAngle = -Math.PI / 7; // Aproximadamente -11.25 grados, justo por encima del horizonte
+        this.maxPolarAngle = Math.PI / 2.5; // 72 grados hacia arriba
     }
 
     setTarget(target) {
