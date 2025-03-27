@@ -7,6 +7,14 @@ export class Character {
         this.modelVariant = modelVariant;
         this.terrain = terrain;
         
+        // Límites del mapa (un poco menor que el tamaño del agua para mantener el barco visible)
+        this.mapLimits = {
+            minX: -195,
+            maxX: 195,
+            minZ: -195,
+            maxZ: 195
+        };
+        
         // Parámetros de disparo (definir antes de crear el modelo)
         this.cannonReady = true;
         this.cannonCooldown = 0.6; // Tiempo entre disparos en segundos
@@ -170,9 +178,17 @@ export class Character {
         rotationMatrix.makeRotationY(this.mesh.rotation.y);
         this.direction.applyMatrix4(rotationMatrix);
         
+        // Calcular la nueva posición
         const newPosition = currentPosition.clone();
         newPosition.x += this.direction.x * this.currentSpeed * deltaTime;
         newPosition.z += this.direction.z * this.currentSpeed * deltaTime;
+
+        // Verificar si la nueva posición está dentro de los límites del mapa
+        const isWithinBounds = 
+            newPosition.x >= this.mapLimits.minX &&
+            newPosition.x <= this.mapLimits.maxX &&
+            newPosition.z >= this.mapLimits.minZ &&
+            newPosition.z <= this.mapLimits.maxZ;
 
         // Comprobar colisiones en múltiples puntos alrededor del barco
         const boatWidth = 1.2;  // Mitad del ancho total (2.4 unidades)
@@ -202,23 +218,6 @@ export class Character {
             { 
                 x: newPosition.x - (boatWidth * cosRotation), 
                 z: newPosition.z + (boatWidth * sinRotation)
-            },
-            // Esquinas
-            { 
-                x: newPosition.x + (boatLength * sinRotation) + (boatWidth * cosRotation), 
-                z: newPosition.z + (boatLength * cosRotation) - (boatWidth * sinRotation)
-            },
-            { 
-                x: newPosition.x + (boatLength * sinRotation) - (boatWidth * cosRotation), 
-                z: newPosition.z + (boatLength * cosRotation) + (boatWidth * sinRotation)
-            },
-            { 
-                x: newPosition.x - (boatLength * sinRotation) + (boatWidth * cosRotation), 
-                z: newPosition.z - (boatLength * cosRotation) - (boatWidth * sinRotation)
-            },
-            { 
-                x: newPosition.x - (boatLength * sinRotation) - (boatWidth * cosRotation), 
-                z: newPosition.z - (boatLength * cosRotation) + (boatWidth * sinRotation)
             }
         ];
 
@@ -228,10 +227,13 @@ export class Character {
             return terrainHeight > 0;
         });
 
-        // Si no hay colisión, permitir el movimiento
-        if (!collision) {
+        // Si no hay colisión y estamos dentro de los límites, permitir el movimiento
+        if (!collision && isWithinBounds) {
             newPosition.y = 0;
             this.mesh.position.copy(newPosition);
+        } else {
+            // Si estamos colisionando o fuera de límites, detener el movimiento
+            this.currentSpeed = 0;
         }
 
         // Mantener siempre el barco a nivel del mar
