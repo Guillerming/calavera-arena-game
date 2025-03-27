@@ -11,8 +11,8 @@ export class CameraController {
         this.rotationX = 0;
         this.rotationY = 0;
         this.sensitivity = 0.002;
-        this.minPolarAngle = 0.1;
-        this.maxPolarAngle = Math.PI / 2;
+        this.minPolarAngle = -Math.PI / 3; // -60 grados
+        this.maxPolarAngle = Math.PI / 2.5; // 72 grados
     }
 
     setTarget(target) {
@@ -25,28 +25,41 @@ export class CameraController {
         if (inputManager && inputManager.isPointerLocked) {
             // Actualizar rotación basada en el movimiento del ratón
             this.rotationY -= inputManager.mouseDelta.x * this.sensitivity;
-            this.rotationX += inputManager.mouseDelta.y * this.sensitivity;
+            this.rotationX = Math.max(
+                this.minPolarAngle,
+                Math.min(
+                    this.maxPolarAngle,
+                    this.rotationX + inputManager.mouseDelta.y * this.sensitivity
+                )
+            );
             
-            // Limitar rotación vertical
-            this.rotationX = Math.max(this.minPolarAngle - Math.PI/2, 
-                                    Math.min(this.maxPolarAngle - Math.PI/2, 
-                                    this.rotationX));
-            
-            // El personaje siempre mira en la dirección de la cámara
+            // El personaje siempre mira en la dirección de la cámara (solo horizontalmente)
             this.target.mesh.rotation.y = this.rotationY;
             
             // Reiniciar el delta del ratón
             inputManager.resetMouseDelta();
         }
 
-        // Calcular posición de la cámara siempre detrás del personaje
-        const targetPosition = new THREE.Vector3();
-        targetPosition.copy(this.target.mesh.position);
-
-        // Usar la rotación del personaje para posicionar la cámara
-        const cameraOffset = new THREE.Vector3(0, this.offset.y, this.offset.z);
+        // Calcular posición de la cámara
+        const targetPosition = this.target.mesh.position.clone();
+        
+        // Aplicar rotaciones para la posición de la cámara
+        const cameraOffset = new THREE.Vector3(
+            0,
+            this.offset.y * Math.cos(this.rotationX),
+            this.offset.z
+        );
+        
+        // Rotar el offset horizontalmente
         cameraOffset.applyAxisAngle(new THREE.Vector3(0, 1, 0), this.rotationY);
         
+        // Rotar el offset verticalmente
+        const horizontalDist = Math.cos(this.rotationX) * this.offset.z;
+        cameraOffset.z = Math.cos(this.rotationY) * horizontalDist;
+        cameraOffset.x = Math.sin(this.rotationY) * horizontalDist;
+        cameraOffset.y = Math.sin(this.rotationX) * this.offset.z + this.offset.y;
+        
+        // Aplicar la posición final de la cámara
         this.camera.position.copy(targetPosition).add(cameraOffset);
         this.camera.lookAt(targetPosition);
     }
