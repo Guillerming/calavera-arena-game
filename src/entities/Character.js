@@ -15,6 +15,12 @@ export class Character extends THREE.Object3D {
         this.speedChangeRate = 20; // Velocidad de cambio al pulsar W/S
         this.rotationSpeed = 0.03;
         
+        // Configuración de basculación del barco
+        this.currentRoll = 0;
+        this.targetRoll = 0;
+        this.maxRoll = Math.PI / 12; // 15 grados de basculación máxima
+        this.rollSpeed = 3; // Velocidad de transición de la basculación
+        
         // Configuración de disparo
         this.cannonReady = true;
         this.cannonCooldown = 1000; // 1 segundo entre disparos
@@ -118,11 +124,17 @@ export class Character extends THREE.Object3D {
             // Para un giro de 360º en 15s, necesitamos 2π/15 radianes por segundo
             const rotationRate = (2 * Math.PI) / 15;
             
+            // Resetear el targetRoll si no se está girando
+            if (!inputManager.isKeyPressed('KeyA') && !inputManager.isKeyPressed('KeyD')) {
+                this.targetRoll = 0;
+            }
+            
             if (inputManager.isKeyPressed('KeyA')) {
                 // Rotar a la izquierda
                 this.rotation.y += rotationRate * deltaTime;
                 if (this.boat) {
                     this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
+                    this.targetRoll = this.maxRoll; // Bascular hacia la derecha
                 }
             }
             if (inputManager.isKeyPressed('KeyD')) {
@@ -130,7 +142,15 @@ export class Character extends THREE.Object3D {
                 this.rotation.y -= rotationRate * deltaTime;
                 if (this.boat) {
                     this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
+                    this.targetRoll = -this.maxRoll; // Bascular hacia la izquierda
                 }
+            }
+            
+            // Actualizar la basculación suavemente
+            if (this.boat) {
+                const rollDiff = this.targetRoll - this.currentRoll;
+                this.currentRoll += rollDiff * this.rollSpeed * deltaTime;
+                this.boat.rotation.z = this.currentRoll;
             }
         }
 
@@ -139,27 +159,25 @@ export class Character extends THREE.Object3D {
             this.speedIndicator.update(this.currentSpeed, this.maxSpeed, this.minSpeed);
         }
 
-        const currentPosition = this.position.clone();
-        
-        // Siempre moverse en la dirección actual del barco (no de la cámara)
+        // Calcular la dirección de movimiento basada en la rotación actual del barco
         const direction = new THREE.Vector3(0, 0, -1);
         const rotationMatrix = new THREE.Matrix4();
         rotationMatrix.makeRotationY(this.rotation.y);
         direction.applyMatrix4(rotationMatrix);
         
         // Calcular la nueva posición
-        const newPosition = currentPosition.clone();
+        const newPosition = this.position.clone();
         newPosition.x += direction.x * this.currentSpeed * deltaTime;
         newPosition.z += direction.z * this.currentSpeed * deltaTime;
 
-        // Verificar si la nueva posición está dentro de los límites del mapa
+        // Verificar límites y colisiones
         const isWithinBounds = 
             newPosition.x >= this.mapLimits.minX &&
             newPosition.x <= this.mapLimits.maxX &&
             newPosition.z >= this.mapLimits.minZ &&
             newPosition.z <= this.mapLimits.maxZ;
         
-        // Crear puntos de colisión rotados según la orientación del barco
+        // Crear puntos de colisión
         const cosRotation = Math.cos(this.rotation.y);
         const sinRotation = Math.sin(this.rotation.y);
         
@@ -187,7 +205,7 @@ export class Character extends THREE.Object3D {
             )
         ];
         
-        // Comprobar si algún punto colisiona con tierra
+        // Comprobar colisiones
         const collision = collisionPoints.some(point => {
             const terrainHeight = this.terrain.getHeightAt(point.x, point.z);
             return terrainHeight > 0;
@@ -196,7 +214,6 @@ export class Character extends THREE.Object3D {
         if (!collision && isWithinBounds) {
             this.position.copy(newPosition);
         } else {
-            // Si estamos colisionando o fuera de límites, detener el movimiento
             this.currentSpeed = 0;
         }
     }

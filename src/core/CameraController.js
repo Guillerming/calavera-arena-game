@@ -7,7 +7,7 @@ export class CameraController {
         this.offset = new THREE.Vector3(0, 5, 8); // La cámara estará 8 unidades detrás y 5 arriba
         this.smoothness = 0.1;
         
-        // Parámetros de rotación
+        // Parámetros de rotación de la cámara
         this.rotationX = 0;
         this.rotationY = 0;
         this.sensitivity = 0.002;
@@ -23,7 +23,7 @@ export class CameraController {
         if (!this.target) return;
 
         if (inputManager && inputManager.isPointerLocked) {
-            // Actualizar rotación basada en el movimiento del ratón
+            // Actualizar rotación de la cámara basada en el movimiento del ratón
             this.rotationY -= inputManager.mouseDelta.x * this.sensitivity;
             this.rotationX = Math.max(
                 this.minPolarAngle,
