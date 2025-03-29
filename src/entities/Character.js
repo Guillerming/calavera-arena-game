@@ -10,10 +10,9 @@ export class Character extends THREE.Object3D {
 
         // Configuración de movimiento y límites
         this.currentSpeed = 0;
-        this.targetSpeed = 0;
         this.maxSpeed = 20;
-        this.acceleration = 15;
-        this.deceleration = 10;
+        this.minSpeed = -5; // Velocidad máxima en reversa
+        this.speedChangeRate = 20; // Velocidad de cambio al pulsar W/S
         this.rotationSpeed = 0.03;
         
         // Configuración del cañón
@@ -71,7 +70,7 @@ export class Character extends THREE.Object3D {
             // Ajustar escala y rotación inicial del barco
             this.boat.scale.set(0.6, 0.6, 0.6); // Reducir más la escala
             this.boat.rotation.y = Math.PI; // Girar 180 grados para que mire hacia adelante
-            this.boat.position.y = -1.5; // Elevar más el barco
+            this.boat.position.y = -0.8; // Elevar más el barco
 
             // Añadir el barco a la escena
             this.add(this.boat);
@@ -131,20 +130,15 @@ export class Character extends THREE.Object3D {
         // Control de velocidad con W/S
         if (inputManager) {
             if (inputManager.isKeyPressed('KeyW')) {
-                this.targetSpeed = Math.min(this.maxSpeed, this.targetSpeed + this.acceleration * deltaTime);
+                this.currentSpeed = Math.min(this.maxSpeed, this.currentSpeed + this.speedChangeRate * deltaTime);
             } else if (inputManager.isKeyPressed('KeyS')) {
-                this.targetSpeed = Math.max(0, this.targetSpeed - this.deceleration * deltaTime);
-            } else {
-                // Si no se presiona ninguna tecla, desacelerar naturalmente
-                if (this.targetSpeed > 0) {
-                    this.targetSpeed = Math.max(0, this.targetSpeed - this.deceleration * 0.5 * deltaTime);
-                }
+                this.currentSpeed = Math.max(this.minSpeed, this.currentSpeed - this.speedChangeRate * deltaTime);
             }
         }
 
         // Actualizar el indicador de velocidad
         if (this.speedIndicator) {
-            this.speedIndicator.update(this.targetSpeed, this.maxSpeed, 0);
+            this.speedIndicator.update(this.currentSpeed, this.maxSpeed, this.minSpeed);
         }
 
         const currentPosition = this.position.clone();
@@ -159,8 +153,8 @@ export class Character extends THREE.Object3D {
         
         // Calcular la nueva posición
         const newPosition = currentPosition.clone();
-        newPosition.x += direction.x * this.targetSpeed * deltaTime;
-        newPosition.z += direction.z * this.targetSpeed * deltaTime;
+        newPosition.x += direction.x * this.currentSpeed * deltaTime;
+        newPosition.z += direction.z * this.currentSpeed * deltaTime;
 
         // Verificar si la nueva posición está dentro de los límites del mapa
         const isWithinBounds = 
@@ -204,15 +198,11 @@ export class Character extends THREE.Object3D {
         });
 
         if (!collision && isWithinBounds) {
-            newPosition.y = 0.8; // Mantener la altura del barco
             this.position.copy(newPosition);
         } else {
             // Si estamos colisionando o fuera de límites, detener el movimiento
-            this.targetSpeed = 0;
+            this.currentSpeed = 0;
         }
-
-        // Mantener siempre el barco a la altura correcta
-        this.position.y = 0.8;
     }
 
     // En el método updateJump de Character.js
