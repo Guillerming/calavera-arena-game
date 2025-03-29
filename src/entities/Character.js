@@ -295,39 +295,57 @@ export class Character extends THREE.Object3D {
             if (this.cannonTimer >= this.cannonCooldown) {
                 this.cannonReady = true;
                 this.cannonTimer = 0;
-                console.log('🎯 Cañón listo para disparar');
             }
         }
         
         // Verificar si se debe disparar cuando se hace click
         if (inputManager && inputManager.isMouseButtonPressed(0)) {
-            console.log('🖱️ Click detectado, cannonReady:', this.cannonReady);
             if (this.cannonReady) {
-                console.log('🚀 Iniciando disparo');
-                this.fireCannon();
-                this.cannonReady = false;
-                this.cannonTimer = 0;
+                // Verificar el ángulo permitido para disparar
+                const angleToCamera = this.getAngleToCameraDirection();
+                const frontRestrictedAngle = Math.PI / 4; // 45 grados (22.5º a cada lado)
+                const backRestrictedAngle = Math.PI / 3; // 60 grados (30º a cada lado)
+                
+                // El ángulo está en el rango [-π, π]
+                // Verificar restricciones de proa y popa
+                const isInFrontRestriction = Math.abs(angleToCamera) < frontRestrictedAngle / 2;
+                const isInBackRestriction = Math.abs(Math.abs(angleToCamera) - Math.PI) < backRestrictedAngle / 2;
+                
+                if (!isInFrontRestriction && !isInBackRestriction) {
+                    this.fireCannon();
+                    this.cannonReady = false;
+                    this.cannonTimer = 0;
+                }
             }
         }
     }
     
-    setCameraController(controller) {
-        console.log("Configurando cameraController para", this.name);
-        this.cameraController = controller;
+    // Método para calcular el ángulo entre la dirección del barco y la dirección de la cámara
+    getAngleToCameraDirection() {
+        if (!this.cameraController) return 0;
+        
+        // Vector dirección del barco (hacia adelante)
+        const boatDirection = new THREE.Vector3(0, 0, -1);
+        const boatRotationMatrix = new THREE.Matrix4();
+        boatRotationMatrix.makeRotationY(this.rotation.y);
+        boatDirection.applyMatrix4(boatRotationMatrix);
+        
+        // Vector dirección de la cámara
+        const cameraDirection = new THREE.Vector3(0, 0, -1);
+        const cameraRotationMatrix = new THREE.Matrix4();
+        cameraRotationMatrix.makeRotationY(this.cameraController.rotationY);
+        cameraDirection.applyMatrix4(cameraRotationMatrix);
+        
+        // Calcular el ángulo entre los dos vectores (resultado en [-π, π])
+        return Math.atan2(
+            boatDirection.x * cameraDirection.z - boatDirection.z * cameraDirection.x,
+            boatDirection.x * cameraDirection.x + boatDirection.z * cameraDirection.z
+        );
     }
 
     fireCannon() {
-        console.log("Intentando disparar el cañón");
-        
-        if (!this.cameraController) {
-            console.error("No hay cameraController configurado");
-            return;
-        }
+        if (!this.cameraController) return;
 
-        // Obtener la rotación de la cámara
-        const cameraRotation = this.cameraController.rotationY;
-        console.log("Rotación de la cámara:", cameraRotation);
-        
         // Crear la geometría y material para el proyectil
         const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
         const projectileMaterial = new THREE.MeshStandardMaterial({ 
@@ -346,8 +364,6 @@ export class Character extends THREE.Object3D {
         const rotationMatrix = new THREE.Matrix4();
         rotationMatrix.makeRotationY(this.cameraController.rotationY);
         direction.applyMatrix4(rotationMatrix);
-        
-        console.log('🎯 Dirección de disparo:', direction);
         
         // Posición inicial del proyectil (desde el lateral del barco)
         const initialPos = new THREE.Vector3();
@@ -371,8 +387,6 @@ export class Character extends THREE.Object3D {
         initialPos.add(boatDirection.multiplyScalar(forwardOffset));
         initialPos.y = this.projectileInitialHeight;
         
-        console.log('📍 Posición inicial del proyectil:', initialPos);
-        
         // Establecer la posición del proyectil
         projectile.position.copy(initialPos);
         
@@ -381,8 +395,6 @@ export class Character extends THREE.Object3D {
         initialVelocity.x = direction.x * Math.cos(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.y = Math.sin(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.z = direction.z * Math.cos(this.cannonAngle) * this.projectileSpeed;
-        
-        console.log('💨 Velocidad inicial del proyectil:', initialVelocity);
         
         // Añadir el proyectil a la lista de proyectiles activos
         this.projectiles.push({
@@ -399,11 +411,8 @@ export class Character extends THREE.Object3D {
         
         // Añadir el proyectil a la escena y crear el efecto visual
         if (this.scene) {
-            console.log('✨ Añadiendo proyectil a la escena');
             this.scene.add(projectile);
             this.createMuzzleFlash(initialPos, direction);
-        } else {
-            console.error('❌ No hay escena para añadir el proyectil');
         }
     }
     
@@ -590,10 +599,6 @@ export class Character extends THREE.Object3D {
     
     // Actualizar los proyectiles en movimiento
     updateProjectiles(deltaTime) {
-        if (this.projectiles.length > 0) {
-            console.log('🚀 Actualizando', this.projectiles.length, 'proyectiles');
-        }
-        
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.projectiles[i];
             
@@ -611,10 +616,6 @@ export class Character extends THREE.Object3D {
             // Actualizar la posición del proyectil
             projectile.mesh.position.copy(newPosition);
             
-            if (timeElapsed > 1) { // Solo logueamos cada segundo para no saturar la consola
-                console.log('📍 Posición del proyectil después de', Math.floor(timeElapsed), 'segundos:', newPosition);
-            }
-            
             // Obtener la altura del terreno en la nueva posición
             const terrainHeight = this.terrain ? this.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
             
@@ -622,7 +623,7 @@ export class Character extends THREE.Object3D {
             if (newPosition.y <= 0) {
                 const splashPosition = new THREE.Vector3(
                     newPosition.x,
-                    0, // El splash siempre debe estar a nivel del agua
+                    0,
                     newPosition.z
                 );
                 this.createSplashEffect(splashPosition);
@@ -635,7 +636,7 @@ export class Character extends THREE.Object3D {
             } else if (newPosition.y <= terrainHeight) {
                 const explosionPosition = new THREE.Vector3(
                     newPosition.x,
-                    terrainHeight, // La explosión debe estar en la superficie del terreno
+                    terrainHeight,
                     newPosition.z
                 );
                 this.createExplosionEffect(explosionPosition);
@@ -963,5 +964,10 @@ export class Character extends THREE.Object3D {
             // Iniciar animación
             animateExplosion();
         }
+    }
+
+    // Método para establecer el controlador de cámara
+    setCameraController(controller) {
+        this.cameraController = controller;
     }
 } 
