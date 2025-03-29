@@ -21,13 +21,34 @@ export class CharacterManager {
         this.inputManager = inputManager;
     }
 
-    createCharacter() {
+    createCharacter(id = null) {
         if (!this.scene) {
             console.error("No se ha establecido la escena en CharacterManager");
             return null;
         }
+
         const character = new Character(this.scene);
+        if (!character) return null;
+
+        // Si se proporciona un ID, usarlo; si no, generar uno
+        const characterId = id || Math.random().toString(36).substring(7);
+        this.characters.set(characterId, character);
+
         return character;
+    }
+
+    getCharacter(id) {
+        return this.characters.get(id);
+    }
+
+    removeCharacter(id) {
+        const character = this.characters.get(id);
+        if (character) {
+            if (character.parent) {
+                character.parent.remove(character);
+            }
+            this.characters.delete(id);
+        }
     }
 
     async createPlayer(playerName) {
@@ -42,7 +63,6 @@ export class CharacterManager {
         
         // Guardar referencia al personaje del jugador
         this.playerCharacter = player;
-        this.characters.set('player', player);
         
         // Establecer el nombre del jugador
         player.playerName = playerName;
@@ -50,22 +70,10 @@ export class CharacterManager {
         return player;
     }
 
-    removeCharacter(id) {
-        const character = this.characters.get(id);
-        if (character) {
-            // Aquí añadiremos lógica para limpiar recursos
-            this.characters.delete(id);
-        }
+    getPlayerCharacter() {
+        return this.playerCharacter;
     }
 
-    getCharacter(id) {
-        return this.characters.get(id);
-    }
-
-    update(deltaTime) {
-        this.updateAll(deltaTime);
-    }
-    
     updateAll(deltaTime) {
         for (const character of this.characters.values()) {
             // Pasar el inputManager solo al personaje del jugador

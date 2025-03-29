@@ -3,6 +3,7 @@ import { InputManager } from './core/InputManager.js';
 import { Terrain } from './world/Terrain.js';
 import { Water } from './world/Water.js';
 import { CharacterManager } from './managers/CharacterManager.js';
+import { NetworkManager } from './network/NetworkManager.js';
 import * as THREE from 'three';
 import { DebugUI } from './utils/DebugUI.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
@@ -19,6 +20,7 @@ export class Game {
         this.water = new Water();
         this.characterManager = new CharacterManager();
         this.debugUI = new DebugUI();
+        this.networkManager = new NetworkManager();
         
         // Proporcionar referencias al CharacterManager
         this.characterManager.setScene(this.engine.scene);
@@ -101,6 +103,41 @@ export class Game {
             // Mover la cámara más cerca del barco y con un buen ángulo
             this.engine.camera.position.set(0, 5, 10);  // Posición inicial de la cámara
             this.engine.camera.lookAt(0, 0, 0);
+
+            // Configurar callbacks de red
+            this.networkManager.setCallbacks({
+                onPlayerUpdate: (playerData) => {
+                    // Actualizar posición y rotación de otros jugadores
+                    const otherPlayer = this.characterManager.getCharacter(playerData.id);
+                    if (otherPlayer) {
+                        otherPlayer.position.set(
+                            playerData.position.x,
+                            playerData.position.y,
+                            playerData.position.z
+                        );
+                        otherPlayer.rotation.y = playerData.rotation.y;
+                    }
+                },
+                onPlayerJoin: (playerData) => {
+                    // Crear nuevo jugador
+                    const newPlayer = this.characterManager.createCharacter(playerData.id);
+                    if (newPlayer) {
+                        newPlayer.position.set(
+                            playerData.position.x,
+                            playerData.position.y,
+                            playerData.position.z
+                        );
+                        newPlayer.rotation.y = playerData.rotation.y;
+                    }
+                },
+                onPlayerLeave: (playerId) => {
+                    // Eliminar jugador que se ha desconectado
+                    this.characterManager.removeCharacter(playerId);
+                }
+            });
+
+            // Conectar al servidor
+            this.networkManager.connect();
         } else {
             console.error("No se pudo crear el jugador");
         }
@@ -134,10 +171,16 @@ export class Game {
         // Actualizar el mundo
         this.engine.update(deltaTime, this.inputManager);
         this.inputManager.update();
-        this.characterManager.update(deltaTime);
+        this.characterManager.updateAll(deltaTime);
         
         // Actualizar el agua - asegurando que se pasa el deltaTime correcto
         this.water.update(deltaTime);
+
+        // Enviar actualización de posición al servidor
+        const player = this.characterManager.getPlayerCharacter();
+        if (player && this.networkManager.connected) {
+            this.networkManager.sendUpdate(player.position, player.rotation);
+        }
         
         // Renderizar
         this.engine.render();
