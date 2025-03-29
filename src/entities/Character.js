@@ -275,11 +275,8 @@ export class Character extends THREE.Object3D {
             }
         }
         
-        // Variable para almacenar si la tecla Enter está siendo presionada
-        const enterPressed = inputManager ? inputManager.isKeyPressed('Enter') : false;
-        
-        // Verificar si se debe disparar cuando se presiona Enter
-        if (enterPressed && this.cannonReady) {
+        // Verificar si se debe disparar cuando se hace click
+        if (inputManager && inputManager.isMouseButtonPressed(0) && this.cannonReady) {
             this.fireCannon();
             this.cannonReady = false;
             this.cannonTimer = 0;
