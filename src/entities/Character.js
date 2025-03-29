@@ -255,7 +255,6 @@ export class Character extends THREE.Object3D {
             if (this.cannonTimer >= this.cannonCooldown) {
                 this.cannonReady = true;
                 this.cannonTimer = 0;
-                console.log('🟢 Cañón listo para disparar');
             }
         }
         
@@ -264,7 +263,6 @@ export class Character extends THREE.Object3D {
         
         // Verificar si se debe disparar cuando se presiona Enter
         if (enterPressed && this.cannonReady) {
-            console.log('🎯 Intentando disparar el cañón');
             this.fireCannon();
             this.cannonReady = false;
             this.cannonTimer = 0;
@@ -272,8 +270,6 @@ export class Character extends THREE.Object3D {
     }
     
     fireCannon() {
-        console.log('💥 Método fireCannon iniciado');
-        
         // Crear la geometría y material para el proyectil
         const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
         const projectileMaterial = new THREE.MeshStandardMaterial({ 
@@ -296,13 +292,11 @@ export class Character extends THREE.Object3D {
         // Posición inicial del proyectil
         const initialPos = new THREE.Vector3();
         initialPos.copy(this.position);
-        console.log('📍 Posición inicial del barco:', initialPos);
         
         // Ajustar la posición inicial para que salga desde el frente del barco
         const cannonOffset = direction.clone().multiplyScalar(2.4);
         initialPos.add(cannonOffset);
         initialPos.y = this.projectileInitialHeight;
-        console.log('📍 Posición ajustada del proyectil:', initialPos);
         
         // Establecer la posición del proyectil
         projectile.position.copy(initialPos);
@@ -312,7 +306,6 @@ export class Character extends THREE.Object3D {
         initialVelocity.x = direction.x * Math.cos(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.y = Math.sin(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.z = direction.z * Math.cos(this.cannonAngle) * this.projectileSpeed;
-        console.log('🚀 Velocidad inicial del proyectil:', initialVelocity);
         
         // Añadir el proyectil a la lista de proyectiles activos
         this.projectiles.push({
@@ -329,13 +322,8 @@ export class Character extends THREE.Object3D {
         
         // Añadir el proyectil a la escena
         if (this.scene) {
-            console.log('🎯 Añadiendo proyectil a la escena');
             this.scene.add(projectile);
-            
-            // Crear efecto de fogonazo
             this.createMuzzleFlash(initialPos, direction);
-        } else {
-            console.error('❌ No se puede añadir el proyectil: this.scene es null');
         }
     }
     
@@ -522,10 +510,6 @@ export class Character extends THREE.Object3D {
     
     // Actualizar los proyectiles en movimiento
     updateProjectiles(deltaTime) {
-        if (this.projectiles.length > 0) {
-            console.log('🚀 Actualizando', this.projectiles.length, 'proyectiles');
-        }
-        
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.projectiles[i];
             
@@ -548,8 +532,6 @@ export class Character extends THREE.Object3D {
             
             // Verificar colisiones
             if (newPosition.y <= 0) {
-                console.log('💦 Impacto en agua en:', newPosition.x, newPosition.y, newPosition.z);
-                // Crear el efecto de splash en la posición exacta del impacto
                 const splashPosition = new THREE.Vector3(
                     newPosition.x,
                     0, // El splash siempre debe estar a nivel del agua
@@ -563,8 +545,6 @@ export class Character extends THREE.Object3D {
                 }
                 this.projectiles.splice(i, 1);
             } else if (newPosition.y <= terrainHeight) {
-                console.log('💥 Impacto en terreno en:', newPosition.x, newPosition.y, newPosition.z);
-                // Crear el efecto de explosión en la posición exacta del impacto
                 const explosionPosition = new THREE.Vector3(
                     newPosition.x,
                     terrainHeight, // La explosión debe estar en la superficie del terreno
