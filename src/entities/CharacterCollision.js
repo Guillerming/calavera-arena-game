@@ -17,6 +17,16 @@ export class CharacterCollision {
             this.character.boat.position.add(pushDirection.multiplyScalar(overlap * 0.5));
             otherCharacter.boat.position.add(pushDirection.multiplyScalar(-overlap * 0.5));
             
+            // Velocidad relativa para determinar la intensidad de la colisión
+            const relativeSpeed = Math.abs(this.character.currentSpeed - otherCharacter.currentSpeed);
+            
+            // Aplicar daño solo si la colisión es significativa (para evitar daño por roces leves)
+            if (relativeSpeed > 5) {
+                // Ambos barcos reciben daño por la colisión
+                this.character.takeCollisionDamage();
+                otherCharacter.takeCollisionDamage();
+            }
+            
             return true;
         }
         return false;

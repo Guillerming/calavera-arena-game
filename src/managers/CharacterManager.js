@@ -63,6 +63,7 @@ export class CharacterManager {
         // Configurar el personaje
         player.setTerrain(this.scene.terrain);
         player.setCameraController(this.scene.cameraController);
+        player.isLocalPlayer = true; // Marcar como jugador local
         
         // Añadir el personaje a la escena
         this.scene.add(player);
@@ -220,6 +221,61 @@ export class CharacterManager {
                     this.playerCharacter.createExplosionEffect(position);
                 }
                 break;
+        }
+    }
+
+    // Manejar actualizaciones de salud
+    handleHealthUpdate(playerData) {
+        // Ignorar actualizaciones para el jugador local (ya las manejamos localmente)
+        if (playerData.id === this.playerCharacter?.name) {
+            return;
+        }
+        
+        // Encontrar el personaje del jugador
+        const player = this.characters.get(playerData.id);
+        if (player) {
+            // Actualizar salud
+            player.health = playerData.health;
+            
+            // Verificar si el estado de vida cambió
+            if (player.isAlive !== playerData.isAlive) {
+                player.isAlive = playerData.isAlive;
+                
+                // Si el jugador acaba de morir
+                if (!player.isAlive) {
+                    console.log(`¡Jugador ${playerData.id} ha sido destruido!`);
+                    player.onDeath();
+                } 
+                // Si el jugador acaba de reaparecer
+                else if (player.isAlive && player.health === 100) {
+                    // Actualizar posición si está incluida en los datos
+                    if (playerData.position) {
+                        player.position.set(
+                            playerData.position.x,
+                            playerData.position.y,
+                            playerData.position.z
+                        );
+                    }
+                    
+                    // Hacer visible el barco
+                    if (player.boat) {
+                        player.boat.visible = true;
+                    }
+                    
+                    // Reactivar colisiones
+                    if (player.colliderMesh) {
+                        player.colliderMesh.visible = true;
+                    }
+                }
+            } else {
+                // Si solo cambió la salud, mostrar efectos de daño
+                if (player.health < 100 && player.isAlive) {
+                    player.showDamageEffect('projectile');
+                }
+            }
+            
+            // Actualizar UI de salud
+            player.updateHealthUI();
         }
     }
 }

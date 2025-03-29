@@ -30,7 +30,20 @@ export class CharacterProjectiles {
                 if (this.character.networkManager) {
                     const otherPlayers = this.character.networkManager.getPlayers();
                     for (const otherPlayer of otherPlayers) {
+                        // No colisionar con el jugador que disparó
+                        if (otherPlayer.id === this.character.networkManager.getPlayerId()) {
+                            continue;
+                        }
+                        
                         if (this.character.checkCollisionWithPlayer(newPosition, otherPlayer)) {
+                            // Buscar el objeto Character del jugador impactado
+                            const impactedPlayer = this.findPlayerCharacter(otherPlayer.id);
+                            
+                            // Aplicar daño al jugador impactado
+                            if (impactedPlayer) {
+                                impactedPlayer.takeProjectileDamage();
+                            }
+                            
                             this.character.handleProjectileCollision(projectile, newPosition, 'player');
                             break;
                         }
@@ -42,6 +55,17 @@ export class CharacterProjectiles {
             projectile.mesh.rotation.y += projectile.rotationSpeed.y * deltaTime;
             projectile.mesh.rotation.z += projectile.rotationSpeed.z * deltaTime;
         }
+    }
+    
+    // Encontrar un personaje por su ID
+    findPlayerCharacter(playerId) {
+        // Iterar sobre la lista de personajes del manager
+        for (const [id, character] of this.character.scene?.characterManager?.characters || []) {
+            if (id === playerId) {
+                return character;
+            }
+        }
+        return null;
     }
     
     handleProjectileCollision(projectile, position, collisionType) {

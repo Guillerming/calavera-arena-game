@@ -55,6 +55,7 @@ export class Character extends THREE.Object3D {
         
         this.health = 100;
         this.isAlive = true;
+        this.isLocalPlayer = false;
 
         this.projectilesGroup = new THREE.Group();
         this.add(this.projectilesGroup);
@@ -106,6 +107,11 @@ export class Character extends THREE.Object3D {
         // Inicializar UI después de crear los componentes
         this.ui = new CharacterUI(this);
         this.createCannonIndicators();
+        
+        // Inicializar UI de salud si es el jugador local
+        if (this.isLocalPlayer) {
+            this.updateHealthUI();
+        }
     }
 
     update(deltaTime = 0.016, inputManager = null) {
@@ -224,5 +230,140 @@ export class Character extends THREE.Object3D {
 
     removeProjectile(projectileId) {
         this.projectilesManager.removeProjectile(projectileId);
+    }
+    
+    // Métodos para gestionar puntos de vida
+    takeDamage(damage, damageType) {
+        if (!this.isAlive) return;
+        
+        // Aplicar el daño a la salud
+        this.health -= damage;
+        
+        // Verificar si el personaje ha muerto
+        if (this.health <= 0) {
+            this.health = 0;
+            this.isAlive = false;
+            this.onDeath();
+        }
+        
+        // Mostrar efecto visual de daño
+        this.showDamageEffect(damageType);
+        
+        // Enviar actualización de salud a través de la red
+        if (this.networkManager) {
+            this.networkManager.sendHealthUpdate(this.health, this.isAlive);
+        }
+        
+        // Actualizar UI de salud
+        this.updateHealthUI();
+    }
+    
+    // Método para daño por impacto de proyectil (cañonazo)
+    takeProjectileDamage() {
+        // Cañonazos causan daño significativo (25 puntos)
+        this.takeDamage(25, 'projectile');
+    }
+    
+    // Método para daño por colisión con otro barco
+    takeCollisionDamage() {
+        // Colisiones causan daño moderado (12 puntos)
+        this.takeDamage(12, 'collision');
+    }
+    
+    // Método llamado cuando el personaje muere
+    onDeath() {
+        if (!this.isAlive) {
+            // Ocultar el modelo del barco
+            if (this.boat) {
+                this.boat.visible = false;
+            }
+            
+            // Desactivar colisiones
+            if (this.colliderMesh) {
+                this.colliderMesh.visible = false;
+            }
+            
+            // Mostrar efecto grande de explosión de muerte
+            this.effects.createDeathExplosionEffect(this.position.clone());
+            
+            // Si es el jugador local
+            if (this.isLocalPlayer && this.scene) {
+                console.log("¡Barco destruido!");
+                
+                // Programar respawn después de 5 segundos
+                setTimeout(() => {
+                    this.respawn();
+                }, 5000);
+            }
+        }
+    }
+    
+    // Método para hacer respawn del barco
+    respawn() {
+        // Restaurar salud completa
+        this.health = 100;
+        this.isAlive = true;
+        
+        // Colocar el barco en una posición aleatoria en el mapa
+        const spawnX = (Math.random() * 150) - 75;
+        const spawnZ = (Math.random() * 150) - 75;
+        this.position.set(spawnX, 0, spawnZ);
+        
+        // Hacer visible nuevamente el barco
+        if (this.boat) {
+            this.boat.visible = true;
+        }
+        
+        // Reactivar colisiones
+        if (this.colliderMesh) {
+            this.colliderMesh.visible = true;
+        }
+        
+        // Actualizar UI de salud
+        this.updateHealthUI();
+        
+        // Enviar actualización de salud y posición a través de la red
+        if (this.networkManager) {
+            this.networkManager.sendHealthUpdate(this.health, this.isAlive);
+        }
+        
+        console.log("¡Barco respawn!");
+    }
+    
+    // Mostrar efecto visual de daño
+    showDamageEffect(damageType) {
+        if (!this.boat) return;
+        
+        // Crear efecto visual según el tipo de daño
+        if (damageType === 'projectile') {
+            // Efecto de humo/fuego para impacto de cañón
+            this.createSmokeEffect(this.position.clone());
+        } else if (damageType === 'collision') {
+            // Efecto más sutil para colisión
+            this.createCollisionEffect(this.position.clone());
+        }
+    }
+    
+    // Crear efecto de humo para mostrar daño
+    createSmokeEffect(position) {
+        if (!this.effects) return;
+        
+        // Delegar la creación del efecto visual a la clase de efectos
+        this.effects.createSmokeEffect(position);
+    }
+    
+    // Crear efecto de colisión
+    createCollisionEffect(position) {
+        if (!this.effects) return;
+        
+        // Efecto visual para colisión
+        this.effects.createCollisionEffect(position);
+    }
+    
+    // Actualizar UI de salud
+    updateHealthUI() {
+        if (this.ui) {
+            this.ui.updateHealthIndicator(this.health);
+        }
     }
 } 

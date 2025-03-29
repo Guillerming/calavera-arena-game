@@ -11,6 +11,7 @@ export class NetworkManager {
         this.onProjectileUpdate = null;
         this.onProjectileRemove = null;
         this.onProjectileCollision = null;
+        this.onHealthUpdate = null;
     }
 
     connect() {
@@ -113,6 +114,19 @@ export class NetworkManager {
                         });
                     }
                     break;
+                    
+                case 'healthUpdate':
+                    // Actualizar salud del jugador
+                    const updatedPlayer = this.players.get(data.playerId);
+                    if (updatedPlayer) {
+                        updatedPlayer.health = data.health;
+                        updatedPlayer.isAlive = data.isAlive;
+                        
+                        if (this.onHealthUpdate) {
+                            this.onHealthUpdate(updatedPlayer);
+                        }
+                    }
+                    break;
             }
         };
 
@@ -195,6 +209,28 @@ export class NetworkManager {
         }
     }
 
+    // Método para enviar actualización de salud
+    sendHealthUpdate(health, isAlive) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message = {
+                type: 'healthUpdate',
+                playerId: this.playerId,
+                health: health,
+                isAlive: isAlive
+            };
+            
+            // Si es un respawn (salud = 100 y vivo), también enviar la posición
+            if (health === 100 && isAlive === true) {
+                const player = Array.from(this.players.values()).find(p => p.id === this.playerId);
+                if (player) {
+                    message.position = player.position;
+                }
+            }
+            
+            this.ws.send(JSON.stringify(message));
+        }
+    }
+
     // Modificar el método handleMessage para manejar proyectiles
     handleMessage(event) {
         const message = JSON.parse(event.data);
@@ -248,12 +284,13 @@ export class NetworkManager {
     }
 
     // Establecer callbacks para eventos
-    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove, onProjectileCollision }) {
+    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove, onProjectileCollision, onHealthUpdate }) {
         this.onPlayerUpdate = onPlayerUpdate;
         this.onPlayerJoin = onPlayerJoin;
         this.onPlayerLeave = onPlayerLeave;
         this.onProjectileUpdate = onProjectileUpdate;
         this.onProjectileRemove = onProjectileRemove;
         this.onProjectileCollision = onProjectileCollision;
+        this.onHealthUpdate = onHealthUpdate;
     }
 }

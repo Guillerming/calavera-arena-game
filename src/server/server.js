@@ -17,7 +17,9 @@ wss.on('connection', (ws) => {
     players.set(playerId, {
         id: playerId,
         position: { x: 0, y: 0, z: 0 },
-        rotation: { y: 0 }
+        rotation: { y: 0 },
+        health: 100,
+        isAlive: true
     });
 
     // Enviar ID al jugador
@@ -103,6 +105,36 @@ wss.on('connection', (ws) => {
                     position: data.position,
                     collisionType: data.collisionType
                 });
+                break;
+                
+            case 'healthUpdate':
+                // Actualizar la salud del jugador
+                const playerToUpdate = players.get(playerId);
+                if (playerToUpdate) {
+                    playerToUpdate.health = data.health;
+                    playerToUpdate.isAlive = data.isAlive;
+                    
+                    // Actualizar posición si está disponible (para respawn)
+                    if (data.position) {
+                        playerToUpdate.position = data.position;
+                    }
+                    
+                    // Crear el mensaje con todos los datos necesarios
+                    const updateMessage = {
+                        type: 'healthUpdate',
+                        playerId: playerId,
+                        health: data.health,
+                        isAlive: data.isAlive
+                    };
+                    
+                    // Incluir posición si está disponible
+                    if (data.position) {
+                        updateMessage.position = data.position;
+                    }
+                    
+                    // Reenviar información de salud a todos los clientes
+                    broadcast(updateMessage);
+                }
                 break;
         }
     });

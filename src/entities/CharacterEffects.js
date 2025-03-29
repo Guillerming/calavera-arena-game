@@ -423,4 +423,357 @@ export class CharacterEffects {
             animateExplosion();
         }
     }
+
+    createSmokeEffect(position) {
+        const smokeGroup = new THREE.Group();
+        
+        const smokeCount = 15;
+        const smokeParticles = [];
+        
+        for (let i = 0; i < smokeCount; i++) {
+            const size = 0.2 + Math.random() * 0.3;
+            const smokeGeometry = new THREE.SphereGeometry(size, 8, 8);
+            const smokeMaterial = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.6 ? 0x444444 : 0x222222,
+                transparent: true,
+                opacity: 0.6 + Math.random() * 0.2
+            });
+            const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+            
+            smoke.position.set(
+                (Math.random() - 0.5) * 2,
+                1 + Math.random() * 1.5,
+                (Math.random() - 0.5) * 2
+            );
+            
+            const speed = 0.2 + Math.random() * 0.2;
+            const angle = Math.random() * Math.PI * 2;
+            
+            smokeParticles.push({
+                mesh: smoke,
+                velocity: new THREE.Vector3(
+                    Math.cos(angle) * speed * 0.3,
+                    speed,
+                    Math.sin(angle) * speed * 0.3
+                ),
+                rotationSpeed: (Math.random() - 0.5) * 0.02,
+                scale: 1 + Math.random() * 0.5,
+                lifespan: 2000 + Math.random() * 1000
+            });
+            
+            smokeGroup.add(smoke);
+        }
+        
+        smokeGroup.position.copy(position);
+        smokeGroup.position.y += 0.5;
+        
+        if (this.character.scene) {
+            this.character.scene.add(smokeGroup);
+            
+            const initialTime = performance.now();
+            const duration = 3000;
+            
+            const animateSmoke = () => {
+                const now = performance.now();
+                const elapsed = now - initialTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                for (const particle of smokeParticles) {
+                    particle.mesh.position.x += particle.velocity.x;
+                    particle.mesh.position.y += particle.velocity.y;
+                    particle.mesh.position.z += particle.velocity.z;
+                    
+                    particle.mesh.rotation.y += particle.rotationSpeed;
+                    
+                    particle.velocity.multiplyScalar(0.99);
+                    particle.velocity.y *= 0.98;
+                    
+                    const currentScale = particle.scale * (1 + progress * 1.5);
+                    particle.mesh.scale.set(currentScale, currentScale, currentScale);
+                    
+                    particle.mesh.material.opacity = Math.max(0, 0.7 * (1 - progress));
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateSmoke);
+                } else {
+                    if (smokeGroup.parent) {
+                        smokeGroup.parent.remove(smokeGroup);
+                    }
+                }
+            };
+            
+            animateSmoke();
+        }
+    }
+    
+    createCollisionEffect(position) {
+        const collisionGroup = new THREE.Group();
+        
+        const debrisCount = 10;
+        const debrisParticles = [];
+        
+        for (let i = 0; i < debrisCount; i++) {
+            const debrisSize = 0.05 + Math.random() * 0.1;
+            const debrisGeometry = new THREE.BoxGeometry(debrisSize, debrisSize, debrisSize);
+            const debrisMaterial = new THREE.MeshBasicMaterial({
+                color: 0x8B4513,
+                transparent: true,
+                opacity: 0.9
+            });
+            const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+            
+            debris.position.set(0, 0.5, 0);
+            
+            const speed = 0.3 + Math.random() * 0.5;
+            const angle = Math.random() * Math.PI * 2;
+            const elevationAngle = Math.random() * Math.PI * 0.5;
+            
+            debrisParticles.push({
+                mesh: debris,
+                velocity: new THREE.Vector3(
+                    Math.cos(angle) * Math.sin(elevationAngle) * speed,
+                    Math.cos(elevationAngle) * speed,
+                    Math.sin(angle) * Math.sin(elevationAngle) * speed
+                ),
+                rotationSpeed: {
+                    x: (Math.random() - 0.5) * 0.2,
+                    y: (Math.random() - 0.5) * 0.2,
+                    z: (Math.random() - 0.5) * 0.2
+                },
+                gravity: 9.8
+            });
+            
+            collisionGroup.add(debris);
+        }
+        
+        collisionGroup.position.copy(position);
+        
+        if (this.character.scene) {
+            this.character.scene.add(collisionGroup);
+            
+            const initialTime = performance.now();
+            const duration = 1000;
+            
+            const animateCollision = () => {
+                const now = performance.now();
+                const elapsed = now - initialTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                const deltaT = 1/60;
+                for (const particle of debrisParticles) {
+                    particle.velocity.y -= particle.gravity * deltaT;
+                    
+                    particle.mesh.position.x += particle.velocity.x * deltaT;
+                    particle.mesh.position.y += particle.velocity.y * deltaT;
+                    particle.mesh.position.z += particle.velocity.z * deltaT;
+                    
+                    particle.mesh.rotation.x += particle.rotationSpeed.x;
+                    particle.mesh.rotation.y += particle.rotationSpeed.y;
+                    particle.mesh.rotation.z += particle.rotationSpeed.z;
+                    
+                    if (progress > 0.7) {
+                        particle.mesh.material.opacity = 0.9 * (1 - (progress - 0.7) / 0.3);
+                    }
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateCollision);
+                } else {
+                    if (collisionGroup.parent) {
+                        collisionGroup.parent.remove(collisionGroup);
+                    }
+                }
+            };
+            
+            animateCollision();
+        }
+    }
+
+    createDeathExplosionEffect(position) {
+        const explosionGroup = new THREE.Group();
+        
+        const flashGeometry = new THREE.SphereGeometry(1.2, 16, 16);
+        const flashMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff3300,
+            transparent: true,
+            opacity: 1
+        });
+        const flash = new THREE.Mesh(flashGeometry, flashMaterial);
+        explosionGroup.add(flash);
+        
+        const secondaryExplosions = 5;
+        for (let i = 0; i < secondaryExplosions; i++) {
+            const size = 0.6 + Math.random() * 0.4;
+            const secondaryGeometry = new THREE.SphereGeometry(size, 12, 12);
+            const secondaryMaterial = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.5 ? 0xff6600 : 0xff3300,
+                transparent: true,
+                opacity: 0.9
+            });
+            const secondaryFlash = new THREE.Mesh(secondaryGeometry, secondaryMaterial);
+            
+            const angle = (i / secondaryExplosions) * Math.PI * 2;
+            const radius = 1 + Math.random() * 2;
+            secondaryFlash.position.set(
+                Math.cos(angle) * radius,
+                Math.random() * 1.5,
+                Math.sin(angle) * radius
+            );
+            
+            explosionGroup.add(secondaryFlash);
+        }
+        
+        const debrisCount = 40;
+        const debrisParticles = [];
+        
+        for (let i = 0; i < debrisCount; i++) {
+            const debrisSize = 0.1 + Math.random() * 0.2;
+            const debrisGeometry = new THREE.BoxGeometry(debrisSize, debrisSize, debrisSize);
+            const debrisMaterial = new THREE.MeshBasicMaterial({
+                color: 0x8B4513,
+                transparent: true,
+                opacity: 0.9
+            });
+            const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+            
+            debris.position.set(
+                (Math.random() - 0.5) * 2,
+                Math.random() * 2,
+                (Math.random() - 0.5) * 2
+            );
+            
+            const speed = 1 + Math.random() * 3;
+            const angle = Math.random() * Math.PI * 2;
+            const elevationAngle = Math.random() * Math.PI;
+            
+            debrisParticles.push({
+                mesh: debris,
+                velocity: new THREE.Vector3(
+                    Math.cos(angle) * Math.sin(elevationAngle) * speed,
+                    Math.cos(elevationAngle) * speed,
+                    Math.sin(angle) * Math.sin(elevationAngle) * speed
+                ),
+                rotationSpeed: {
+                    x: (Math.random() - 0.5) * 0.3,
+                    y: (Math.random() - 0.5) * 0.3,
+                    z: (Math.random() - 0.5) * 0.3
+                },
+                gravity: 9.8
+            });
+            
+            explosionGroup.add(debris);
+        }
+        
+        const smokeCount = 20;
+        const smokeParticles = [];
+        
+        for (let i = 0; i < smokeCount; i++) {
+            const size = 0.5 + Math.random() * 0.7;
+            const smokeGeometry = new THREE.SphereGeometry(size, 8, 8);
+            const smokeMaterial = new THREE.MeshBasicMaterial({
+                color: Math.random() > 0.7 ? 0x222222 : 0x444444,
+                transparent: true,
+                opacity: 0.8
+            });
+            const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+            
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 3;
+            smoke.position.set(
+                Math.cos(angle) * radius,
+                0.5 + Math.random() * 2,
+                Math.sin(angle) * radius
+            );
+            
+            const speed = 0.2 + Math.random() * 0.3;
+            
+            smokeParticles.push({
+                mesh: smoke,
+                velocity: new THREE.Vector3(
+                    Math.cos(angle) * speed * 0.5,
+                    speed,
+                    Math.sin(angle) * speed * 0.5
+                ),
+                rotationSpeed: (Math.random() - 0.5) * 0.02,
+                scale: 1 + Math.random() * 0.5
+            });
+            
+            explosionGroup.add(smoke);
+        }
+        
+        explosionGroup.position.copy(position);
+        
+        if (this.character.scene) {
+            this.character.scene.add(explosionGroup);
+            
+            const initialTime = performance.now();
+            const duration = 4000;
+            
+            const animateExplosion = () => {
+                const now = performance.now();
+                const elapsed = now - initialTime;
+                const progress = Math.min(elapsed / duration, 1);
+                
+                if (progress < 0.3) {
+                    const flashScale = progress < 0.15 ? progress * 6.67 : 1 - (progress - 0.15) / 0.15;
+                    flash.scale.set(flashScale, flashScale, flashScale);
+                    flash.material.opacity = 1 - progress * 3.33;
+                } else {
+                    flash.visible = false;
+                }
+                
+                const deltaT = 1/60;
+                for (const particle of debrisParticles) {
+                    particle.velocity.y -= particle.gravity * deltaT;
+                    
+                    particle.mesh.position.x += particle.velocity.x * deltaT;
+                    particle.mesh.position.y += particle.velocity.y * deltaT;
+                    particle.mesh.position.z += particle.velocity.z * deltaT;
+                    
+                    particle.mesh.rotation.x += particle.rotationSpeed.x;
+                    particle.mesh.rotation.y += particle.rotationSpeed.y;
+                    particle.mesh.rotation.z += particle.rotationSpeed.z;
+                    
+                    if (particle.mesh.position.y < 0) {
+                        particle.mesh.position.y = 0;
+                        particle.velocity.y = 0;
+                        particle.velocity.x *= 0.9;
+                        particle.velocity.z *= 0.9;
+                    }
+                    
+                    if (progress > 0.7) {
+                        particle.mesh.material.opacity = 0.9 * (1 - (progress - 0.7) / 0.3);
+                    }
+                }
+                
+                for (const smoke of smokeParticles) {
+                    smoke.mesh.position.x += smoke.velocity.x;
+                    smoke.mesh.position.y += smoke.velocity.y;
+                    smoke.mesh.position.z += smoke.velocity.z;
+                    
+                    smoke.mesh.rotation.y += smoke.rotationSpeed;
+                    
+                    smoke.velocity.multiplyScalar(0.99);
+                    
+                    const scale = smoke.scale * (1 + progress * 1.5);
+                    smoke.mesh.scale.set(scale, scale, scale);
+                    
+                    if (progress > 0.5) {
+                        smoke.mesh.material.opacity = 0.8 * (1 - (progress - 0.5) / 0.5);
+                    }
+                }
+                
+                if (progress < 1) {
+                    requestAnimationFrame(animateExplosion);
+                } else {
+                    if (explosionGroup.parent) {
+                        explosionGroup.parent.remove(explosionGroup);
+                    }
+                }
+            };
+            
+            animateExplosion();
+        }
+    }
 } 

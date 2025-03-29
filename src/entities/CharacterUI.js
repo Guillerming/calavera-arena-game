@@ -5,6 +5,8 @@ export class CharacterUI {
         this.reloadText = null;
         this.directionIndicator = null;
         this.directionText = null;
+        this.healthBar = null;
+        this.healthText = null;
     }
 
     createCannonIndicators() {
@@ -83,6 +85,89 @@ export class CharacterUI {
         } else {
             this.directionText.textContent = 'Valid direction';
             this.directionText.style.color = '#00ff00';
+        }
+    }
+    
+    // Crear indicador de salud
+    createHealthIndicator() {
+        const healthContainer = document.createElement('div');
+        healthContainer.style.position = 'fixed';
+        healthContainer.style.top = '20px';
+        healthContainer.style.left = '20px';
+        healthContainer.style.padding = '10px';
+        healthContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        healthContainer.style.borderRadius = '5px';
+        healthContainer.style.display = 'flex';
+        healthContainer.style.flexDirection = 'column';
+        healthContainer.style.gap = '5px';
+        healthContainer.style.fontFamily = 'Arial, sans-serif';
+        healthContainer.style.color = 'white';
+        healthContainer.style.userSelect = 'none';
+        
+        // Título
+        const title = document.createElement('div');
+        title.textContent = 'Estado del Barco';
+        title.style.fontWeight = 'bold';
+        title.style.marginBottom = '5px';
+        healthContainer.appendChild(title);
+        
+        // Contenedor de la barra de salud
+        const barContainer = document.createElement('div');
+        barContainer.style.width = '200px';
+        barContainer.style.height = '20px';
+        barContainer.style.backgroundColor = '#333';
+        barContainer.style.borderRadius = '3px';
+        barContainer.style.overflow = 'hidden';
+        barContainer.style.position = 'relative';
+        
+        // Barra de salud
+        this.healthBar = document.createElement('div');
+        this.healthBar.style.width = '100%';
+        this.healthBar.style.height = '100%';
+        this.healthBar.style.backgroundColor = '#00cc00';
+        this.healthBar.style.transition = 'width 0.3s, background-color 0.3s';
+        barContainer.appendChild(this.healthBar);
+        
+        // Texto de salud
+        this.healthText = document.createElement('div');
+        this.healthText.style.position = 'absolute';
+        this.healthText.style.top = '0';
+        this.healthText.style.left = '0';
+        this.healthText.style.width = '100%';
+        this.healthText.style.height = '100%';
+        this.healthText.style.display = 'flex';
+        this.healthText.style.justifyContent = 'center';
+        this.healthText.style.alignItems = 'center';
+        this.healthText.style.color = 'white';
+        this.healthText.style.fontWeight = 'bold';
+        this.healthText.style.textShadow = '1px 1px 2px black';
+        this.healthText.textContent = '100 / 100';
+        barContainer.appendChild(this.healthText);
+        
+        healthContainer.appendChild(barContainer);
+        document.body.appendChild(healthContainer);
+        
+        // Actualizar la barra de salud inicialmente
+        this.updateHealthIndicator(this.character.health);
+    }
+    
+    // Actualizar el indicador de salud
+    updateHealthIndicator(health) {
+        if (!this.healthBar || !this.healthText) {
+            this.createHealthIndicator();
+        }
+        
+        const percentage = Math.max(0, Math.min(100, health)) / 100;
+        this.healthBar.style.width = `${percentage * 100}%`;
+        this.healthText.textContent = `${Math.round(health)} / 100`;
+        
+        // Cambiar el color según el nivel de salud
+        if (percentage > 0.6) {
+            this.healthBar.style.backgroundColor = '#00cc00'; // Verde
+        } else if (percentage > 0.3) {
+            this.healthBar.style.backgroundColor = '#cccc00'; // Amarillo
+        } else {
+            this.healthBar.style.backgroundColor = '#cc0000'; // Rojo
         }
     }
 } 

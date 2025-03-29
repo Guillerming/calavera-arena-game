@@ -19,6 +19,13 @@ export class Game {
         this.terrain = new Terrain();
         this.water = new Water();
         this.characterManager = new CharacterManager();
+        this.characterManager.setScene(this.engine.scene);
+        this.characterManager.setTerrain(this.terrain);
+        this.characterManager.setInputManager(this.inputManager);
+        
+        // Asignar el characterManager a la escena para que otros componentes puedan acceder a él
+        this.engine.scene.characterManager = this.characterManager;
+        
         this.debugUI = new DebugUI();
         this.networkManager = new NetworkManager();
         
@@ -133,6 +140,11 @@ export class Game {
         // Añadir callback para colisiones de proyectiles
         this.networkManager.onProjectileCollision = (collisionData) => {
             this.characterManager.handleProjectileCollision(collisionData);
+        };
+
+        // Añadir callback para actualizaciones de salud
+        this.networkManager.onHealthUpdate = (playerData) => {
+            this.characterManager.handleHealthUpdate(playerData);
         };
 
         // Conectar al servidor
