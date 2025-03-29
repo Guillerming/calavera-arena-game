@@ -17,7 +17,6 @@ export class NetworkManager {
         this.ws = new WebSocket('ws://localhost:8050');
 
         this.ws.onopen = () => {
-            console.log('Conectado al servidor');
             this.connected = true;
         };
 
@@ -27,7 +26,6 @@ export class NetworkManager {
             switch (data.type) {
                 case 'init':
                     this.playerId = data.id;
-                    console.log('ID de jugador asignado:', this.playerId);
                     break;
                     
                 case 'players':
@@ -71,7 +69,6 @@ export class NetworkManager {
                 case 'newProjectile':
                     // Nuevo proyectil
                     if (this.onProjectileUpdate) {
-                        console.log('new projectile', data.projectile);
                         this.onProjectileUpdate({
                             id: data.projectile.id,
                             playerId: data.projectile.playerId,
@@ -107,12 +104,10 @@ export class NetworkManager {
         };
 
         this.ws.onclose = () => {
-            console.log('Desconectado del servidor');
             this.connected = false;
         };
 
         this.ws.onerror = (error) => {
-            console.error('Error de WebSocket:', error);
             this.connected = false;
         };
     }
