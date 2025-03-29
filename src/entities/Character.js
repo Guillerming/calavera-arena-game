@@ -115,6 +115,13 @@ export class Character extends THREE.Object3D {
     }
 
     update(deltaTime = 0.016, inputManager = null) {
+        // Si el personaje está muerto, no actualizar movimiento ni cañón
+        if (!this.isAlive) {
+            // Solo actualizar proyectiles ya disparados
+            this.projectilesManager.updateProjectiles(deltaTime);
+            return;
+        }
+        
         this.movement.updateMovement(deltaTime, inputManager);
         this.cannon.updateCannon(deltaTime, inputManager);
         this.projectilesManager.updateProjectiles(deltaTime);
@@ -162,7 +169,7 @@ export class Character extends THREE.Object3D {
     updateProjectiles(deltaTime) {
         this.projectilesManager.updateProjectiles(deltaTime);
     }
-    
+
     createSplashEffect(position) {
         this.effects.createSplashEffect(position);
     }
@@ -233,7 +240,8 @@ export class Character extends THREE.Object3D {
     }
     
     // Métodos para gestionar puntos de vida
-    takeDamage(damage, damageType) {
+    takeDamage(damage, damageType, sourceId = null) {
+        // Si ya está muerto, no procesar más daño
         if (!this.isAlive) return;
         
         // Aplicar el daño a la salud
@@ -243,10 +251,26 @@ export class Character extends THREE.Object3D {
         if (this.health <= 0) {
             this.health = 0;
             this.isAlive = false;
+            
+            // Mostrar efecto visual de daño (antes de onDeath para que sea visible)
+            this.showDamageEffect(damageType);
+            
+            // Manejar lógica de muerte
             this.onDeath();
+            
+            // Enviar actualización de salud a través de la red
+            if (this.networkManager) {
+                // Incluir información de quién causó la muerte
+                this.networkManager.sendHealthUpdate(this.health, this.isAlive, sourceId);
+            }
+            
+            // Actualizar UI de salud
+            this.updateHealthUI();
+            
+            return; // Salir después de procesar la muerte
         }
         
-        // Mostrar efecto visual de daño
+        // Si no murió, mostrar efecto visual de daño normalmente
         this.showDamageEffect(damageType);
         
         // Enviar actualización de salud a través de la red
@@ -259,20 +283,22 @@ export class Character extends THREE.Object3D {
     }
     
     // Método para daño por impacto de proyectil (cañonazo)
-    takeProjectileDamage() {
+    takeProjectileDamage(shooterId = null) {
         // Cañonazos causan daño significativo (25 puntos)
-        this.takeDamage(25, 'projectile');
+        this.takeDamage(25, 'projectile', shooterId);
     }
     
     // Método para daño por colisión con otro barco
-    takeCollisionDamage() {
+    takeCollisionDamage(otherShipId = null) {
         // Colisiones causan daño moderado (12 puntos)
-        this.takeDamage(12, 'collision');
+        this.takeDamage(12, 'collision', otherShipId);
     }
     
     // Método llamado cuando el personaje muere
     onDeath() {
+        // Asegurarse de que esta función solo se ejecuta si realmente está muerto
         if (!this.isAlive) {
+            
             // Ocultar el modelo del barco
             if (this.boat) {
                 this.boat.visible = false;
@@ -284,11 +310,11 @@ export class Character extends THREE.Object3D {
             }
             
             // Mostrar efecto grande de explosión de muerte
+            // Usamos position.clone() para asegurarnos de que la posición es correcta incluso si el barco se mueve
             this.effects.createDeathExplosionEffect(this.position.clone());
             
-            // Si es el jugador local
+            // Programar respawn solo si es el jugador local
             if (this.isLocalPlayer && this.scene) {
-                console.log("¡Barco destruido!");
                 
                 // Programar respawn después de 5 segundos
                 setTimeout(() => {
@@ -300,14 +326,17 @@ export class Character extends THREE.Object3D {
     
     // Método para hacer respawn del barco
     respawn() {
+        
         // Restaurar salud completa
         this.health = 100;
         this.isAlive = true;
         
-        // Colocar el barco en una posición aleatoria en el mapa
-        const spawnX = (Math.random() * 150) - 75;
-        const spawnZ = (Math.random() * 150) - 75;
-        this.position.set(spawnX, 0, spawnZ);
+        // Colocar el barco en una posición aleatoria en el mapa (solo para jugador local)
+        if (this.isLocalPlayer) {
+            const spawnX = (Math.random() * 150) - 75;
+            const spawnZ = (Math.random() * 150) - 75;
+            this.position.set(spawnX, 0, spawnZ);
+        }
         
         // Hacer visible nuevamente el barco
         if (this.boat) {
@@ -322,12 +351,11 @@ export class Character extends THREE.Object3D {
         // Actualizar UI de salud
         this.updateHealthUI();
         
-        // Enviar actualización de salud y posición a través de la red
-        if (this.networkManager) {
+        // Enviar actualización de salud y posición a través de la red (solo jugador local)
+        if (this.isLocalPlayer && this.networkManager) {
             this.networkManager.sendHealthUpdate(this.health, this.isAlive);
         }
         
-        console.log("¡Barco respawn!");
     }
     
     // Mostrar efecto visual de daño

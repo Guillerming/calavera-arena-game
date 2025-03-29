@@ -121,6 +121,12 @@ export class NetworkManager {
                     if (updatedPlayer) {
                         updatedPlayer.health = data.health;
                         updatedPlayer.isAlive = data.isAlive;
+
+                        
+                        // Actualizar posición si está en respawn
+                        if (data.position) {
+                            updatedPlayer.position = data.position;
+                        }
                         
                         if (this.onHealthUpdate) {
                             this.onHealthUpdate(updatedPlayer);
@@ -210,7 +216,7 @@ export class NetworkManager {
     }
 
     // Método para enviar actualización de salud
-    sendHealthUpdate(health, isAlive) {
+    sendHealthUpdate(health, isAlive, killedBy = null) {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message = {
                 type: 'healthUpdate',
@@ -218,6 +224,11 @@ export class NetworkManager {
                 health: health,
                 isAlive: isAlive
             };
+            
+            // Si está muerto (health = 0), indicar quién lo mató
+            if (health === 0 && !isAlive && killedBy) {
+                message.killedBy = killedBy;
+            }
             
             // Si es un respawn (salud = 100 y vivo), también enviar la posición
             if (health === 100 && isAlive === true) {

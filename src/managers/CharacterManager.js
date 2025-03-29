@@ -226,14 +226,53 @@ export class CharacterManager {
 
     // Manejar actualizaciones de salud
     handleHealthUpdate(playerData) {
-        // Ignorar actualizaciones para el jugador local (ya las manejamos localmente)
+        
+        // IMPORTANTE: Manejar actualizaciones para el jugador local
+        // Este es un caso especial para cuando el servidor determina que el jugador ha muerto (por ejemplo, por otro cliente)
         if (playerData.id === this.playerCharacter?.name) {
+            
+            // Actualizar estado de salud del jugador local
+            if (this.playerCharacter.isAlive !== playerData.isAlive) {
+                this.playerCharacter.isAlive = playerData.isAlive;
+                
+                // Si el servidor dice que ha muerto, pero localmente no lo había procesado
+                if (!playerData.isAlive && this.playerCharacter.health > 0) {
+                    this.playerCharacter.health = 0;
+                    this.playerCharacter.onDeath();
+                }
+                // Si el servidor dice que está vivo (respawn), pero localmente no lo había procesado
+                else if (playerData.isAlive && !this.playerCharacter.isAlive) {
+                    this.playerCharacter.health = playerData.health;
+                    
+                    // Si viene con posición, actualizarla
+                    if (playerData.position) {
+                        this.playerCharacter.position.set(
+                            playerData.position.x,
+                            playerData.position.y,
+                            playerData.position.z
+                        );
+                    }
+                    
+                    // Hacer visible el barco
+                    if (this.playerCharacter.boat) {
+                        this.playerCharacter.boat.visible = true;
+                    }
+                    
+                    // Reactivar colisiones
+                    if (this.playerCharacter.colliderMesh) {
+                        this.playerCharacter.colliderMesh.visible = true;
+                    }
+                }
+            }
+            // Actualizar UI de salud
+            this.playerCharacter.updateHealthUI();
             return;
         }
         
-        // Encontrar el personaje del jugador
+        // Manejar actualizaciones para jugadores remotos
         const player = this.characters.get(playerData.id);
         if (player) {
+            
             // Actualizar salud
             player.health = playerData.health;
             
@@ -243,11 +282,11 @@ export class CharacterManager {
                 
                 // Si el jugador acaba de morir
                 if (!player.isAlive) {
-                    console.log(`¡Jugador ${playerData.id} ha sido destruido!`);
                     player.onDeath();
                 } 
                 // Si el jugador acaba de reaparecer
                 else if (player.isAlive && player.health === 100) {
+                    
                     // Actualizar posición si está incluida en los datos
                     if (playerData.position) {
                         player.position.set(

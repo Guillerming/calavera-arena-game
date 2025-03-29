@@ -111,6 +111,11 @@ wss.on('connection', (ws) => {
                 // Actualizar la salud del jugador
                 const playerToUpdate = players.get(playerId);
                 if (playerToUpdate) {
+                    
+                    // Guardar estado anterior
+                    const wasAlive = playerToUpdate.isAlive;
+                    
+                    // Actualizar estado
                     playerToUpdate.health = data.health;
                     playerToUpdate.isAlive = data.isAlive;
                     
@@ -127,13 +132,22 @@ wss.on('connection', (ws) => {
                         isAlive: data.isAlive
                     };
                     
+                    // Si el jugador acaba de morir, agregar información sobre quién lo mató
+                    if (wasAlive && !data.isAlive && data.killedBy) {
+                        updateMessage.killedBy = data.killedBy;
+                    }
+                    
                     // Incluir posición si está disponible
                     if (data.position) {
                         updateMessage.position = data.position;
                     }
                     
-                    // Reenviar información de salud a todos los clientes
-                    broadcast(updateMessage);
+                    // Reenviar información de salud a TODOS los clientes, incluyendo el remitente
+                    wss.clients.forEach(client => {
+                        if (client.readyState === WebSocket.OPEN) {
+                            client.send(JSON.stringify(updateMessage));
+                        }
+                    });
                 }
                 break;
         }

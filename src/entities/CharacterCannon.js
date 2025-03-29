@@ -20,16 +20,21 @@ export class CharacterCannon {
         
         if (inputManager && inputManager.isMouseButtonPressed(0)) {
             if (this.character.cannonReady) {
-                const frontRestrictedAngle = Math.PI / 4;
-                const backRestrictedAngle = Math.PI / 3;
+                // Restricciones angulares para no poder disparar directamente al frente o atrás
+                const frontRestrictedAngle = Math.PI / 4;  // 45 grados hacia adelante
+                const backRestrictedAngle = Math.PI / 3;   // 60 grados hacia atrás
                 
+                // Verifica si el ángulo está en zona restringida frontal
                 const isInFrontRestriction = Math.abs(angleToCamera) < frontRestrictedAngle / 2;
+                
+                // Verifica si el ángulo está en zona restringida trasera
+                // Nos fijamos en qué tan cerca está el ángulo de PI (180 grados, que es hacia atrás)
                 const isInBackRestriction = Math.abs(Math.abs(angleToCamera) - Math.PI) < backRestrictedAngle / 2;
                 
+                
+                // Si no está en ninguna zona restringida, permitir el disparo
                 if (!isInFrontRestriction && !isInBackRestriction) {
                     this.fireCannon();
-                    this.character.cannonReady = false;
-                    this.character.cannonTimer = 0;
                 }
             }
         }
@@ -42,90 +47,72 @@ export class CharacterCannon {
     getAngleToCameraDirection() {
         if (!this.character.cameraController) return 0;
         
+        // Dirección del barco (siempre mira hacia Z negativo)
         const boatDirection = new THREE.Vector3(0, 0, -1);
+        // Aplicar la rotación actual del barco
         const boatRotationMatrix = new THREE.Matrix4();
         boatRotationMatrix.makeRotationY(this.character.rotation.y);
         boatDirection.applyMatrix4(boatRotationMatrix);
         
+        // Dirección de la cámara (también mira hacia Z negativo por defecto)
         const cameraDirection = new THREE.Vector3(0, 0, -1);
+        // Aplicar la rotación de la cámara
         const cameraRotationMatrix = new THREE.Matrix4();
         cameraRotationMatrix.makeRotationY(this.character.cameraController.rotationY);
         cameraDirection.applyMatrix4(cameraRotationMatrix);
         
-        return Math.atan2(
+        // Calcular el ángulo entre ambas direcciones usando atan2
+        // Esto nos da el ángulo en el plano XZ
+        const angle = Math.atan2(
             boatDirection.x * cameraDirection.z - boatDirection.z * cameraDirection.x,
             boatDirection.x * cameraDirection.x + boatDirection.z * cameraDirection.z
         );
+        
+        // Debug
+        
+        return angle;
     }
 
     fireCannon() {
-        if (!this.character.cameraController) return;
-
-        const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
-        const projectileMaterial = new THREE.MeshStandardMaterial({ 
-            color: 0x333333,
-            metalness: 0.8,
-            roughness: 0.3,
-            emissive: 0x000000,
-        });
-        
-        const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
-        projectile.castShadow = true;
-        projectile.receiveShadow = true;
-        
-        const direction = new THREE.Vector3(0, 0, -1);
-        const rotationMatrix = new THREE.Matrix4();
-        rotationMatrix.makeRotationY(this.character.cameraController.rotationY);
-        direction.applyMatrix4(rotationMatrix);
-        
-        const initialPos = new THREE.Vector3();
-        initialPos.copy(this.character.position);
-        
-        const sideOffset = 1.2;
-        const forwardOffset = 0;
-        
-        const boatDirection = new THREE.Vector3(0, 0, -1);
-        const boatRotationMatrix = new THREE.Matrix4();
-        boatRotationMatrix.makeRotationY(this.character.rotation.y);
-        boatDirection.applyMatrix4(boatRotationMatrix);
-        
-        const sideDirection = new THREE.Vector3(-boatDirection.z, 0, boatDirection.x);
-        
-        initialPos.add(sideDirection.multiplyScalar(sideOffset));
-        initialPos.add(boatDirection.multiplyScalar(forwardOffset));
-        initialPos.y = this.character.projectileInitialHeight;
-        
-        projectile.position.copy(initialPos);
-        
-        const initialVelocity = new THREE.Vector3();
-        initialVelocity.x = direction.x * Math.cos(this.character.cannonAngle) * this.character.projectileSpeed;
-        initialVelocity.y = Math.sin(this.character.cannonAngle) * this.character.projectileSpeed;
-        initialVelocity.z = direction.z * Math.cos(this.character.cannonAngle) * this.character.projectileSpeed;
-        
-        const projectileData = {
-            mesh: projectile,
-            velocity: initialVelocity,
-            initialPosition: initialPos.clone(),
-            launchTime: performance.now(),
-            rotationSpeed: {
-                x: (Math.random() - 0.5) * 0.3,
-                y: (Math.random() - 0.5) * 0.3,
-                z: (Math.random() - 0.5) * 0.3
-            },
-            id: this.character.projectiles.length + 1
-        };
-        
-        this.character.projectiles.push(projectileData);
-        
-        if (this.character.networkManager) {
-            this.character.networkManager.sendProjectile(projectileData);
+        if (!this.character.isAlive) {
+            return;
         }
         
-        if (this.character.scene) {
-            this.character.scene.add(projectile);
+        if (this.character.cannonReady) {
+            this.character.cannonReady = false;
+            this.character.cannonTimer = 0;
             
-            const flashPosition = initialPos.clone();
-            this.character.createMuzzleFlash(flashPosition, direction);
+            const position = new THREE.Vector3();
+            this.character.getWorldPosition(position);
+            position.y += this.character.projectileInitialHeight;
+            
+            const cameraDirection = new THREE.Vector3(0, 0, -1);
+            if (this.character.cameraController) {
+                const rotationMatrix = new THREE.Matrix4();
+                rotationMatrix.makeRotationY(this.character.cameraController.rotationY);
+                cameraDirection.applyMatrix4(rotationMatrix);
+            } else {
+                cameraDirection.applyQuaternion(this.character.quaternion);
+            }
+            
+            const boatDirection = new THREE.Vector3(0, 0, -1);
+            boatDirection.applyQuaternion(this.character.quaternion);
+            
+            const sideDirection = new THREE.Vector3(-boatDirection.z, 0, boatDirection.x);
+            
+            const angleToCamera = this.getAngleToCameraDirection();
+            const sideOffset = (angleToCamera > 0) ? 1.0 : -1.0;
+            
+            position.add(sideDirection.multiplyScalar(sideOffset));
+            
+            cameraDirection.y = Math.sin(this.character.cannonAngle);
+            cameraDirection.normalize();
+            
+            const muzzlePosition = position.clone();
+            this.character.createMuzzleFlash(muzzlePosition, cameraDirection);
+            
+            const projectileId = Math.random().toString(36).substring(7);
+            this.character.projectilesManager.createProjectile(position, cameraDirection, projectileId);
         }
     }
 } 
