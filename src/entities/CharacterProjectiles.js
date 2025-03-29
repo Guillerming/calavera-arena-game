@@ -84,10 +84,17 @@ export class CharacterProjectiles {
         projectile.castShadow = true;
         projectile.receiveShadow = true;
         
+        // Asegurar que tenemos las coordenadas de posición
+        const position = projectileData.position || projectileData.initialPosition;
+        if (!position) {
+            console.error('No se encontró información de posición en los datos del proyectil:', projectileData);
+            return;
+        }
+        
         projectile.position.set(
-            projectileData.position.x,
-            projectileData.position.y,
-            projectileData.position.z
+            position.x,
+            position.y,
+            position.z
         );
         
         const projectileObj = {
@@ -111,6 +118,22 @@ export class CharacterProjectiles {
         
         if (this.character.scene) {
             this.character.scene.add(projectile);
+            
+            // Crear efecto de disparo para proyectiles de otros jugadores
+            // Necesitamos calcular la dirección basada en la velocidad del proyectil
+            const direction = new THREE.Vector3(
+                projectileData.velocity.x,
+                0, // Ignoramos la componente Y para la dirección
+                projectileData.velocity.z
+            ).normalize();
+            
+            // Crear el efecto de disparo en la posición inicial del proyectil
+            const flashPosition = projectile.position.clone();
+            
+            // Añadir pequeño retraso para mejor visualización (evita parpadeos y asegura que se vea bien)
+            setTimeout(() => {
+                this.character.createMuzzleFlash(flashPosition, direction);
+            }, 10);
         }
     }
     

@@ -145,10 +145,25 @@ export class CharacterManager {
             return;
         }
 
+        // Ignorar los proyectiles del jugador local (ya los manejamos localmente)
+        if (projectileData.playerId === this.playerCharacter?.name) {
+            return;
+        }
+
         // Encontrar el jugador que disparó el proyectil
         const player = this.characters.get(projectileData.playerId);
         if (player) {
-            player.createOtherPlayerProjectile(projectileData);
+            // Crear el proyectil remoto con todos los datos necesarios
+            player.createOtherPlayerProjectile({
+                ...projectileData,
+                initialPosition: { 
+                    x: projectileData.position.x,
+                    y: projectileData.position.y,
+                    z: projectileData.position.z
+                }
+            });
+        } else {
+            console.warn(`No se encontró el jugador con ID: ${projectileData.playerId} para crear el proyectil`);
         }
     }
 

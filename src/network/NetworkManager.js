@@ -147,7 +147,8 @@ export class NetworkManager {
                         y: projectileData.velocity.y,
                         z: projectileData.velocity.z
                     },
-                    rotationSpeed: projectileData.rotationSpeed
+                    rotationSpeed: projectileData.rotationSpeed,
+                    timestamp: performance.now() // Añadir timestamp para sincronización del efecto visual
                 }
             };
             this.ws.send(JSON.stringify(message));
