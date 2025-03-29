@@ -27,7 +27,7 @@ export class CharacterCannon {
                 const isInBackRestriction = Math.abs(Math.abs(angleToCamera) - Math.PI) < backRestrictedAngle / 2;
                 
                 if (!isInFrontRestriction && !isInBackRestriction) {
-                    this.character.fireCannon();
+                    this.fireCannon();
                     this.character.cannonReady = false;
                     this.character.cannonTimer = 0;
                 }
@@ -123,7 +123,9 @@ export class CharacterCannon {
         
         if (this.character.scene) {
             this.character.scene.add(projectile);
-            this.character.createMuzzleFlash(initialPos, direction);
+            
+            const flashPosition = initialPos.clone();
+            this.character.createMuzzleFlash(flashPosition, direction);
         }
     }
 } 

@@ -87,16 +87,20 @@ export class CharacterEffects {
         
         flashGroup.position.copy(position);
         
-        if (this.character.boat && this.character.boat.parent) {
-            this.character.boat.parent.add(flashGroup);
+        if (this.character.scene) {
+            this.character.scene.add(flashGroup);
             
             const initialTime = performance.now();
             const flashDuration = 1500;
+            
+            const originalPosition = position.clone();
             
             const animateFlash = () => {
                 const now = performance.now();
                 const elapsed = now - initialTime;
                 const progress = Math.min(elapsed / flashDuration, 1);
+                
+                flashGroup.position.copy(originalPosition);
                 
                 if (progress < 0.2) {
                     const flashScale = progress < 0.1 ? progress * 10 : 1 - (progress - 0.1) / 0.1;
