@@ -285,4 +285,27 @@ export class Terrain {
                position.z >= -halfDepth && 
                position.z <= halfDepth;
     }
+
+    // Método para verificar si un punto está en un lugar seguro (agua, lejos de tierra)
+    isSafePlace(x, z, safeDistance = 10) {
+        // Verificar si está en agua (altura = 0)
+        if (this.getHeightAt(x, z) > 0) {
+            return false; // El punto está en tierra
+        }
+        
+        // Verificar el área circundante para asegurar que no hay tierra cerca
+        for (let dx = -safeDistance; dx <= safeDistance; dx += safeDistance / 2) {
+            for (let dz = -safeDistance; dz <= safeDistance; dz += safeDistance / 2) {
+                // Ignorar el punto central (ya lo verificamos)
+                if (dx === 0 && dz === 0) continue;
+                
+                // Verificar si hay tierra en este punto
+                if (this.getHeightAt(x + dx, z + dz) > 0) {
+                    return false; // Hay tierra cerca
+                }
+            }
+        }
+        
+        return true; // Es un lugar seguro
+    }
 }

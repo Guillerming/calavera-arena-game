@@ -326,16 +326,26 @@ export class Character extends THREE.Object3D {
     
     // Método para hacer respawn del barco
     respawn() {
+        console.log("Ejecutando respawn para", this.isLocalPlayer ? "jugador local" : "jugador remoto");
         
         // Restaurar salud completa
         this.health = 100;
         this.isAlive = true;
         
-        // Colocar el barco en una posición aleatoria en el mapa (solo para jugador local)
+        // Colocar el barco en una posición segura (solo para jugador local)
         if (this.isLocalPlayer) {
-            const spawnX = (Math.random() * 150) - 75;
-            const spawnZ = (Math.random() * 150) - 75;
-            this.position.set(spawnX, 0, spawnZ);
+            // Buscar coordenadas seguras a través del scene.characterManager
+            if (this.scene && this.scene.characterManager) {
+                const safeCoordinates = this.scene.characterManager.getSafeCoordinates(15);
+                console.log("Coordenadas seguras para respawn:", safeCoordinates);
+                this.position.set(safeCoordinates.x, 0, safeCoordinates.z);
+            } else {
+                // Fallback a posición aleatoria si no tenemos acceso al characterManager
+                console.warn("No se encontró CharacterManager, usando posición aleatoria");
+                const spawnX = (Math.random() * 150) - 75;
+                const spawnZ = (Math.random() * 150) - 75;
+                this.position.set(spawnX, 0, spawnZ);
+            }
         }
         
         // Hacer visible nuevamente el barco
@@ -354,8 +364,10 @@ export class Character extends THREE.Object3D {
         // Enviar actualización de salud y posición a través de la red (solo jugador local)
         if (this.isLocalPlayer && this.networkManager) {
             this.networkManager.sendHealthUpdate(this.health, this.isAlive);
+            console.log("Enviando actualización de respawn con posición:", this.position);
         }
         
+        console.log("¡Barco respawn completado en posición:", this.position.x, this.position.z, "!");
     }
     
     // Mostrar efecto visual de daño

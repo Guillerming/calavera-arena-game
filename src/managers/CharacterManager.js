@@ -65,6 +65,11 @@ export class CharacterManager {
         player.setCameraController(this.scene.cameraController);
         player.isLocalPlayer = true; // Marcar como jugador local
         
+        // Asignar posición segura
+        const safeCoordinates = this.getSafeCoordinates(15);
+        console.log(`Asignando coordenadas seguras para jugador local:`, safeCoordinates);
+        player.position.set(safeCoordinates.x, 0, safeCoordinates.z);
+        
         // Añadir el personaje a la escena
         this.scene.add(player);
         
@@ -106,17 +111,31 @@ export class CharacterManager {
     createOtherPlayer(playerData) {
         const player = this.createCharacter(playerData.id);
         if (player) {
-            player.position.set(
-                playerData.position.x,
-                playerData.position.y,
-                playerData.position.z
-            );
-            player.rotation.y = playerData.rotation.y;
+            // Si tiene una posición definida, usarla
+            if (playerData.position) {
+                player.position.set(
+                    playerData.position.x,
+                    playerData.position.y,
+                    playerData.position.z
+                );
+            } else {
+                // Si no tiene posición, asignarle una segura
+                const safeCoordinates = this.getSafeCoordinates(15);
+                console.log(`Asignando coordenadas seguras para nuevo jugador ${playerData.id}:`, safeCoordinates);
+                player.position.set(safeCoordinates.x, 0, safeCoordinates.z);
+            }
+            
+            // Si tiene rotación definida, usarla
+            if (playerData.rotation) {
+                player.rotation.y = playerData.rotation.y;
+            }
             
             // Asegurarnos de que el jugador remoto tiene el radio de colisión correcto
             player.radius = 1.5; // Radio de colisión del barco
             player.height = 2;   // Altura de colisión del barco
         }
+        
+        return player;
     }
 
     // Añadir método para eliminar un jugador
@@ -316,5 +335,76 @@ export class CharacterManager {
             // Actualizar UI de salud
             player.updateHealthUI();
         }
+    }
+
+    // Verificar si un punto no colisiona con otros jugadores
+    isPointAwayFromPlayers(x, z, safeDistance = 10) {
+        // Verificar para todos los jugadores en el mapa
+        for (const character of this.characters.values()) {
+            if (!character.isAlive) continue; // Ignorar jugadores muertos
+            
+            // Calcular distancia al cuadrado (más eficiente que calcular la raíz cuadrada)
+            const dx = character.position.x - x;
+            const dz = character.position.z - z;
+            const distanceSquared = dx * dx + dz * dz;
+            
+            // Si está demasiado cerca, no es seguro
+            if (distanceSquared < safeDistance * safeDistance) {
+                return false;
+            }
+        }
+        
+        // Verificar también para el jugador local
+        if (this.playerCharacter && this.playerCharacter.isAlive) {
+            const dx = this.playerCharacter.position.x - x;
+            const dz = this.playerCharacter.position.z - z;
+            const distanceSquared = dx * dx + dz * dz;
+            
+            if (distanceSquared < safeDistance * safeDistance) {
+                return false;
+            }
+        }
+        
+        return true; // No colisiona con ningún jugador
+    }
+
+    // Obtener coordenadas seguras para spawn
+    getSafeCoordinates(safeDistance = 10, maxAttempts = 100) {
+        // Verificar que tenemos el terreno
+        if (!this.terrain) {
+            console.warn("No hay terreno para verificar coordenadas seguras, usando valores predeterminados");
+            return { x: 0, z: 0 };
+        }
+        
+        // Intentar encontrar coordenadas seguras
+        let attempts = 0;
+        let foundSafeSpot = false;
+        let x, z;
+        
+        do {
+            // Generar coordenadas aleatorias dentro del mapa
+            x = (Math.random() * 300) - 150; // -150 a 150
+            z = (Math.random() * 300) - 150; // -150 a 150
+            
+            // Verificar si es un lugar seguro (lejos de tierra)
+            const isSafeTerrain = this.terrain.isSafePlace(x, z, safeDistance);
+            
+            // Verificar si está lejos de otros jugadores
+            const isSafeFromPlayers = this.isPointAwayFromPlayers(x, z, safeDistance);
+            
+            // Ambas condiciones deben cumplirse
+            foundSafeSpot = isSafeTerrain && isSafeFromPlayers;
+            
+            attempts++;
+        } while (!foundSafeSpot && attempts < maxAttempts);
+        
+        // Si después de varios intentos no encontramos un lugar seguro, usar una posición predeterminada
+        if (!foundSafeSpot) {
+            console.warn(`No se encontró un lugar seguro después de ${maxAttempts} intentos, usando coordenadas predeterminadas`);
+            return { x: 0, z: 0 };
+        }
+        
+        console.log(`Lugar seguro encontrado en (${x.toFixed(2)}, ${z.toFixed(2)}) después de ${attempts} intentos`);
+        return { x, z };
     }
 }
