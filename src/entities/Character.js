@@ -18,10 +18,12 @@ export class Character extends THREE.Object3D {
         // Configuración de disparo
         this.cannonReady = true;
         this.cannonCooldown = 1000; // 1 segundo entre disparos
+        this.cannonTimer = 0;
         this.projectileSpeed = 60;
         this.projectileGravity = 4.9;
         this.maxRange = 200;
-        this.cannonAngle = Math.PI / 10; // ~18 grados
+        this.cannonAngle = Math.PI / 35; // ~18 grados
+        this.projectileInitialHeight = 0.5; // Altura inicial del proyectil
         this.prevMouseDown = false;
         
         // Límites del mapa
@@ -249,31 +251,31 @@ export class Character extends THREE.Object3D {
     updateCannon(deltaTime, inputManager) {
         // Actualizar el temporizador del cañón
         if (!this.cannonReady) {
-            this.cannonTimer += deltaTime;
+            this.cannonTimer += deltaTime * 1000; // Convertir deltaTime a milisegundos
             if (this.cannonTimer >= this.cannonCooldown) {
                 this.cannonReady = true;
                 this.cannonTimer = 0;
+                console.log('🟢 Cañón listo para disparar');
             }
         }
         
-        // Variable para almacenar si el botón del mouse está siendo presionado
-        const mouseDown = inputManager ? inputManager.isMouseButtonPressed(0) : false;
+        // Variable para almacenar si la tecla Enter está siendo presionada
+        const enterPressed = inputManager ? inputManager.isKeyPressed('Enter') : false;
         
-        // Verificar si se debe disparar cuando se suelta el botón izquierdo
-        if (inputManager && this.prevMouseDown && !mouseDown && this.cannonReady) {
+        // Verificar si se debe disparar cuando se presiona Enter
+        if (enterPressed && this.cannonReady) {
+            console.log('🎯 Intentando disparar el cañón');
             this.fireCannon();
             this.cannonReady = false;
+            this.cannonTimer = 0;
         }
-        
-        // Actualizar el estado anterior del mouse
-        this.prevMouseDown = mouseDown;
     }
     
     fireCannon() {
+        console.log('💥 Método fireCannon iniciado');
+        
         // Crear la geometría y material para el proyectil
         const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
-        
-        // Material metálico para la bola de cañón
         const projectileMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x333333,
             metalness: 0.8,
@@ -285,19 +287,22 @@ export class Character extends THREE.Object3D {
         projectile.castShadow = true;
         projectile.receiveShadow = true;
         
-        // Calcular la dirección hacia adelante del barco
+        // Calcular la dirección hacia adelante del barco usando la rotación del Character
         const direction = new THREE.Vector3(0, 0, -1);
-        direction.applyQuaternion(this.boat.quaternion);
+        const rotationMatrix = new THREE.Matrix4();
+        rotationMatrix.makeRotationY(this.rotation.y);
+        direction.applyMatrix4(rotationMatrix);
         
-        // Posición inicial del proyectil (en la boca del cañón)
+        // Posición inicial del proyectil
         const initialPos = new THREE.Vector3();
-        initialPos.copy(this.boat.position);
+        initialPos.copy(this.position);
+        console.log('📍 Posición inicial del barco:', initialPos);
         
-        // Ajustar la posición inicial para que salga desde el cañón
-        // Considerando la posición del cañón y su ángulo de elevación
-        const cannonOffset = direction.clone().multiplyScalar(2.4); // Distancia desde el centro del barco a la boca del cañón
+        // Ajustar la posición inicial para que salga desde el frente del barco
+        const cannonOffset = direction.clone().multiplyScalar(2.4);
         initialPos.add(cannonOffset);
-        initialPos.y += this.projectileInitialHeight; // Elevar desde el nivel del agua
+        initialPos.y = this.projectileInitialHeight;
+        console.log('📍 Posición ajustada del proyectil:', initialPos);
         
         // Establecer la posición del proyectil
         projectile.position.copy(initialPos);
@@ -307,13 +312,7 @@ export class Character extends THREE.Object3D {
         initialVelocity.x = direction.x * Math.cos(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.y = Math.sin(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.z = direction.z * Math.cos(this.cannonAngle) * this.projectileSpeed;
-        
-        // Generar velocidades de rotación aleatorias
-        const rotationSpeed = {
-            x: (Math.random() - 0.5) * 0.3,
-            y: (Math.random() - 0.5) * 0.3,
-            z: (Math.random() - 0.5) * 0.3
-        };
+        console.log('🚀 Velocidad inicial del proyectil:', initialVelocity);
         
         // Añadir el proyectil a la lista de proyectiles activos
         this.projectiles.push({
@@ -321,24 +320,23 @@ export class Character extends THREE.Object3D {
             velocity: initialVelocity,
             initialPosition: initialPos.clone(),
             launchTime: performance.now(),
-            rotationSpeed: rotationSpeed
+            rotationSpeed: {
+                x: (Math.random() - 0.5) * 0.3,
+                y: (Math.random() - 0.5) * 0.3,
+                z: (Math.random() - 0.5) * 0.3
+            }
         });
         
         // Añadir el proyectil a la escena
-        if (this.boat.parent) {
-            this.boat.parent.add(projectile);
+        if (this.scene) {
+            console.log('🎯 Añadiendo proyectil a la escena');
+            this.scene.add(projectile);
             
-            // Crear efecto de fogonazo en la boca del cañón
-            // Calcular posición exacta del fogonazo
-            const flashPosition = new THREE.Vector3();
-            flashPosition.copy(initialPos);
-            
-            // Crear el efecto
-            this.createMuzzleFlash(flashPosition, direction);
+            // Crear efecto de fogonazo
+            this.createMuzzleFlash(initialPos, direction);
+        } else {
+            console.error('❌ No se puede añadir el proyectil: this.scene es null');
         }
-        
-        // Reiniciar el temporizador de enfriamiento
-        this.cannonCooldown = 1000; // 1 segundo entre disparos
     }
     
     // Crear efecto de disparo del cañón
@@ -524,6 +522,10 @@ export class Character extends THREE.Object3D {
     
     // Actualizar los proyectiles en movimiento
     updateProjectiles(deltaTime) {
+        if (this.projectiles.length > 0) {
+            console.log('🚀 Actualizando', this.projectiles.length, 'proyectiles');
+        }
+        
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.projectiles[i];
             
@@ -534,73 +536,38 @@ export class Character extends THREE.Object3D {
             const newPosition = new THREE.Vector3();
             newPosition.x = projectile.initialPosition.x + projectile.velocity.x * timeElapsed;
             newPosition.z = projectile.initialPosition.z + projectile.velocity.z * timeElapsed;
-            
-            // El componente Y considera la gravedad: y = y₀ + v₀·t - ½·g·t²
             newPosition.y = projectile.initialPosition.y + 
-                            projectile.velocity.y * timeElapsed - 
-                            0.5 * this.projectileGravity * timeElapsed * timeElapsed;
+                          projectile.velocity.y * timeElapsed - 
+                          0.5 * this.projectileGravity * timeElapsed * timeElapsed;
             
             // Actualizar la posición del proyectil
             projectile.mesh.position.copy(newPosition);
             
-            // Aplicar rotación al proyectil para que gire mientras vuela
+            // Obtener la altura del terreno en la nueva posición
+            const terrainHeight = this.terrain ? this.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
+            console.log('🌍 Altura del terreno:', terrainHeight, 'Posición Y:', newPosition.y);
+            
+            // Verificar colisiones
+            if (newPosition.y <= 0) {
+                console.log('💦 Impacto en agua en:', newPosition);
+                this.createSplashEffect(newPosition);
+                if (projectile.mesh.parent) {
+                    projectile.mesh.parent.remove(projectile.mesh);
+                }
+                this.projectiles.splice(i, 1);
+            } else if (newPosition.y <= terrainHeight) {
+                console.log('💥 Impacto en terreno en:', newPosition);
+                this.createExplosionEffect(newPosition);
+                if (projectile.mesh.parent) {
+                    projectile.mesh.parent.remove(projectile.mesh);
+                }
+                this.projectiles.splice(i, 1);
+            }
+            
+            // Aplicar rotación al proyectil
             projectile.mesh.rotation.x += projectile.rotationSpeed.x * deltaTime;
             projectile.mesh.rotation.y += projectile.rotationSpeed.y * deltaTime;
             projectile.mesh.rotation.z += projectile.rotationSpeed.z * deltaTime;
-            
-            // Obtener la altura del terreno en la posición actual
-            const terrainHeight = this.scene.terrain ? this.scene.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
-            
-            // Verificar colisión con otros barcos (si tenemos una función para ello)
-            let hitShip = false;
-            if (typeof this.checkProjectileShipCollision === 'function') {
-                hitShip = this.checkProjectileShipCollision(projectile.mesh);
-            }
-            
-            // Verificar si el proyectil ha caído al agua, ha golpeado el terreno o ha colisionado con un barco
-            if (newPosition.y < 0 || 
-                (newPosition.y < terrainHeight && terrainHeight > 0) ||
-                hitShip) {
-                
-                // Determinar qué tipo de fin tuvo el proyectil
-                let hitType = 'none';
-                
-                if (newPosition.y < 0) {
-                    hitType = 'water'; // Impacto en agua
-                } else if (newPosition.y < terrainHeight && terrainHeight > 0) {
-                    hitType = 'terrain'; // Impacto en terreno
-                } else if (hitShip) {
-                    hitType = 'ship'; // Impacto en barco
-                }
-                
-                // Eliminar el proyectil de la escena
-                if (projectile.mesh.parent) {
-                    projectile.mesh.parent.remove(projectile.mesh);
-                }
-                
-                // Crear efecto apropiado según el tipo de impacto
-                if (hitType === 'water') {
-                    this.createSplashEffect(newPosition);
-                } else if (hitType === 'terrain') {
-                    this.createExplosionEffect(newPosition);
-                } else if (hitType === 'ship') {
-                    // Aquí podríamos tener un efecto especial para impacto en barco
-                    this.createExplosionEffect(newPosition);
-                }
-                
-                // Eliminar el proyectil de la lista
-                this.projectiles.splice(i, 1);
-            }
-            
-            // También eliminar proyectiles que estén muy lejos para optimizar rendimiento
-            // pero solo basado en consideraciones técnicas, no de gameplay
-            const distanceFromOrigin = newPosition.distanceTo(new THREE.Vector3(0, 0, 0));
-            if (distanceFromOrigin > 1000) { // Distancia de eliminación muy grande (1 kilómetro)
-                if (projectile.mesh.parent) {
-                    projectile.mesh.parent.remove(projectile.mesh);
-                }
-                this.projectiles.splice(i, 1);
-            }
         }
     }
     
