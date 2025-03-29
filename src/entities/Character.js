@@ -113,6 +113,25 @@ export class Character extends THREE.Object3D {
             } else if (inputManager.isKeyPressed('KeyS')) {
                 this.currentSpeed = Math.max(this.minSpeed, this.currentSpeed - this.speedChangeRate * deltaTime);
             }
+
+            // Control de rotación con A/D
+            // Para un giro de 360º en 15s, necesitamos 2π/15 radianes por segundo
+            const rotationRate = (2 * Math.PI) / 15;
+            
+            if (inputManager.isKeyPressed('KeyA')) {
+                // Rotar a la izquierda
+                this.rotation.y += rotationRate * deltaTime;
+                if (this.boat) {
+                    this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
+                }
+            }
+            if (inputManager.isKeyPressed('KeyD')) {
+                // Rotar a la derecha
+                this.rotation.y -= rotationRate * deltaTime;
+                if (this.boat) {
+                    this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
+                }
+            }
         }
 
         // Actualizar el indicador de velocidad
@@ -122,10 +141,8 @@ export class Character extends THREE.Object3D {
 
         const currentPosition = this.position.clone();
         
-        // Siempre moverse en la dirección actual
+        // Siempre moverse en la dirección actual del barco (no de la cámara)
         const direction = new THREE.Vector3(0, 0, -1);
-        
-        // Aplicar la rotación actual del barco
         const rotationMatrix = new THREE.Matrix4();
         rotationMatrix.makeRotationY(this.rotation.y);
         direction.applyMatrix4(rotationMatrix);

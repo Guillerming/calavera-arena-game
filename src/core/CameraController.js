@@ -33,9 +33,6 @@ export class CameraController {
                 )
             );
             
-            // El personaje siempre mira en la dirección de la cámara (solo horizontalmente)
-            this.target.rotation.y = this.rotationY;
-            
             // Reiniciar el delta del ratón
             inputManager.resetMouseDelta();
         }
