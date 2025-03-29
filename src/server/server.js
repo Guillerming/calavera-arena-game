@@ -64,19 +64,18 @@ wss.on('connection', (ws) => {
 
             case 'fireProjectile':
                 // Crear nuevo proyectil
-                const projectileId = Math.random().toString(36).substring(7);
                 const projectile = {
-                    id: projectileId,
-                    playerId: playerId,
-                    position: data.position,
-                    velocity: data.velocity,
-                    initialPosition: data.initialPosition,
-                    launchTime: data.launchTime
+                    id: data.projectile.id,
+                    playerId: data.projectile.playerId,
+                    position: data.projectile.position,
+                    velocity: data.projectile.velocity,
+                    rotationSpeed: data.projectile.rotationSpeed
                 };
                 
-                projectiles.set(projectileId, projectile);
+                // Guardar el proyectil
+                projectiles.set(projectile.id, projectile);
                 
-                // Broadcast del nuevo proyectil a todos los jugadores
+                // Enviar el proyectil a todos los clientes
                 broadcast({
                     type: 'newProjectile',
                     projectile: projectile
@@ -86,9 +85,12 @@ wss.on('connection', (ws) => {
             case 'removeProjectile':
                 // Eliminar proyectil
                 projectiles.delete(data.projectileId);
+                
+                // Notificar a todos los clientes
                 broadcast({
                     type: 'removeProjectile',
-                    projectileId: data.projectileId
+                    projectileId: data.projectileId,
+                    playerId: data.playerId
                 });
                 break;
         }

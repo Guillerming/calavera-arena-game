@@ -121,6 +121,15 @@ export class Game {
             this.characterManager.removePlayer(playerId);
         };
 
+        // Añadir callbacks para proyectiles
+        this.networkManager.onProjectileUpdate = (projectileData) => {
+            this.characterManager.handleProjectileUpdate(projectileData);
+        };
+
+        this.networkManager.onProjectileRemove = (projectileData) => {
+            this.characterManager.handleProjectileRemove(projectileData);
+        };
+
         // Conectar al servidor
         this.networkManager.connect();
 

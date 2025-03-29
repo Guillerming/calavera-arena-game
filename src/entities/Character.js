@@ -535,7 +535,8 @@ export class Character extends THREE.Object3D {
                 x: (Math.random() - 0.5) * 0.3,
                 y: (Math.random() - 0.5) * 0.3,
                 z: (Math.random() - 0.5) * 0.3
-            }
+            },
+            id: this.projectiles.length + 1 // Assuming a simple ID system
         };
         
         this.projectiles.push(projectileData);
@@ -1195,5 +1196,69 @@ export class Character extends THREE.Object3D {
     // Añadir método para establecer el terreno
     setTerrain(terrain) {
         this.terrain = terrain;
+    }
+
+    // Añadir método para crear un proyectil de otro jugador
+    createOtherPlayerProjectile(projectileData) {
+
+        // Crear la geometría y material para el proyectil
+        const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
+        const projectileMaterial = new THREE.MeshStandardMaterial({ 
+            color: 0x333333,
+            metalness: 0.8,
+            roughness: 0.3,
+            emissive: 0x000000,
+        });
+        
+        const projectile = new THREE.Mesh(projectileGeometry, projectileMaterial);
+        projectile.castShadow = true;
+        projectile.receiveShadow = true;
+        
+        // Establecer la posición inicial
+        projectile.position.set(
+            projectileData.position.x,
+            projectileData.position.y,
+            projectileData.position.z
+        );
+        
+        // Crear el objeto del proyectil
+        const projectileObj = {
+            mesh: projectile,
+            velocity: new THREE.Vector3(
+                projectileData.velocity.x,
+                projectileData.velocity.y,
+                projectileData.velocity.z
+            ),
+            initialPosition: projectile.position.clone(),
+            launchTime: performance.now(),
+            rotationSpeed: projectileData.rotationSpeed || {
+                x: (Math.random() - 0.5) * 0.3,
+                y: (Math.random() - 0.5) * 0.3,
+                z: (Math.random() - 0.5) * 0.3
+            },
+            id: projectileData.id
+        };
+        
+        // Añadir el proyectil a la lista local
+        this.projectiles.push(projectileObj);
+        
+        // Añadir el proyectil a la escena
+        if (this.scene) {
+            this.scene.add(projectile);
+        }
+    }
+
+    // Añadir método para eliminar un proyectil
+    removeProjectile(projectileId) {
+        const projectile = this.projectiles.find(p => p.id === projectileId);
+        if (projectile) {
+            if (projectile.mesh.parent) {
+                projectile.mesh.parent.remove(projectile.mesh);
+            }
+            const index = this.projectiles.indexOf(projectile);
+            if (index > -1) {
+                this.projectiles.splice(index, 1);
+            }
+        }
     }
 } 

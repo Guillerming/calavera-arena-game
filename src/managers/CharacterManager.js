@@ -136,4 +136,34 @@ export class CharacterManager {
             this.characters.delete(playerId);
         }
     }
+
+    // Añadir método para manejar proyectiles de otros jugadores
+    handleProjectileUpdate(projectileData) {
+        // Verificar que tenemos los datos necesarios
+        if (!projectileData || !projectileData.playerId) {
+            console.error('Datos de proyectil incompletos:', projectileData);
+            return;
+        }
+
+        // Encontrar el jugador que disparó el proyectil
+        const player = this.characters.get(projectileData.playerId);
+        if (player) {
+            player.createOtherPlayerProjectile(projectileData);
+        }
+    }
+
+    // Añadir método para eliminar proyectiles
+    handleProjectileRemove(projectileData) {
+        // Verificar que tenemos los datos necesarios
+        if (!projectileData || !projectileData.projectileId || !projectileData.playerId) {
+            console.error('Datos de eliminación de proyectil incompletos:', projectileData);
+            return;
+        }
+
+        // Encontrar el jugador que disparó el proyectil
+        const player = this.characters.get(projectileData.playerId);
+        if (player) {
+            player.removeProjectile(projectileData.projectileId);
+        }
+    }
 }

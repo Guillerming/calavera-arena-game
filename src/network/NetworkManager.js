@@ -70,17 +70,37 @@ export class NetworkManager {
 
                 case 'newProjectile':
                     // Nuevo proyectil
-                    this.projectiles.set(data.projectile.id, data.projectile);
                     if (this.onProjectileUpdate) {
-                        this.onProjectileUpdate(data.projectile);
+                        console.log('new projectile', data.projectile);
+                        this.onProjectileUpdate({
+                            id: data.projectile.id,
+                            playerId: data.projectile.playerId,
+                            position: {
+                                x: data.projectile.position.x,
+                                y: data.projectile.position.y,
+                                z: data.projectile.position.z
+                            },
+                            velocity: {
+                                x: data.projectile.velocity.x,
+                                y: data.projectile.velocity.y,
+                                z: data.projectile.velocity.z
+                            },
+                            rotationSpeed: data.projectile.rotationSpeed || {
+                                x: (Math.random() - 0.5) * 0.3,
+                                y: (Math.random() - 0.5) * 0.3,
+                                z: (Math.random() - 0.5) * 0.3
+                            }
+                        });
                     }
                     break;
 
                 case 'removeProjectile':
                     // Eliminar proyectil
-                    this.projectiles.delete(data.projectileId);
                     if (this.onProjectileRemove) {
-                        this.onProjectileRemove(data.projectileId);
+                        this.onProjectileRemove({
+                            projectileId: data.projectileId,
+                            playerId: data.playerId
+                        });
                     }
                     break;
             }
@@ -119,7 +139,9 @@ export class NetworkManager {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message = {
                 type: 'fireProjectile',
-                data: {
+                projectile: {
+                    id: projectileData.id,
+                    playerId: this.playerId,
                     position: {
                         x: projectileData.initialPosition.x,
                         y: projectileData.initialPosition.y,
@@ -142,9 +164,8 @@ export class NetworkManager {
         if (this.ws && this.ws.readyState === WebSocket.OPEN) {
             const message = {
                 type: 'removeProjectile',
-                data: {
-                    id: projectileId
-                }
+                projectileId: projectileId,
+                playerId: this.playerId
             };
             this.ws.send(JSON.stringify(message));
         }
@@ -173,13 +194,13 @@ export class NetworkManager {
                 }
                 break;
 
-            case 'projectileUpdate':
+            case 'newProjectile':
                 if (this.onProjectileUpdate) {
                     this.onProjectileUpdate(message.data);
                 }
                 break;
 
-            case 'projectileRemove':
+            case 'removeProjectile':
                 if (this.onProjectileRemove) {
                     this.onProjectileRemove(message.data);
                 }
