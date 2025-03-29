@@ -1145,18 +1145,18 @@ export class Character extends THREE.Object3D {
     }
 
     // Añadir método para verificar colisiones con otros jugadores
-    checkCollisionWithPlayer(projectilePos, playerData) {
+    checkCollisionWithPlayer(newPosition, playerData) {
         const playerPos = new THREE.Vector3(
             playerData.position.x,
             playerData.position.y,
             playerData.position.z
         );
 
-        // Calcular distancia entre el proyectil y el jugador
-        const distance = projectilePos.distanceTo(playerPos);
+        // Calcular distancia entre el jugador y el otro jugador
+        const distance = newPosition.distanceTo(playerPos);
         
-        // Verificar si el proyectil está dentro del radio de colisión del jugador
-        return distance <= this.radius;
+        // Verificar si hay colisión (usando el radio de colisión)
+        return distance <= this.radius * 2; // Multiplicamos por 2 porque cada jugador tiene su propio radio
     }
 
     // Añadir método para manejar colisiones de proyectiles

@@ -110,6 +110,10 @@ export class CharacterManager {
                 playerData.position.z
             );
             player.rotation.y = playerData.rotation.y;
+            
+            // Asegurarnos de que el jugador remoto tiene el radio de colisión correcto
+            player.radius = 1.5; // Radio de colisión del barco
+            player.height = 2;   // Altura de colisión del barco
         }
     }
 
