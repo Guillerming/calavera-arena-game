@@ -103,15 +103,21 @@ export class Character extends THREE.Object3D {
             // Añadir el barco a la escena del juego
             if (this.scene) {
                 this.scene.add(this);
+                // Crear la línea de apuntado después de añadir el barco a la escena
+                this.createAimingLine();
             }
         });
+
+        // Añadir propiedades para almacenar información de posición y ángulo
+        this.currentPosition = new THREE.Vector3();
+        this.currentCameraAngle = 0;
     }
 
     update(deltaTime = 0.016, inputManager = null) {
         this.updateMovement(deltaTime, inputManager);
-        // this.updateJump(deltaTime, inputManager);
         this.updateCannon(deltaTime, inputManager);
         this.updateProjectiles(deltaTime);
+        this.updateAimingLine();
     }
 
     // En el método updateMovement de Character.js
@@ -225,6 +231,9 @@ export class Character extends THREE.Object3D {
         } else {
             this.currentSpeed = 0;
         }
+
+        // Actualizar la posición actual
+        this.currentPosition.copy(this.position);
     }
 
     // En el método updateJump de Character.js
@@ -413,6 +422,11 @@ export class Character extends THREE.Object3D {
                     this.cannonTimer = 0;
                 }
             }
+        }
+
+        // Actualizar el ángulo de la cámara
+        if (this.cameraController) {
+            this.currentCameraAngle = this.cameraController.rotationY;
         }
     }
     
@@ -1065,5 +1079,48 @@ export class Character extends THREE.Object3D {
     // Método para establecer el controlador de cámara
     setCameraController(controller) {
         this.cameraController = controller;
+    }
+
+    // Añadir método para crear la línea de apuntado
+    createAimingLine() {
+        // Crear geometría de la línea
+        const geometry = new THREE.BufferGeometry();
+        const points = [
+            new THREE.Vector3(0, 0, 0),
+            new THREE.Vector3(0, 0, -1000) // 10 unidades en la dirección negativa Z
+        ];
+        geometry.setFromPoints(points);
+
+        // Crear material de la línea
+        const material = new THREE.LineBasicMaterial({
+            color: 0xffff00,     // Color amarillo brillante
+            linewidth: 3,        // 3 unidades de grosor
+            transparent: false,    // Permitir transparencia
+            opacity: 1         // 60% de opacidad
+        });
+
+        // Crear la línea
+        this.aimingLine = new THREE.Line(geometry, material);
+        this.scene.add(this.aimingLine);
+    }
+
+    // Añadir método para actualizar la línea de apuntado
+    updateAimingLine() {
+        if (!this.aimingLine) return;
+
+        // Crear vector de dirección basado en el ángulo de la cámara
+        const direction = new THREE.Vector3(0, 0, -1);
+        const rotationMatrix = new THREE.Matrix4();
+        rotationMatrix.makeRotationY(this.currentCameraAngle);
+        direction.applyMatrix4(rotationMatrix);
+
+        // Crear puntos para la línea
+        const points = [
+            this.currentPosition.clone(),
+            this.currentPosition.clone().add(direction.multiplyScalar(10))
+        ];
+
+        // Actualizar la geometría de la línea
+        this.aimingLine.geometry.setFromPoints(points);
     }
 } 

@@ -4,6 +4,7 @@
     - nombre de usuario centrado
     - poder enviar el form de nombre de usuario con Enter
     - ui para cadencia de disparo
+    - utilizar esta función en el intro: https://fonts.google.com/specimen/Henny+Penny?preview.text=calavera%20arena&categoryFilters=Feeling:%2FExpressive%2FPlayful
 - calavera deathmatch con countdown
 - multijugador
     - asignar colores automáticamente
