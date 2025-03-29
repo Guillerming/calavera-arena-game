@@ -31,9 +31,8 @@ export class Character extends THREE.Object3D {
         this.cannonReady = true;
         this.cannonCooldown = 1000;
         this.cannonTimer = 0;
-        this.projectileSpeed = 60;
-        this.projectileGravity = 4.9;
-        this.maxRange = 200;
+        this.projectileSpeed = 70;
+        this.projectileGravity = 9.8;
         this.cannonAngle = Math.PI / 35;
         this.projectileInitialHeight = 0.5;
         this.prevMouseDown = false;
