@@ -35,6 +35,9 @@ export class Character extends THREE.Object3D {
         this.projectileInitialHeight = 0.5; // Altura inicial del proyectil
         this.prevMouseDown = false;
         
+        // Crear línea predictiva básica
+        this.createPredictiveLine();
+        
         // Indicadores visuales del cañón
         this.createCannonIndicators();
         
@@ -1065,5 +1068,29 @@ export class Character extends THREE.Object3D {
     // Método para establecer el controlador de cámara
     setCameraController(controller) {
         this.cameraController = controller;
+    }
+
+    // Crear línea predictiva básica
+    createPredictiveLine() {
+        // Crear puntos para una línea recta simple
+        const points = [
+            new THREE.Vector3(0, this.projectileInitialHeight, 0),  // Punto inicial
+            new THREE.Vector3(10, this.projectileInitialHeight, 0)  // Punto final (10 unidades en X)
+        ];
+        
+        // Crear geometría de la línea
+        const geometry = new THREE.BufferGeometry().setFromPoints(points);
+        
+        // Material básico para la línea
+        const material = new THREE.LineBasicMaterial({
+            color: 0xffff00,     // Color amarillo
+            linewidth: 2,        // Grosor de la línea
+            transparent: true,    // Permitir transparencia
+            opacity: 0.6         // 60% de opacidad
+        });
+        
+        // Crear la línea y añadirla como hija del barco
+        this.predictiveLine = new THREE.Line(geometry, material);
+        this.add(this.predictiveLine);
     }
 } 
