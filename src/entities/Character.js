@@ -7,6 +7,7 @@ export class Character extends THREE.Object3D {
         super();
         this.scene = scene;
         this.terrain = scene.terrain; // Guardamos referencia directa al terreno
+        this.cameraController = null; // Referencia al controlador de la cámara
 
         // Configuración de movimiento y límites
         this.currentSpeed = 0;
@@ -294,18 +295,39 @@ export class Character extends THREE.Object3D {
             if (this.cannonTimer >= this.cannonCooldown) {
                 this.cannonReady = true;
                 this.cannonTimer = 0;
+                console.log('🎯 Cañón listo para disparar');
             }
         }
         
         // Verificar si se debe disparar cuando se hace click
-        if (inputManager && inputManager.isMouseButtonPressed(0) && this.cannonReady) {
-            this.fireCannon();
-            this.cannonReady = false;
-            this.cannonTimer = 0;
+        if (inputManager && inputManager.isMouseButtonPressed(0)) {
+            console.log('🖱️ Click detectado, cannonReady:', this.cannonReady);
+            if (this.cannonReady) {
+                console.log('🚀 Iniciando disparo');
+                this.fireCannon();
+                this.cannonReady = false;
+                this.cannonTimer = 0;
+            }
         }
     }
     
+    setCameraController(controller) {
+        console.log("Configurando cameraController para", this.name);
+        this.cameraController = controller;
+    }
+
     fireCannon() {
+        console.log("Intentando disparar el cañón");
+        
+        if (!this.cameraController) {
+            console.error("No hay cameraController configurado");
+            return;
+        }
+
+        // Obtener la rotación de la cámara
+        const cameraRotation = this.cameraController.rotationY;
+        console.log("Rotación de la cámara:", cameraRotation);
+        
         // Crear la geometría y material para el proyectil
         const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
         const projectileMaterial = new THREE.MeshStandardMaterial({ 
@@ -319,20 +341,37 @@ export class Character extends THREE.Object3D {
         projectile.castShadow = true;
         projectile.receiveShadow = true;
         
-        // Calcular la dirección hacia adelante del barco usando la rotación del Character
+        // Usar la dirección de la cámara para el disparo
         const direction = new THREE.Vector3(0, 0, -1);
         const rotationMatrix = new THREE.Matrix4();
-        rotationMatrix.makeRotationY(this.rotation.y);
+        rotationMatrix.makeRotationY(this.cameraController.rotationY);
         direction.applyMatrix4(rotationMatrix);
         
-        // Posición inicial del proyectil
+        console.log('🎯 Dirección de disparo:', direction);
+        
+        // Posición inicial del proyectil (desde el lateral del barco)
         const initialPos = new THREE.Vector3();
         initialPos.copy(this.position);
         
-        // Ajustar la posición inicial para que salga desde el frente del barco
-        const cannonOffset = direction.clone().multiplyScalar(2.4);
-        initialPos.add(cannonOffset);
+        // Ajustar la posición inicial para que salga desde el costado del barco
+        const sideOffset = 1.2; // Distancia desde el centro del barco
+        const forwardOffset = 0; // No necesitamos offset hacia adelante
+        
+        // Calcular la posición lateral relativa a la rotación del barco
+        const boatDirection = new THREE.Vector3(0, 0, -1);
+        const boatRotationMatrix = new THREE.Matrix4();
+        boatRotationMatrix.makeRotationY(this.rotation.y);
+        boatDirection.applyMatrix4(boatRotationMatrix);
+        
+        // Vector perpendicular al barco (costado)
+        const sideDirection = new THREE.Vector3(-boatDirection.z, 0, boatDirection.x);
+        
+        // Ajustar la posición inicial
+        initialPos.add(sideDirection.multiplyScalar(sideOffset));
+        initialPos.add(boatDirection.multiplyScalar(forwardOffset));
         initialPos.y = this.projectileInitialHeight;
+        
+        console.log('📍 Posición inicial del proyectil:', initialPos);
         
         // Establecer la posición del proyectil
         projectile.position.copy(initialPos);
@@ -342,6 +381,8 @@ export class Character extends THREE.Object3D {
         initialVelocity.x = direction.x * Math.cos(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.y = Math.sin(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.z = direction.z * Math.cos(this.cannonAngle) * this.projectileSpeed;
+        
+        console.log('💨 Velocidad inicial del proyectil:', initialVelocity);
         
         // Añadir el proyectil a la lista de proyectiles activos
         this.projectiles.push({
@@ -356,10 +397,13 @@ export class Character extends THREE.Object3D {
             }
         });
         
-        // Añadir el proyectil a la escena
+        // Añadir el proyectil a la escena y crear el efecto visual
         if (this.scene) {
+            console.log('✨ Añadiendo proyectil a la escena');
             this.scene.add(projectile);
             this.createMuzzleFlash(initialPos, direction);
+        } else {
+            console.error('❌ No hay escena para añadir el proyectil');
         }
     }
     
@@ -546,6 +590,10 @@ export class Character extends THREE.Object3D {
     
     // Actualizar los proyectiles en movimiento
     updateProjectiles(deltaTime) {
+        if (this.projectiles.length > 0) {
+            console.log('🚀 Actualizando', this.projectiles.length, 'proyectiles');
+        }
+        
         for (let i = this.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.projectiles[i];
             
@@ -562,6 +610,10 @@ export class Character extends THREE.Object3D {
             
             // Actualizar la posición del proyectil
             projectile.mesh.position.copy(newPosition);
+            
+            if (timeElapsed > 1) { // Solo logueamos cada segundo para no saturar la consola
+                console.log('📍 Posición del proyectil después de', Math.floor(timeElapsed), 'segundos:', newPosition);
+            }
             
             // Obtener la altura del terreno en la nueva posición
             const terrainHeight = this.terrain ? this.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;

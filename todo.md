@@ -1,0 +1,12 @@
+- disparo de proyectil siguiendo la psición de la cámara
+    - impacto del proyectil quita vida
+- arreglos en interfaz:
+    - nombre de usuario centrado
+    - poder enviar el form de nombre de usuario con Enter
+    - ui para cadencia de disparo
+- calavera deathmatch con countdown
+- multijugador
+    - asignar colores automáticamente
+    - con tab se ve la lista de jugadores y los puntos
+    - chat de voz?
+- efectos de sonido

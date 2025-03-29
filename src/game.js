@@ -95,6 +95,9 @@ export class Game {
             // Posicionar la cámara para seguir al jugador
             this.engine.setPlayerTarget(player);
             
+            // Pasar el cameraController al jugador
+            player.setCameraController(this.engine.getCameraController());
+            
             // Mover la cámara más cerca del barco y con un buen ángulo
             this.engine.camera.position.set(0, 5, 10);  // Posición inicial de la cámara
             this.engine.camera.lookAt(0, 0, 0);
