@@ -16,6 +16,12 @@ export class CharacterCannon {
         
         const angleToCamera = this.getAngleToCameraDirection();
         
+        // Actualizar el ángulo del cañón según la posición vertical del ratón si hay un controlador de cámara
+        if (this.character.cameraController && this.character.isLocalPlayer) {
+            // Usamos rotationX para calcular el ángulo del cañón
+            this.updateCannonAngle(this.character.cameraController.rotationX);
+        }
+        
         this.character.updateCannonIndicators(angleToCamera);
         
         if (inputManager && inputManager.isMouseButtonPressed(0)) {
@@ -42,6 +48,23 @@ export class CharacterCannon {
         if (this.character.cameraController) {
             this.character.currentCameraAngle = this.character.cameraController.rotationY;
         }
+    }
+    
+    // Método para actualizar el ángulo del cañón basado en la posición vertical de la cámara
+    updateCannonAngle(cameraVerticalAngle) {
+        // cameraVerticalAngle va desde 0 (mirada horizontal) hasta Math.PI/2.5 (máximo ángulo hacia arriba, 72°)
+        
+        // Limitamos a considerar solo los primeros 60 grados (Math.PI/3)
+        const normalizedAngle = Math.min(cameraVerticalAngle, Math.PI/3) / (Math.PI/3);
+        
+        // Interpolar entre Math.PI/25 (alto) y Math.PI/50 (bajo) inversamente
+        // Cuando la cámara mira más arriba (normalizedAngle cerca de 1), el ángulo del cañón es más bajo (Math.PI/50)
+        // Cuando la cámara mira más horizontal (normalizedAngle cerca de 0), el ángulo es más alto (Math.PI/25)
+        const minCannonAngle = Math.PI / 50; // Ángulo más plano
+        const maxCannonAngle = Math.PI / 25; // Ángulo más elevado
+        
+        // Inversión de la interpolación: 1 - normalizedAngle para que sea inversa
+        this.character.cannonAngle = minCannonAngle + (1 - normalizedAngle) * (maxCannonAngle - minCannonAngle);
     }
     
     getAngleToCameraDirection() {
@@ -105,6 +128,7 @@ export class CharacterCannon {
             
             position.add(sideDirection.multiplyScalar(sideOffset));
             
+            // Usar el ángulo de cañón calculado
             cameraDirection.y = Math.sin(this.character.cannonAngle);
             cameraDirection.normalize();
             

@@ -7,6 +7,8 @@ export class CharacterUI {
         this.directionText = null;
         this.healthBar = null;
         this.healthText = null;
+        this.cannonIndicator = null;
+        this.angleText = null;
     }
 
     createCannonIndicators() {
@@ -54,9 +56,26 @@ export class CharacterUI {
         this.directionText.textContent = 'Valid direction';
         this.directionText.style.minWidth = '120px';
         this.directionIndicator.appendChild(this.directionText);
+        
+        // Añadir indicador de ángulo del cañón
+        const angleIndicator = document.createElement('div');
+        angleIndicator.style.display = 'flex';
+        angleIndicator.style.alignItems = 'center';
+        angleIndicator.style.gap = '5px';
+        
+        const angleIcon = document.createElement('div');
+        angleIcon.innerHTML = '📐';
+        angleIcon.style.fontSize = '20px';
+        angleIndicator.appendChild(angleIcon);
+        
+        this.angleText = document.createElement('span');
+        this.angleText.textContent = 'Angle: default';
+        this.angleText.style.minWidth = '100px';
+        angleIndicator.appendChild(this.angleText);
 
         indicatorContainer.appendChild(this.reloadIndicator);
         indicatorContainer.appendChild(this.directionIndicator);
+        indicatorContainer.appendChild(angleIndicator);
 
         document.body.appendChild(indicatorContainer);
     }
@@ -85,6 +104,27 @@ export class CharacterUI {
         } else {
             this.directionText.textContent = 'Valid direction';
             this.directionText.style.color = '#00ff00';
+        }
+        
+        // Actualizar el indicador del ángulo del cañón
+        if (this.angleText) {
+            // Convertir el ángulo de radianes a grados para mejor legibilidad
+            const angleInDegrees = (this.character.cannonAngle * 180 / Math.PI).toFixed(1);
+            this.angleText.textContent = `Cannon angle: ${angleInDegrees}°`;
+            
+            // Código de color según el ángulo (más cerca del máximo/mínimo = diferente color)
+            const minAngle = Math.PI / 50;
+            const maxAngle = Math.PI / 25;
+            const normalizedAngle = (this.character.cannonAngle - minAngle) / (maxAngle - minAngle);
+            
+            // Color desde verde (bajo/lejano) hasta rojo (alto/cercano)
+            if (normalizedAngle < 0.33) {
+                this.angleText.style.color = '#00ff00'; // Verde para ángulos bajos (disparos lejanos)
+            } else if (normalizedAngle < 0.66) {
+                this.angleText.style.color = '#ffff00'; // Amarillo para ángulos medios
+            } else {
+                this.angleText.style.color = '#ff9900'; // Naranja para ángulos altos (disparos cercanos)
+            }
         }
     }
     
@@ -127,7 +167,7 @@ export class CharacterUI {
         this.healthBar.style.backgroundColor = '#00cc00';
         this.healthBar.style.transition = 'width 0.3s, background-color 0.3s';
         barContainer.appendChild(this.healthBar);
-        
+
         // Texto de salud
         this.healthText = document.createElement('div');
         this.healthText.style.position = 'absolute';
