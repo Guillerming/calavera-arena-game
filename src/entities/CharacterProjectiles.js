@@ -6,54 +6,134 @@ export class CharacterProjectiles {
     }
 
     updateProjectiles(deltaTime) {
+        // Actualizar cada proyectil
         for (let i = this.character.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.character.projectiles[i];
             
-            const timeElapsed = (performance.now() - projectile.launchTime) / 1000;
+            // Verificar que el proyectil tiene las propiedades necesarias
+            if (!projectile || !projectile.position || !projectile.velocity) {
+                console.warn("Proyectil inválido encontrado, eliminando:", projectile);
+                this.character.projectiles.splice(i, 1);
+                continue;
+            }
             
-            const newPosition = new THREE.Vector3();
-            newPosition.x = projectile.initialPosition.x + projectile.velocity.x * timeElapsed;
-            newPosition.z = projectile.initialPosition.z + projectile.velocity.z * timeElapsed;
-            newPosition.y = projectile.initialPosition.y + 
-                          projectile.velocity.y * timeElapsed - 
-                          0.5 * this.character.projectileGravity * timeElapsed * timeElapsed;
+            // Actualizar posición según la velocidad
+            projectile.position.x += projectile.velocity.x * deltaTime;
+            projectile.position.y += projectile.velocity.y * deltaTime;
+            projectile.position.z += projectile.velocity.z * deltaTime;
             
-            projectile.mesh.position.copy(newPosition);
+            // Aplicar gravedad
+            projectile.velocity.y -= this.character.projectileGravity * deltaTime;
             
-            const terrainHeight = this.character.terrain ? this.character.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
+            // Actualizar rotación para efecto visual
+            if (projectile.mesh && projectile.rotationSpeed) {
+                projectile.mesh.rotation.x += projectile.rotationSpeed.x * deltaTime;
+                projectile.mesh.rotation.y += projectile.rotationSpeed.y * deltaTime;
+                projectile.mesh.rotation.z += projectile.rotationSpeed.z * deltaTime;
+            }
             
-            // Comprobar colisión con agua
-            if (newPosition.y <= 0) {
-                this.handleProjectileCollision(projectile, newPosition, 'water');
-            } 
-            // Comprobar colisión con terreno
-            else if (newPosition.y <= terrainHeight) {
-                this.handleProjectileCollision(projectile, newPosition, 'terrain');
-            } 
-            // Comprobar colisión con jugadores
-            else {
-                // Usar el método checkPlayerCollisions que ya tenemos implementado
-                if (this.checkPlayerCollisions(projectile)) {
-                    // Si colisiona con un jugador, ya se ha aplicado el daño en checkPlayerCollisions
-                    this.handleProjectileCollision(projectile, newPosition, 'player');
+            // Comprobar colisión con el terreno
+            let removeProjectile = false;
+            
+            // Solo comprobar colisiones si el terreno está disponible
+            if (this.character.terrain) {
+                const terrainHeight = this.character.terrain.getHeightAt(projectile.position.x, projectile.position.z);
+                
+                // Si el proyectil está por debajo del terreno, ha colisionado
+                if (projectile.position.y <= terrainHeight) {
+                    removeProjectile = true;
+                    
+                    // Crear efecto de impacto si es el jugador local
+                    if (this.character.isLocalPlayer) {
+                        const impactPoint = new THREE.Vector3(
+                            projectile.position.x,
+                            terrainHeight,
+                            projectile.position.z
+                        );
+                        
+                        // Crear efecto de explosión en el punto de impacto
+                        if (this.character.createExplosionEffect) {
+                            this.character.createExplosionEffect(impactPoint);
+                        }
+                        
+                        // Informar al servidor sobre la colisión
+                        if (this.character.networkManager) {
+                            this.character.networkManager.sendProjectileCollision({
+                                projectileId: projectile.id,
+                                position: impactPoint,
+                                collisionType: 'terrain'
+                            });
+                        }
+                    }
                 }
             }
             
-            projectile.mesh.rotation.x += projectile.rotationSpeed.x * deltaTime;
-            projectile.mesh.rotation.y += projectile.rotationSpeed.y * deltaTime;
-            projectile.mesh.rotation.z += projectile.rotationSpeed.z * deltaTime;
+            // Comprobar si el proyectil ha salido de los límites del mapa
+            const maxRange = this.character.maxRange || 200;
+            const distanceSquared = 
+                projectile.position.x * projectile.position.x + 
+                projectile.position.z * projectile.position.z;
+            
+            if (distanceSquared > maxRange * maxRange) {
+                removeProjectile = true;
+            }
+            
+            // Comprobar colisión con otros jugadores
+            // Solo si es el jugador local y no se va a eliminar por otra razón
+            if (this.character.isLocalPlayer && !removeProjectile) {
+                // Buscar el CharacterManager en la escena
+                const characterManager = this.character.scene?.characterManager;
+                if (characterManager) {
+                    // Obtener todos los personajes excepto el propio jugador
+                    const players = Array.from(characterManager.characters.values())
+                        .filter(player => player !== this.character && player.isAlive);
+                    
+                    // Comprobar colisión con cada jugador
+                    for (const player of players) {
+                        if (this.checkProjectilePlayerCollision(projectile, player)) {
+                            removeProjectile = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Eliminar el proyectil si es necesario
+            if (removeProjectile) {
+                // Eliminar el mesh de la escena
+                if (projectile.mesh && projectile.mesh.parent) {
+                    projectile.mesh.parent.remove(projectile.mesh);
+                }
+                
+                // Eliminar el proyectil de la lista
+                this.character.projectiles.splice(i, 1);
+                
+                // Informar al servidor si es el jugador local y aún no se ha informado de la colisión
+                if (this.character.isLocalPlayer && this.character.networkManager) {
+                    this.character.networkManager.removeProjectile(projectile.id);
+                }
+            }
         }
     }
     
     // Encontrar un personaje por su ID
     findPlayerCharacter(playerId) {
-        // Iterar sobre la lista de personajes del manager
-        for (const [id, character] of this.character.scene?.characterManager?.characters || []) {
-            if (id === playerId) {
-                return character;
-            }
+        if (!this.character.scene || !this.character.scene.characterManager) {
+            console.warn('Scene o characterManager no disponibles para buscar personaje');
+            return null;
         }
-        return null;
+        
+        const characters = this.character.scene.characterManager.characters;
+        if (!characters || !Array.isArray(characters)) {
+            console.warn('La lista de personajes no está disponible o no es un array');
+            return null;
+        }
+        
+        const character = characters.find(char => char && char.playerId === playerId);
+        if (!character) {
+            console.warn(`No se encontró personaje con ID: ${playerId}`);
+        }
+        return character || null;
     }
     
     handleProjectileCollision(projectile, position, collisionType) {
@@ -102,6 +182,12 @@ export class CharacterProjectiles {
     }
     
     createOtherPlayerProjectile(projectileData) {
+        // Verificar que los datos del proyectil son válidos
+        if (!projectileData) {
+            console.error('Datos de proyectil inválidos');
+            return null;
+        }
+        
         const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
         const projectileMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x333333,
@@ -118,7 +204,7 @@ export class CharacterProjectiles {
         const position = projectileData.position || projectileData.initialPosition;
         if (!position) {
             console.error('No se encontró información de posición en los datos del proyectil:', projectileData);
-            return;
+            return null;
         }
         
         projectile.position.set(
@@ -127,8 +213,15 @@ export class CharacterProjectiles {
             position.z
         );
         
+        // Verificar que tenemos información de velocidad
+        if (!projectileData.velocity) {
+            console.error('No se encontró información de velocidad en los datos del proyectil:', projectileData);
+            return null;
+        }
+        
         const projectileObj = {
             mesh: projectile,
+            position: projectile.position,  // Añadir referencia explícita
             velocity: new THREE.Vector3(
                 projectileData.velocity.x,
                 projectileData.velocity.y,
@@ -165,6 +258,8 @@ export class CharacterProjectiles {
                 this.character.createMuzzleFlash(flashPosition, direction);
             }, 10);
         }
+        
+        return projectileObj;
     }
     
     removeProjectile(projectileId) {
@@ -219,6 +314,12 @@ export class CharacterProjectiles {
 
     // Método para crear proyectiles desde el cañón
     createProjectile(position, direction, projectileId) {
+        // Verificar que los parámetros son válidos
+        if (!position || !direction || !projectileId) {
+            console.error('Parámetros inválidos para crear proyectil:', { position, direction, projectileId });
+            return null;
+        }
+
         const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
         const projectileMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x333333,
@@ -242,6 +343,7 @@ export class CharacterProjectiles {
         // Crear objeto de datos del proyectil
         const projectileData = {
             mesh: projectile,
+            position: projectile.position,  // Añadir explícitamente la posición
             velocity: initialVelocity,
             initialPosition: position.clone(),
             launchTime: performance.now(),
@@ -272,5 +374,42 @@ export class CharacterProjectiles {
         }
         
         return projectileData;
+    }
+
+    // Método para comprobar si un proyectil colisiona con un jugador
+    checkProjectilePlayerCollision(projectile, player) {
+        // Verificar que el proyectil y el jugador tienen las propiedades necesarias
+        if (!projectile || !projectile.position || !player || !player.position) {
+            return false;
+        }
+        
+        // Comprobar colisión con el personaje actual
+        const distance = projectile.position.distanceTo(player.position);
+        
+        // Si la distancia es menor que el radio del personaje, hay colisión
+        if (distance < player.radius * 1.5) {
+            // Aplicar daño al personaje impactado
+            // Importante: pasamos el ID del jugador que disparó para registrar correctamente el kill
+            player.takeProjectileDamage(this.character.name);
+            
+            // Crear efecto de explosión en el punto de impacto
+            const impactPoint = projectile.position.clone();
+            if (this.character.createExplosionEffect) {
+                this.character.createExplosionEffect(impactPoint);
+            }
+            
+            // Enviar información de colisión al servidor si es el jugador local
+            if (this.character.isLocalPlayer && this.character.networkManager) {
+                this.character.networkManager.sendProjectileCollision({
+                    projectileId: projectile.id,
+                    position: impactPoint,
+                    collisionType: 'player'
+                });
+            }
+            
+            return true;
+        }
+        
+        return false;
     }
 } 

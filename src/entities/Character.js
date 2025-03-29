@@ -117,13 +117,22 @@ export class Character extends THREE.Object3D {
         // Si el personaje está muerto, no actualizar movimiento ni cañón
         if (!this.isAlive) {
             // Solo actualizar proyectiles ya disparados
-            this.projectilesManager.updateProjectiles(deltaTime);
+            if (this.projectilesManager) {
+                this.projectilesManager.updateProjectiles(deltaTime);
+            }
             return;
         }
         
         this.movement.updateMovement(deltaTime, inputManager);
         this.cannon.updateCannon(deltaTime, inputManager);
-        this.projectilesManager.updateProjectiles(deltaTime);
+        
+        // Verificar que projectilesManager existe
+        if (this.projectilesManager) {
+            this.projectilesManager.updateProjectiles(deltaTime);
+        } else {
+            console.warn('projectilesManager no está inicializado en Character');
+        }
+        
         this.updateAimingLine();
     }
 
@@ -287,10 +296,10 @@ export class Character extends THREE.Object3D {
         this.takeDamage(25, 'projectile', shooterId);
     }
     
-    // Método para daño por colisión con otro barco
-    takeCollisionDamage(otherShipId = null) {
-        // Colisiones causan daño moderado (12 puntos)
-        this.takeDamage(12, 'collision', otherShipId);
+    // Método para daño por colisión
+    takeCollisionDamage(damage, colliderId = null) {
+        // Aplicar el daño con el tipo 'collision'
+        this.takeDamage(damage, 'collision', colliderId);
     }
     
     // Método llamado cuando el personaje muere

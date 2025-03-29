@@ -8,6 +8,9 @@ export class CharacterManager {
         this.scene = null; // Referencia a la escena
         this.terrain = null; // Referencia al terreno
         this.inputManager = null; // Referencia al inputManager
+        this.networkManager = null;
+        this.scoreManager = null; // Nuevo ScoreManager
+        this.scoreboardUI = null; // UI del scoreboard
     }
 
     setScene(scene) {
@@ -20,6 +23,22 @@ export class CharacterManager {
     
     setInputManager(inputManager) {
         this.inputManager = inputManager;
+    }
+
+    setNetworkManager(networkManager) {
+        this.networkManager = networkManager;
+    }
+
+    setScoreManager(scoreManager) {
+        this.scoreManager = scoreManager;
+        
+        if (this.networkManager) {
+            this.networkManager.setScoreManager(scoreManager);
+        }
+    }
+
+    setScoreboardUI(scoreboardUI) {
+        this.scoreboardUI = scoreboardUI;
     }
 
     createCharacter(id = null) {
@@ -38,8 +57,8 @@ export class CharacterManager {
         return character;
     }
 
-    getCharacter(id) {
-        return this.characters.get(id);
+    getCharacter(characterId) {
+        return this.characters.get(characterId);
     }
 
     removeCharacter(id) {
@@ -423,5 +442,11 @@ export class CharacterManager {
         // Matematicamente, este es el arco tangente de (-z/-x), pero con Math.atan2 para manejar los cuadrantes
         // Añadimos Math.PI porque los barcos tienen rotación 180° por defecto
         return Math.atan2(-z, -x) + Math.PI;
+    }
+
+    update(deltaTime) {
+        if (this.scoreboardUI) {
+            this.scoreboardUI.update();
+        }
     }
 }

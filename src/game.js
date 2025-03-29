@@ -4,6 +4,8 @@ import { Terrain } from './world/Terrain.js';
 import { Water } from './world/Water.js';
 import { CharacterManager } from './managers/CharacterManager.js';
 import { NetworkManager } from './network/NetworkManager.js';
+import { ScoreManager } from './managers/ScoreManager.js';
+import { ScoreboardUI } from './ui/ScoreboardUI.js';
 import * as THREE from 'three';
 import { DebugUI } from './utils/DebugUI.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
@@ -29,9 +31,12 @@ export class Game {
         this.debugUI = new DebugUI();
         this.networkManager = new NetworkManager();
         
-        // Proporcionar referencias al CharacterManager
-        this.characterManager.setScene(this.engine.scene);
-        this.characterManager.setInputManager(this.inputManager);
+        // Inicializar el sistema de puntuaciones
+        this.scoreManager = new ScoreManager();
+        
+        // Configurar el CharacterManager
+        this.characterManager.setNetworkManager(this.networkManager);
+        this.characterManager.setScoreManager(this.scoreManager);
         
         this.logger.end('constructor');
         
@@ -102,6 +107,19 @@ export class Game {
             return;
         }
 
+        // Configurar el sistema de puntuaciones para el jugador actual
+        if (this.scoreManager) {
+            this.scoreManager.initPlayer(this.networkManager.playerId, this.playerName);
+        }
+        
+        // Inicializar la UI del scoreboard
+        this.scoreboardUI = new ScoreboardUI(
+            this.scoreManager,
+            this.inputManager,
+            this.networkManager
+        );
+        this.characterManager.setScoreboardUI(this.scoreboardUI);
+
         // Configurar el jugador
         this.player.setNetworkManager(this.networkManager);
         this.player.setCameraController(this.engine.getCameraController());
@@ -120,6 +138,10 @@ export class Game {
 
         this.networkManager.onPlayerJoin = (playerData) => {
             if (playerData.id !== this.networkManager.playerId) {
+                // Inicializar el jugador en el sistema de puntuaciones
+                if (this.scoreManager) {
+                    this.scoreManager.initPlayer(playerData.id, playerData.name || playerData.id);
+                }
                 this.characterManager.createOtherPlayer(playerData);
             }
         };
@@ -145,6 +167,12 @@ export class Game {
         // Añadir callback para actualizaciones de salud
         this.networkManager.onHealthUpdate = (playerData) => {
             this.characterManager.handleHealthUpdate(playerData);
+        };
+        
+        // Añadir callback para kills
+        this.networkManager.onKill = (killerId, victimId) => {
+            // Mostrar mensaje de kill en la consola y posiblemente en la UI
+            console.log(`¡${killerId} eliminó a ${victimId}!`);
         };
 
         // Conectar al servidor
@@ -177,6 +205,7 @@ export class Game {
         this.engine.update(deltaTime, this.inputManager);
         this.inputManager.update();
         this.characterManager.updateAll(deltaTime);
+        this.characterManager.update(deltaTime); // Actualizar componentes como ScoreboardUI
         
         // Actualizar el agua - asegurando que se pasa el deltaTime correcto
         this.water.update(deltaTime);

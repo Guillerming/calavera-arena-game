@@ -12,6 +12,8 @@ export class NetworkManager {
         this.onProjectileRemove = null;
         this.onProjectileCollision = null;
         this.onHealthUpdate = null;
+        this.onKill = null;
+        this.scoreManager = null;
     }
 
     connect() {
@@ -122,10 +124,28 @@ export class NetworkManager {
                         updatedPlayer.health = data.health;
                         updatedPlayer.isAlive = data.isAlive;
 
-                        
                         // Actualizar posición si está en respawn
                         if (data.position) {
                             updatedPlayer.position = data.position;
+                        }
+                        
+                        // Verificar si es un evento de muerte (health = 0)
+                        if (data.health === 0 && !data.isAlive) {
+                            // Registrar muerte en el ScoreManager
+                            if (this.scoreManager) {
+                                // Si hay un killedBy, registrar kill
+                                if (data.killedBy) {
+                                    this.scoreManager.registerKill(data.killedBy, data.playerId);
+                                    
+                                    // Notificar kill/muerte a través del callback
+                                    if (this.onKill) {
+                                        this.onKill(data.killedBy, data.playerId);
+                                    }
+                                } else {
+                                    // Muerte sin killer (p. ej. suicidio o causa ambiental)
+                                    this.scoreManager.registerDeath(data.playerId);
+                                }
+                            }
                         }
                         
                         if (this.onHealthUpdate) {
@@ -295,7 +315,7 @@ export class NetworkManager {
     }
 
     // Establecer callbacks para eventos
-    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove, onProjectileCollision, onHealthUpdate }) {
+    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove, onProjectileCollision, onHealthUpdate, onKill }) {
         this.onPlayerUpdate = onPlayerUpdate;
         this.onPlayerJoin = onPlayerJoin;
         this.onPlayerLeave = onPlayerLeave;
@@ -303,5 +323,11 @@ export class NetworkManager {
         this.onProjectileRemove = onProjectileRemove;
         this.onProjectileCollision = onProjectileCollision;
         this.onHealthUpdate = onHealthUpdate;
+        this.onKill = onKill;
+    }
+
+    // Configurar ScoreManager
+    setScoreManager(scoreManager) {
+        this.scoreManager = scoreManager;
     }
 }

@@ -135,6 +135,9 @@ wss.on('connection', (ws) => {
                     // Si el jugador acaba de morir, agregar información sobre quién lo mató
                     if (wasAlive && !data.isAlive && data.killedBy) {
                         updateMessage.killedBy = data.killedBy;
+                        
+                        // Registrar el kill en el log del servidor
+                        console.log(`[KILL] Player ${data.killedBy} mató a ${playerId}`);
                     }
                     
                     // Incluir posición si está disponible
