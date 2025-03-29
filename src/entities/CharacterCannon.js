@@ -52,19 +52,32 @@ export class CharacterCannon {
     
     // Método para actualizar el ángulo del cañón basado en la posición vertical de la cámara
     updateCannonAngle(cameraVerticalAngle) {
-        // cameraVerticalAngle va desde 0 (mirada horizontal) hasta Math.PI/2.5 (máximo ángulo hacia arriba, 72°)
+        // Definir los valores límite del ángulo del cañón
+        const maxCannonAngle = Math.PI / 25; // Ángulo más elevado (para disparo lejano)
+        const minCannonAngle = Math.PI / 85; // Ángulo más plano (para disparo cercano)
         
-        // Limitamos a considerar solo los primeros 60 grados (Math.PI/3)
-        const normalizedAngle = Math.min(cameraVerticalAngle, Math.PI/3) / (Math.PI/3);
+        // Convertir los valores de ángulo de cámara en radianes
+        const minCameraAngle = -26 * Math.PI / 180; // -25 grados (nivel del mar)
+        const inflectionPoint = 5 * Math.PI / 180; // 0 grados (1/3 hacia el cenit)
         
-        // Interpolar entre Math.PI/25 (alto) y Math.PI/50 (bajo) inversamente
-        // Cuando la cámara mira más arriba (normalizedAngle cerca de 1), el ángulo del cañón es más bajo (Math.PI/50)
-        // Cuando la cámara mira más horizontal (normalizedAngle cerca de 0), el ángulo es más alto (Math.PI/25)
-        const minCannonAngle = Math.PI / 50; // Ángulo más plano
-        const maxCannonAngle = Math.PI / 25; // Ángulo más elevado
-        
-        // Inversión de la interpolación: 1 - normalizedAngle para que sea inversa
-        this.character.cannonAngle = minCannonAngle + (1 - normalizedAngle) * (maxCannonAngle - minCannonAngle);
+        // Si el ángulo de la cámara está entre -25° y 0°
+        if (cameraVerticalAngle >= minCameraAngle && cameraVerticalAngle <= inflectionPoint) {
+            // Normalizar el ángulo en el rango [-25°, 0°]
+            const normalizedAngle = (cameraVerticalAngle - minCameraAngle) / (inflectionPoint - minCameraAngle);
+            
+            // Interpolar el ángulo del cañón entre maxCannonAngle y minCannonAngle
+            this.character.cannonAngle = maxCannonAngle - normalizedAngle * (maxCannonAngle - minCannonAngle);
+        } 
+        // Si el ángulo de la cámara es mayor que 0°
+        else if (cameraVerticalAngle > inflectionPoint) {
+            // Mantener el ángulo mínimo constante
+            this.character.cannonAngle = minCannonAngle;
+        }
+        // Si el ángulo es menor que -25° (por debajo del nivel del mar)
+        else {
+            // Mantener el ángulo máximo constante
+            this.character.cannonAngle = maxCannonAngle;
+        }
     }
     
     getAngleToCameraDirection() {

@@ -9,6 +9,7 @@ export class CharacterUI {
         this.healthText = null;
         this.cannonIndicator = null;
         this.angleText = null;
+        this.cameraAngleIndicator = null;
     }
 
     createCannonIndicators() {
@@ -78,6 +79,26 @@ export class CharacterUI {
         indicatorContainer.appendChild(angleIndicator);
 
         document.body.appendChild(indicatorContainer);
+        
+        // Crear indicador del ángulo de la cámara en la esquina
+        this.createCameraAngleIndicator();
+    }
+    
+    // Crear indicador del ángulo de la cámara (rotationX)
+    createCameraAngleIndicator() {
+        // Contenedor para el indicador del ángulo de la cámara
+        this.cameraAngleIndicator = document.createElement('div');
+        this.cameraAngleIndicator.style.position = 'fixed';
+        this.cameraAngleIndicator.style.top = '10px';
+        this.cameraAngleIndicator.style.right = '10px';
+        this.cameraAngleIndicator.style.padding = '10px';
+        this.cameraAngleIndicator.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        this.cameraAngleIndicator.style.color = 'white';
+        this.cameraAngleIndicator.style.fontFamily = 'monospace';
+        this.cameraAngleIndicator.style.fontSize = '14px';
+        this.cameraAngleIndicator.style.borderRadius = '5px';
+        this.cameraAngleIndicator.style.zIndex = '1000';
+        document.body.appendChild(this.cameraAngleIndicator);
     }
 
     updateCannonIndicators(angleToCamera) {
@@ -113,7 +134,7 @@ export class CharacterUI {
             this.angleText.textContent = `Cannon angle: ${angleInDegrees}°`;
             
             // Código de color según el ángulo (más cerca del máximo/mínimo = diferente color)
-            const minAngle = Math.PI / 50;
+            const minAngle = Math.PI / 60;
             const maxAngle = Math.PI / 25;
             const normalizedAngle = (this.character.cannonAngle - minAngle) / (maxAngle - minAngle);
             
@@ -124,6 +145,24 @@ export class CharacterUI {
                 this.angleText.style.color = '#ffff00'; // Amarillo para ángulos medios
             } else {
                 this.angleText.style.color = '#ff9900'; // Naranja para ángulos altos (disparos cercanos)
+            }
+        }
+        
+        // Actualizar el indicador del ángulo de la cámara
+        if (this.cameraAngleIndicator && this.character.cameraController) {
+            const cameraAngleDegrees = (this.character.cameraController.rotationX * 180 / Math.PI).toFixed(1);
+            const minCameraAngle = -25; // Nivel del mar (-25°)
+            const inflectionPoint = 0;   // Punto de inflexión (0°)
+            this.cameraAngleIndicator.textContent = `Ángulo cámara: ${cameraAngleDegrees}° (rango: ${minCameraAngle}° a ${inflectionPoint}°)`;
+            
+            // Colorear según si está dentro o fuera del rango de interpolación
+            if (this.character.cameraController.rotationX >= -25 * Math.PI / 180 && 
+                this.character.cameraController.rotationX <= 0) {
+                this.cameraAngleIndicator.style.color = '#00ffff'; // Cyan para valores en el rango de interpolación
+            } else if (this.character.cameraController.rotationX > 0) {
+                this.cameraAngleIndicator.style.color = '#ff00ff'; // Magenta para valores por encima del punto de inflexión
+            } else {
+                this.cameraAngleIndicator.style.color = '#ff5555'; // Rojo claro para valores por debajo del mínimo
             }
         }
     }
