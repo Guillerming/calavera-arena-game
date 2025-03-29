@@ -35,6 +35,9 @@ export class Character extends THREE.Object3D {
         this.projectileInitialHeight = 0.5; // Altura inicial del proyectil
         this.prevMouseDown = false;
         
+        // Indicadores visuales del cañón
+        this.createCannonIndicators();
+        
         // Límites del mapa
         this.mapLimits = {
             minX: -195,
@@ -288,6 +291,94 @@ export class Character extends THREE.Object3D {
         return false;
     }
 
+    // Crear indicadores visuales del estado del cañón
+    createCannonIndicators() {
+        // Crear contenedor para los indicadores
+        const indicatorContainer = document.createElement('div');
+        indicatorContainer.style.position = 'fixed';
+        indicatorContainer.style.bottom = '30%';
+        indicatorContainer.style.left = '50%';
+        indicatorContainer.style.transform = 'translateX(-50%)';
+        indicatorContainer.style.padding = '10px';
+        indicatorContainer.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        indicatorContainer.style.borderRadius = '5px';
+        indicatorContainer.style.display = 'flex';
+        indicatorContainer.style.gap = '10px';
+        indicatorContainer.style.alignItems = 'center';
+        indicatorContainer.style.fontFamily = 'Arial, sans-serif';
+        indicatorContainer.style.color = 'white';
+        indicatorContainer.style.userSelect = 'none';
+
+        // Indicador de recarga
+        this.reloadIndicator = document.createElement('div');
+        this.reloadIndicator.style.display = 'flex';
+        this.reloadIndicator.style.alignItems = 'center';
+        this.reloadIndicator.style.gap = '5px';
+        
+        const reloadIcon = document.createElement('div');
+        reloadIcon.innerHTML = '🔄';
+        reloadIcon.style.fontSize = '20px';
+        this.reloadIndicator.appendChild(reloadIcon);
+        
+        this.reloadText = document.createElement('span');
+        this.reloadText.textContent = 'Cannon ready';
+        this.reloadText.style.minWidth = '100px';
+        this.reloadIndicator.appendChild(this.reloadText);
+        
+        // Indicador de dirección
+        this.directionIndicator = document.createElement('div');
+        this.directionIndicator.style.display = 'flex';
+        this.directionIndicator.style.alignItems = 'center';
+        this.directionIndicator.style.gap = '5px';
+        
+        const directionIcon = document.createElement('div');
+        directionIcon.innerHTML = '🎯';
+        directionIcon.style.fontSize = '20px';
+        this.directionIndicator.appendChild(directionIcon);
+        
+        this.directionText = document.createElement('span');
+        this.directionText.textContent = 'Valid direction';
+        this.directionText.style.minWidth = '120px';
+        this.directionIndicator.appendChild(this.directionText);
+
+        // Añadir indicadores al contenedor
+        indicatorContainer.appendChild(this.reloadIndicator);
+        indicatorContainer.appendChild(this.directionIndicator);
+
+        // Añadir el contenedor al documento
+        document.body.appendChild(indicatorContainer);
+    }
+
+    // Actualizar los indicadores visuales
+    updateCannonIndicators(angleToCamera) {
+        // Actualizar indicador de recarga
+        if (!this.cannonReady) {
+            const remainingTime = Math.max(0, (this.cannonCooldown - this.cannonTimer) / 1000).toFixed(1);
+            this.reloadText.textContent = `Reloading: ${remainingTime}s`;
+            this.reloadText.style.color = '#ff9900';
+        } else {
+            this.reloadText.textContent = 'Cannon ready';
+            this.reloadText.style.color = '#00ff00';
+        }
+
+        // Actualizar indicador de dirección
+        const frontRestrictedAngle = Math.PI / 4; // 45 grados
+        const backRestrictedAngle = Math.PI / 3; // 60 grados
+        const isInFrontRestriction = Math.abs(angleToCamera) < frontRestrictedAngle / 2;
+        const isInBackRestriction = Math.abs(Math.abs(angleToCamera) - Math.PI) < backRestrictedAngle / 2;
+
+        if (isInFrontRestriction) {
+            this.directionText.textContent = 'Cannot fire at bow';
+            this.directionText.style.color = '#ff0000';
+        } else if (isInBackRestriction) {
+            this.directionText.textContent = 'Cannot fire at stern';
+            this.directionText.style.color = '#ff0000';
+        } else {
+            this.directionText.textContent = 'Valid direction';
+            this.directionText.style.color = '#00ff00';
+        }
+    }
+
     updateCannon(deltaTime, inputManager) {
         // Actualizar el temporizador del cañón
         if (!this.cannonReady) {
@@ -298,11 +389,16 @@ export class Character extends THREE.Object3D {
             }
         }
         
+        // Obtener el ángulo actual para el feedback
+        const angleToCamera = this.getAngleToCameraDirection();
+        
+        // Actualizar los indicadores visuales
+        this.updateCannonIndicators(angleToCamera);
+        
         // Verificar si se debe disparar cuando se hace click
         if (inputManager && inputManager.isMouseButtonPressed(0)) {
             if (this.cannonReady) {
                 // Verificar el ángulo permitido para disparar
-                const angleToCamera = this.getAngleToCameraDirection();
                 const frontRestrictedAngle = Math.PI / 4; // 45 grados (22.5º a cada lado)
                 const backRestrictedAngle = Math.PI / 3; // 60 grados (30º a cada lado)
                 
