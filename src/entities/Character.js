@@ -38,8 +38,6 @@ export class Character extends THREE.Object3D {
         this.projectileInitialHeight = 0.5;
         this.prevMouseDown = false;
         
-        this.createCannonIndicators();
-        
         this.mapLimits = {
             minX: -195,
             maxX: 195,
@@ -103,8 +101,11 @@ export class Character extends THREE.Object3D {
         this.cannon = new CharacterCannon(this);
         this.projectilesManager = new CharacterProjectiles(this);
         this.effects = new CharacterEffects(this);
-        this.ui = new CharacterUI(this);
         this.collision = new CharacterCollision(this);
+        
+        // Inicializar UI después de crear los componentes
+        this.ui = new CharacterUI(this);
+        this.createCannonIndicators();
     }
 
     update(deltaTime = 0.016, inputManager = null) {
