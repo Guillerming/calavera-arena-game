@@ -545,19 +545,34 @@ export class Character extends THREE.Object3D {
             
             // Obtener la altura del terreno en la nueva posición
             const terrainHeight = this.terrain ? this.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
-            console.log('🌍 Altura del terreno:', terrainHeight, 'Posición Y:', newPosition.y);
             
             // Verificar colisiones
             if (newPosition.y <= 0) {
-                console.log('💦 Impacto en agua en:', newPosition);
-                this.createSplashEffect(newPosition);
+                console.log('💦 Impacto en agua en:', newPosition.x, newPosition.y, newPosition.z);
+                // Crear el efecto de splash en la posición exacta del impacto
+                const splashPosition = new THREE.Vector3(
+                    newPosition.x,
+                    0, // El splash siempre debe estar a nivel del agua
+                    newPosition.z
+                );
+                this.createSplashEffect(splashPosition);
+                
+                // Eliminar el proyectil
                 if (projectile.mesh.parent) {
                     projectile.mesh.parent.remove(projectile.mesh);
                 }
                 this.projectiles.splice(i, 1);
             } else if (newPosition.y <= terrainHeight) {
-                console.log('💥 Impacto en terreno en:', newPosition);
-                this.createExplosionEffect(newPosition);
+                console.log('💥 Impacto en terreno en:', newPosition.x, newPosition.y, newPosition.z);
+                // Crear el efecto de explosión en la posición exacta del impacto
+                const explosionPosition = new THREE.Vector3(
+                    newPosition.x,
+                    terrainHeight, // La explosión debe estar en la superficie del terreno
+                    newPosition.z
+                );
+                this.createExplosionEffect(explosionPosition);
+                
+                // Eliminar el proyectil
                 if (projectile.mesh.parent) {
                     projectile.mesh.parent.remove(projectile.mesh);
                 }
@@ -639,8 +654,8 @@ export class Character extends THREE.Object3D {
         splashGroup.position.y = 0; // A nivel del agua
         
         // Añadir a la escena
-        if (this.boat.parent) {
-            this.boat.parent.add(splashGroup);
+        if (this.scene) {
+            this.scene.add(splashGroup);
             
             // Variables para animar el splash
             const initialTime = performance.now();
@@ -793,8 +808,8 @@ export class Character extends THREE.Object3D {
         explosionGroup.position.copy(position);
         
         // Añadir a la escena
-        if (this.boat.parent) {
-            this.boat.parent.add(explosionGroup);
+        if (this.scene) {
+            this.scene.add(explosionGroup);
             
             // Variables para animar
             const initialTime = performance.now();
