@@ -1,13 +1,31 @@
 import * as THREE from 'three';
 import { SpeedIndicator } from '../utils/SpeedIndicator.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-export class Character {
-    constructor(team = 'blue', modelVariant = 0, terrain) {
-        this.team = team;
-        this.modelVariant = modelVariant;
-        this.terrain = terrain;
+export class Character extends THREE.Object3D {
+    constructor(scene) {
+        super();
+        this.scene = scene;
+        this.terrain = scene.terrain; // Guardamos referencia directa al terreno
+
+        // Configuración de movimiento y límites
+        this.currentSpeed = 0;
+        this.targetSpeed = 0;
+        this.maxSpeed = 20;
+        this.acceleration = 15;
+        this.deceleration = 10;
+        this.rotationSpeed = 0.03;
         
-        // Límites del mapa (un poco menor que el tamaño del agua para mantener el barco visible)
+        // Configuración del cañón
+        this.cannonReady = true;
+        this.cannonCooldown = 1000; // 1 segundo entre disparos
+        this.projectileSpeed = 60;
+        this.projectileGravity = 4.9;
+        this.maxRange = 200;
+        this.cannonAngle = Math.PI / 10; // ~18 grados
+        this.prevMouseDown = false;
+        
+        // Límites del mapa
         this.mapLimits = {
             minX: -195,
             maxX: 195,
@@ -15,29 +33,9 @@ export class Character {
             maxZ: 195
         };
         
-        // Parámetros de disparo (definir antes de crear el modelo)
-        this.cannonReady = true;
-        this.cannonCooldown = 0.6; // Tiempo entre disparos en segundos
-        this.cannonCooldownTime = 0.6; // Duración del enfriamiento entre disparos
-        this.cannonTimer = 0;
+        // Array para almacenar proyectiles
         this.projectiles = [];
-        this.projectileSpeed = 80; // Velocidad inicial de los proyectiles
-        this.projectileGravity = 4.9; // Gravedad aplicada a los proyectiles (mitad de la normal)
-        this.cannonAngle = Math.PI / 65; // Ángulo de elevación del cañón
-        this.projectileInitialHeight = 0.5; // Altura inicial del proyectil sobre el nivel del mar
-        this.prevMouseDown = false; // Estado anterior del mouse para detectar cuando se suelta el botón
 
-        // Crear el modelo después de definir los parámetros
-        this.mesh = this.createTemporaryModel();
-        
-        // Parámetros de movimiento
-        this.maxSpeed = 10;
-        this.minSpeed = -2; // 1/5 de la velocidad máxima en reversa
-        this.currentSpeed = this.maxSpeed;
-        this.speedChangeRate = 5; // Velocidad de cambio de velocidad
-        this.velocity = new THREE.Vector3();
-        this.direction = new THREE.Vector3();
-        
         // Crear el indicador de velocidad
         this.speedIndicator = new SpeedIndicator();
         
@@ -50,97 +48,73 @@ export class Character {
         this.health = 100;
         this.isAlive = true;
 
+        // Crear grupo para los proyectiles
+        this.projectilesGroup = new THREE.Group();
+        this.add(this.projectilesGroup);
+
         // Añadir propiedades de colisión
         this.radius = 0.5;
         this.height = 2;
-        this.collider = new THREE.CylinderGeometry(this.radius, this.radius, this.height, 8);
         
-        // Si quieres visualizar el collider (opcional, para debugging)
-        this.colliderMesh = new THREE.Mesh(
-            this.collider,
-            new THREE.MeshBasicMaterial({ 
-                wireframe: true, 
-                visible: false // Cambiar a true para ver los colliders
-            })
-        );
-        this.mesh.add(this.colliderMesh);
-
         // Añadir estado de agua
         this.normalHeight = 1;
-        this.waterHeight = 0.3; // Más hundido en el agua
+        this.waterHeight = 0.3;
         this.inWater = false;
+
+        // Cargador de modelos GLTF/GLB
+        const loader = new GLTFLoader();
         
-        // Crear grupo para los proyectiles
-        this.projectilesGroup = new THREE.Group();
-        this.mesh.add(this.projectilesGroup);
+        // Cargar el nuevo modelo del barco
+        loader.load('assets/models/lowpolyboat.glb', (gltf) => {
+            this.boat = gltf.scene;
+
+            // Ajustar escala y rotación inicial del barco
+            this.boat.scale.set(0.6, 0.6, 0.6); // Reducir más la escala
+            this.boat.rotation.y = Math.PI; // Girar 180 grados para que mire hacia adelante
+            this.boat.position.y = -1.5; // Elevar más el barco
+
+            // Añadir el barco a la escena
+            this.add(this.boat);
+
+            // Crear el collider después de cargar el barco
+            this.colliderMesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(this.radius, this.radius, this.height, 8),
+                new THREE.MeshBasicMaterial({ 
+                    wireframe: true, 
+                    visible: false
+                })
+            );
+            this.colliderMesh.position.y = 0.8; // Ajustar también la posición del collider
+            this.boat.add(this.colliderMesh);
+            
+            // Crear y posicionar el cañón después de cargar el barco
+            this.createCannon();
+
+            // Añadir el barco a la escena del juego
+            if (this.scene) {
+                this.scene.add(this);
+            }
+        });
     }
 
-    createTemporaryModel() {
-        const boatGroup = new THREE.Group();
-
-        // Base de la barca (forma de U invertida)
-        const hullGeometry = new THREE.BoxGeometry(2, 0.5, 4);
-        const hullMaterial = new THREE.MeshPhongMaterial({ color: 0x8B4513 }); // Marrón madera
-        const hull = new THREE.Mesh(hullGeometry, hullMaterial);
+    createCannon() {
+        // Geometría del cañón
+        const cannonGeometry = new THREE.CylinderGeometry(0.1, 0.15, 0.6, 12);
+        const cannonMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+        this.cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
         
-        // Crear los lados de la barca
-        const sideGeometry = new THREE.BoxGeometry(0.2, 0.7, 4);
-        const leftSide = new THREE.Mesh(sideGeometry, hullMaterial);
-        const rightSide = new THREE.Mesh(sideGeometry, hullMaterial);
+        // Posicionar el cañón en el barco
+        this.cannon.position.set(0, 1.1, -1.8); // Ajustar altura del cañón
+        this.cannon.rotation.x = Math.PI / 2 - this.cannonAngle;
         
-        // Posicionar los lados
-        leftSide.position.set(-0.9, 0.1, 0);
-        rightSide.position.set(0.9, 0.1, 0);
+        // Base del cañón
+        const baseGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.3, 12);
+        const base = new THREE.Mesh(baseGeometry, cannonMaterial);
+        base.position.set(0, 0.95, -1.8); // Ajustar altura de la base
         
-        // Añadir cañón en la proa (parte delantera)
-        const cannonGeometry = new THREE.CylinderGeometry(0.15, 0.2, 0.8, 8);
-        const cannonMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 }); // Color oscuro para el cañón
-        const cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
-        
-        // Rotar y posicionar el cañón en la proa con elevación
-        cannon.rotation.x = Math.PI / 2 - this.cannonAngle; // Rotación para el ángulo de elevación
-        cannon.position.set(0, 0.3, -1.8); // Colocar en la proa (valor z negativo)
-        
-        // Base para el cañón
-        const baseGeometry = new THREE.BoxGeometry(0.5, 0.1, 0.5);
-        const base = new THREE.Mesh(baseGeometry, hullMaterial);
-        base.position.set(0, 0.15, -1.8); // Alinear con el cañón
-        
-        // Añadir todo al grupo
-        boatGroup.add(hull);
-        boatGroup.add(leftSide);
-        boatGroup.add(rightSide);
-        boatGroup.add(base);
-        boatGroup.add(cannon);
-
-        // Guardar referencia al cañón
-        this.cannon = cannon;
-
-        // Configurar sombras
-        hull.castShadow = true;
-        leftSide.castShadow = true;
-        rightSide.castShadow = true;
-        cannon.castShadow = true;
-        base.castShadow = true;
-
-        // Marcador de dirección (proa)
-        const markerGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);
-        const markerMaterial = new THREE.MeshPhongMaterial({ color: 0x00ff00 });
-        const frontMarker = new THREE.Mesh(markerGeometry, markerMaterial);
-        frontMarker.position.z = -2; // Colocar en la proa (z negativo)
-        boatGroup.add(frontMarker);
-
-        return boatGroup;
-    }
-
-    createBodyGeometry() {
-        const geometries = [
-            new THREE.CapsuleGeometry(0.5, 1, 4, 8),
-            new THREE.BoxGeometry(1, 2, 1),
-            new THREE.CylinderGeometry(0.5, 0.5, 2, 8),
-            new THREE.SphereGeometry(0.7, 8, 8)
-        ];
-        return geometries[this.modelVariant % geometries.length];
+        // Añadir el cañón y la base al barco
+        this.add(this.cannon);
+        this.add(base);
     }
 
     update(deltaTime = 0.016, inputManager = null) {
@@ -157,31 +131,36 @@ export class Character {
         // Control de velocidad con W/S
         if (inputManager) {
             if (inputManager.isKeyPressed('KeyW')) {
-                this.currentSpeed = Math.min(this.maxSpeed, this.currentSpeed + this.speedChangeRate * deltaTime);
+                this.targetSpeed = Math.min(this.maxSpeed, this.targetSpeed + this.acceleration * deltaTime);
             } else if (inputManager.isKeyPressed('KeyS')) {
-                this.currentSpeed = Math.max(this.minSpeed, this.currentSpeed - this.speedChangeRate * deltaTime);
+                this.targetSpeed = Math.max(0, this.targetSpeed - this.deceleration * deltaTime);
+            } else {
+                // Si no se presiona ninguna tecla, desacelerar naturalmente
+                if (this.targetSpeed > 0) {
+                    this.targetSpeed = Math.max(0, this.targetSpeed - this.deceleration * 0.5 * deltaTime);
+                }
             }
         }
 
         // Actualizar el indicador de velocidad
         if (this.speedIndicator) {
-            this.speedIndicator.update(this.currentSpeed, this.maxSpeed, this.minSpeed);
+            this.speedIndicator.update(this.targetSpeed, this.maxSpeed, 0);
         }
 
-        const currentPosition = this.mesh.position.clone();
+        const currentPosition = this.position.clone();
         
         // Siempre moverse en la dirección actual
-        this.direction.set(0, 0, -1);
+        const direction = new THREE.Vector3(0, 0, -1);
         
         // Aplicar la rotación actual del barco
         const rotationMatrix = new THREE.Matrix4();
-        rotationMatrix.makeRotationY(this.mesh.rotation.y);
-        this.direction.applyMatrix4(rotationMatrix);
+        rotationMatrix.makeRotationY(this.rotation.y);
+        direction.applyMatrix4(rotationMatrix);
         
         // Calcular la nueva posición
         const newPosition = currentPosition.clone();
-        newPosition.x += this.direction.x * this.currentSpeed * deltaTime;
-        newPosition.z += this.direction.z * this.currentSpeed * deltaTime;
+        newPosition.x += direction.x * this.targetSpeed * deltaTime;
+        newPosition.z += direction.z * this.targetSpeed * deltaTime;
 
         // Verificar si la nueva posición está dentro de los límites del mapa
         const isWithinBounds = 
@@ -189,63 +168,59 @@ export class Character {
             newPosition.x <= this.mapLimits.maxX &&
             newPosition.z >= this.mapLimits.minZ &&
             newPosition.z <= this.mapLimits.maxZ;
-
-        // Comprobar colisiones en múltiples puntos alrededor del barco
-        const boatWidth = 1.2;  // Mitad del ancho total (2.4 unidades)
-        const boatLength = 2.2; // Mitad del largo total (4.4 unidades)
         
         // Crear puntos de colisión rotados según la orientación del barco
-        const cosRotation = Math.cos(this.mesh.rotation.y);
-        const sinRotation = Math.sin(this.mesh.rotation.y);
+        const cosRotation = Math.cos(this.rotation.y);
+        const sinRotation = Math.sin(this.rotation.y);
         
         const collisionPoints = [
-            // Centro
-            { x: newPosition.x, z: newPosition.z },
-            // Proa y popa
-            { 
-                x: newPosition.x + (boatLength * sinRotation), 
-                z: newPosition.z + (boatLength * cosRotation)
-            },
-            { 
-                x: newPosition.x - (boatLength * sinRotation), 
-                z: newPosition.z - (boatLength * cosRotation)
-            },
-            // Babor y estribor
-            { 
-                x: newPosition.x + (boatWidth * cosRotation), 
-                z: newPosition.z - (boatWidth * sinRotation)
-            },
-            { 
-                x: newPosition.x - (boatWidth * cosRotation), 
-                z: newPosition.z + (boatWidth * sinRotation)
-            }
+            newPosition.clone(), // Centro
+            new THREE.Vector3( // Proa
+                newPosition.x + sinRotation * 2,
+                newPosition.y,
+                newPosition.z + cosRotation * 2
+            ),
+            new THREE.Vector3( // Popa
+                newPosition.x - sinRotation * 2,
+                newPosition.y,
+                newPosition.z - cosRotation * 2
+            ),
+            new THREE.Vector3( // Babor
+                newPosition.x - cosRotation,
+                newPosition.y,
+                newPosition.z + sinRotation
+            ),
+            new THREE.Vector3( // Estribor
+                newPosition.x + cosRotation,
+                newPosition.y,
+                newPosition.z - sinRotation
+            )
         ];
-
+        
         // Comprobar si algún punto colisiona con tierra
         const collision = collisionPoints.some(point => {
             const terrainHeight = this.terrain.getHeightAt(point.x, point.z);
             return terrainHeight > 0;
         });
 
-        // Si no hay colisión y estamos dentro de los límites, permitir el movimiento
         if (!collision && isWithinBounds) {
-            newPosition.y = 0;
-            this.mesh.position.copy(newPosition);
+            newPosition.y = 0.8; // Mantener la altura del barco
+            this.position.copy(newPosition);
         } else {
             // Si estamos colisionando o fuera de límites, detener el movimiento
-            this.currentSpeed = 0;
+            this.targetSpeed = 0;
         }
 
-        // Mantener siempre el barco a nivel del mar
-        this.mesh.position.y = 0;
+        // Mantener siempre el barco a la altura correcta
+        this.position.y = 0.8;
     }
 
     // En el método updateJump de Character.js
     updateJump(deltaTime, inputManager) {
         // Obtener la altura actual del terreno
-        const terrainHeight = this.terrain ? this.terrain.getHeightAt(
-            this.mesh.position.x, 
-            this.mesh.position.z
+        const terrainHeight = this.scene.terrain ? this.scene.terrain.getHeightAt(
+            this.boat.position.x, 
+            this.boat.position.z
         ) : 0;
         
         // Altura mínima a la que puede descender (terreno + mitad de la altura del personaje)
@@ -268,11 +243,11 @@ export class Character {
         }
     
         // Actualizar posición vertical
-        this.mesh.position.y += this.velocity.y * deltaTime;
+        this.boat.position.y += this.velocity.y * deltaTime;
     
         // Detectar colisión con el suelo (basado en la altura del terreno)
-        if (this.mesh.position.y <= minHeight) {
-            this.mesh.position.y = minHeight;
+        if (this.boat.position.y <= minHeight) {
+            this.boat.position.y = minHeight;
             this.velocity.y = 0;
             this.isJumping = false;
         }
@@ -280,14 +255,14 @@ export class Character {
     
     // También modifica el método setPosition para que sea consistente:
     setPosition(x, z) {
-        if (this.mesh) {
-            this.mesh.position.set(x, 0, z); // Siempre y = 0
+        if (this.boat) {
+            this.boat.position.set(x, 0, z); // Siempre y = 0
         }
     }
 
     checkCollision(otherCharacter) {
-        const dx = this.mesh.position.x - otherCharacter.mesh.position.x;
-        const dz = this.mesh.position.z - otherCharacter.mesh.position.z;
+        const dx = this.boat.position.x - otherCharacter.boat.position.x;
+        const dz = this.boat.position.z - otherCharacter.boat.position.z;
         const distance = Math.sqrt(dx * dx + dz * dz);
         
         // Si hay colisión, empujar a los personajes en direcciones opuestas
@@ -296,8 +271,8 @@ export class Character {
             const pushDirection = new THREE.Vector3(dx, 0, dz).normalize();
             
             // Empujar a ambos personajes
-            this.mesh.position.add(pushDirection.multiplyScalar(overlap * 0.5));
-            otherCharacter.mesh.position.add(pushDirection.multiplyScalar(-overlap * 0.5));
+            this.boat.position.add(pushDirection.multiplyScalar(overlap * 0.5));
+            otherCharacter.boat.position.add(pushDirection.multiplyScalar(-overlap * 0.5));
             
             return true;
         }
@@ -345,11 +320,11 @@ export class Character {
         
         // Calcular la dirección hacia adelante del barco
         const direction = new THREE.Vector3(0, 0, -1);
-        direction.applyQuaternion(this.mesh.quaternion);
+        direction.applyQuaternion(this.boat.quaternion);
         
         // Posición inicial del proyectil (en la boca del cañón)
         const initialPos = new THREE.Vector3();
-        initialPos.copy(this.mesh.position);
+        initialPos.copy(this.boat.position);
         
         // Ajustar la posición inicial para que salga desde el cañón
         // Considerando la posición del cañón y su ángulo de elevación
@@ -383,8 +358,8 @@ export class Character {
         });
         
         // Añadir el proyectil a la escena
-        if (this.mesh.parent) {
-            this.mesh.parent.add(projectile);
+        if (this.boat.parent) {
+            this.boat.parent.add(projectile);
             
             // Crear efecto de fogonazo en la boca del cañón
             // Calcular posición exacta del fogonazo
@@ -396,7 +371,7 @@ export class Character {
         }
         
         // Reiniciar el temporizador de enfriamiento
-        this.cannonCooldown = this.cannonCooldownTime;
+        this.cannonCooldown = 1000; // 1 segundo entre disparos
     }
     
     // Crear efecto de disparo del cañón
@@ -492,8 +467,8 @@ export class Character {
         flashGroup.position.copy(position);
         
         // Añadir a la escena
-        if (this.mesh.parent) {
-            this.mesh.parent.add(flashGroup);
+        if (this.boat.parent) {
+            this.boat.parent.add(flashGroup);
             
             // Variables para animar
             const initialTime = performance.now();
@@ -607,7 +582,7 @@ export class Character {
             projectile.mesh.rotation.z += projectile.rotationSpeed.z * deltaTime;
             
             // Obtener la altura del terreno en la posición actual
-            const terrainHeight = this.terrain ? this.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
+            const terrainHeight = this.scene.terrain ? this.scene.terrain.getHeightAt(newPosition.x, newPosition.z) : 0;
             
             // Verificar colisión con otros barcos (si tenemos una función para ello)
             let hitShip = false;
@@ -730,8 +705,8 @@ export class Character {
         splashGroup.position.y = 0; // A nivel del agua
         
         // Añadir a la escena
-        if (this.mesh.parent) {
-            this.mesh.parent.add(splashGroup);
+        if (this.boat.parent) {
+            this.boat.parent.add(splashGroup);
             
             // Variables para animar el splash
             const initialTime = performance.now();
@@ -884,8 +859,8 @@ export class Character {
         explosionGroup.position.copy(position);
         
         // Añadir a la escena
-        if (this.mesh.parent) {
-            this.mesh.parent.add(explosionGroup);
+        if (this.boat.parent) {
+            this.boat.parent.add(explosionGroup);
             
             // Variables para animar
             const initialTime = performance.now();

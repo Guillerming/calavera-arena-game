@@ -34,14 +34,14 @@ export class CameraController {
             );
             
             // El personaje siempre mira en la dirección de la cámara (solo horizontalmente)
-            this.target.mesh.rotation.y = this.rotationY;
+            this.target.rotation.y = this.rotationY;
             
             // Reiniciar el delta del ratón
             inputManager.resetMouseDelta();
         }
 
         // Calcular posición de la cámara
-        const targetPosition = this.target.mesh.position.clone();
+        const targetPosition = this.target.position.clone();
         
         // Aplicar rotaciones para la posición de la cámara
         const cameraOffset = new THREE.Vector3(

@@ -21,9 +21,12 @@ export class CharacterManager {
         this.inputManager = inputManager;
     }
 
-    createCharacter(id, team, modelVariant, terrain) {
-        const character = new Character(team, modelVariant, terrain || this.terrain);
-        this.characters.set(id, character);
+    createCharacter() {
+        if (!this.scene) {
+            console.error("No se ha establecido la escena en CharacterManager");
+            return null;
+        }
+        const character = new Character(this.scene);
         return character;
     }
 
@@ -33,21 +36,16 @@ export class CharacterManager {
             return null;
         }
 
-        // Crear el personaje del jugador con el terreno
-        const player = this.createCharacter('player', 'blue', 0, this.terrain);
+        // Crear el personaje del jugador
+        const player = this.createCharacter();
+        if (!player) return null;
         
         // Guardar referencia al personaje del jugador
         this.playerCharacter = player;
+        this.characters.set('player', player);
         
         // Establecer el nombre del jugador
         player.playerName = playerName;
-        
-        // Posicionar el barco en una posición inicial visible
-        // El agua está a nivel y=0.05, posicionamos el barco para que flote correctamente
-        player.mesh.position.set(0, 0.3, 0);
-        
-        // Añadir el barco a la escena
-        this.scene.add(player.mesh);
         
         return player;
     }
@@ -64,9 +62,8 @@ export class CharacterManager {
         return this.characters.get(id);
     }
 
-    update() {
-        // Redirigir al método updateAll para mantener compatibilidad
-        this.updateAll();
+    update(deltaTime) {
+        this.updateAll(deltaTime);
     }
     
     updateAll(deltaTime) {

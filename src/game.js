@@ -61,6 +61,9 @@ export class Game {
         const terrainGroup = await this.terrain.initialize();
         this.engine.scene.add(terrainGroup);
         
+        // Añadir el terreno a la escena para que sea accesible
+        this.engine.scene.terrain = this.terrain;
+        
         // Cargar el agua
         const waterGroup = await this.water.initialize();
         this.engine.scene.add(waterGroup);
@@ -93,12 +96,8 @@ export class Game {
             this.engine.setPlayerTarget(player);
             
             // Mover la cámara más cerca del barco y con un buen ángulo
-            this.engine.camera.position.set(
-                player.mesh.position.x, 
-                player.mesh.position.y + 5,  // 5 unidades sobre el barco
-                player.mesh.position.z + 10  // 10 unidades detrás del barco
-            );
-            this.engine.camera.lookAt(player.mesh.position);
+            this.engine.camera.position.set(0, 5, 10);  // Posición inicial de la cámara
+            this.engine.camera.lookAt(0, 0, 0);
         } else {
             console.error("No se pudo crear el jugador");
         }
