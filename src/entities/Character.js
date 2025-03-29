@@ -18,7 +18,7 @@ export class Character extends THREE.Object3D {
         // Configuración de basculación del barco
         this.currentRoll = 0;
         this.targetRoll = 0;
-        this.maxRoll = Math.PI / 12; // 15 grados de basculación máxima
+        this.maxRoll = (Math.PI / 12) * 0.6; // Reducido al 60% del valor original
         this.rollSpeed = 3; // Velocidad de transición de la basculación
         
         // Configuración de disparo
@@ -124,6 +124,9 @@ export class Character extends THREE.Object3D {
             // Para un giro de 360º en 15s, necesitamos 2π/15 radianes por segundo
             const rotationRate = (2 * Math.PI) / 15;
             
+            // Calcular el factor de velocidad para la basculación (0 a 1)
+            const speedFactor = Math.abs(this.currentSpeed) / this.maxSpeed;
+            
             // Resetear el targetRoll si no se está girando
             if (!inputManager.isKeyPressed('KeyA') && !inputManager.isKeyPressed('KeyD')) {
                 this.targetRoll = 0;
@@ -134,7 +137,7 @@ export class Character extends THREE.Object3D {
                 this.rotation.y += rotationRate * deltaTime;
                 if (this.boat) {
                     this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
-                    this.targetRoll = this.maxRoll; // Bascular hacia la derecha
+                    this.targetRoll = this.maxRoll * speedFactor; // Bascular hacia la derecha proporcionalmente a la velocidad
                 }
             }
             if (inputManager.isKeyPressed('KeyD')) {
@@ -142,7 +145,7 @@ export class Character extends THREE.Object3D {
                 this.rotation.y -= rotationRate * deltaTime;
                 if (this.boat) {
                     this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
-                    this.targetRoll = -this.maxRoll; // Bascular hacia la izquierda
+                    this.targetRoll = -this.maxRoll * speedFactor; // Bascular hacia la izquierda proporcionalmente a la velocidad
                 }
             }
             
