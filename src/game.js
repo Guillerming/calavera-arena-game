@@ -87,62 +87,37 @@ export class Game {
     }
 
     async startGame() {
-        // Pasar el terreno al crear el jugador
-        this.characterManager.setTerrain(this.terrain);
-        
-        // Crear el barco con el nombre del jugador
-        const player = await this.characterManager.createPlayer(this.playerName);
-        
-        if (player) {
-            // Posicionar la cámara para seguir al jugador
-            this.engine.setPlayerTarget(player);
-            
-            // Pasar el cameraController al jugador
-            player.setCameraController(this.engine.getCameraController());
-            
-            // Mover la cámara más cerca del barco y con un buen ángulo
-            this.engine.camera.position.set(0, 5, 10);  // Posición inicial de la cámara
-            this.engine.camera.lookAt(0, 0, 0);
+        // Crear el personaje del jugador
+        this.player = this.characterManager.createPlayer(this.playerName);
+        this.player.setTerrain(this.terrain);
+        this.player.setNetworkManager(this.networkManager); // Pasar el NetworkManager al Character
 
-            // Configurar callbacks de red
-            this.networkManager.setCallbacks({
-                onPlayerUpdate: (playerData) => {
-                    // Actualizar posición y rotación de otros jugadores
-                    const otherPlayer = this.characterManager.getCharacter(playerData.id);
-                    if (otherPlayer) {
-                        otherPlayer.position.set(
-                            playerData.position.x,
-                            playerData.position.y,
-                            playerData.position.z
-                        );
-                        otherPlayer.rotation.y = playerData.rotation.y;
-                    }
-                },
-                onPlayerJoin: (playerData) => {
-                    // Crear nuevo jugador
-                    const newPlayer = this.characterManager.createCharacter(playerData.id);
-                    if (newPlayer) {
-                        newPlayer.position.set(
-                            playerData.position.x,
-                            playerData.position.y,
-                            playerData.position.z
-                        );
-                        newPlayer.rotation.y = playerData.rotation.y;
-                    }
-                },
-                onPlayerLeave: (playerId) => {
-                    // Eliminar jugador que se ha desconectado
-                    this.characterManager.removeCharacter(playerId);
-                }
-            });
+        // Posicionar la cámara para seguir al jugador
+        this.engine.setPlayerTarget(this.player);
+        this.engine.camera.position.set(0, 10, 15);
+        this.engine.camera.lookAt(0, 0, 0);
 
-            // Conectar al servidor
-            this.networkManager.connect();
-        } else {
-            console.error("No se pudo crear el jugador");
-        }
-        
-        // Iniciar el bucle de juego
+        // Configurar callbacks de red
+        this.networkManager.onPlayerUpdate = (playerData) => {
+            if (playerData.id !== this.networkManager.playerId) {
+                this.characterManager.updatePlayerPosition(playerData);
+            }
+        };
+
+        this.networkManager.onPlayerJoin = (playerData) => {
+            if (playerData.id !== this.networkManager.playerId) {
+                this.characterManager.createOtherPlayer(playerData);
+            }
+        };
+
+        this.networkManager.onPlayerLeave = (playerId) => {
+            this.characterManager.removePlayer(playerId);
+        };
+
+        // Conectar al servidor
+        this.networkManager.connect();
+
+        // Iniciar el bucle del juego
         this.gameLoop();
     }
 

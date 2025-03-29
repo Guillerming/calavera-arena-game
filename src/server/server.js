@@ -6,6 +6,7 @@ const wss = new WebSocketServer({ server });
 
 // Almacenar información de los jugadores conectados
 const players = new Map();
+const projectiles = new Map();
 
 // Manejar nuevas conexiones
 wss.on('connection', (ws) => {
@@ -60,11 +61,52 @@ wss.on('connection', (ws) => {
                     }, ws);
                 }
                 break;
+
+            case 'fireProjectile':
+                // Crear nuevo proyectil
+                const projectileId = Math.random().toString(36).substring(7);
+                const projectile = {
+                    id: projectileId,
+                    playerId: playerId,
+                    position: data.position,
+                    velocity: data.velocity,
+                    initialPosition: data.initialPosition,
+                    launchTime: data.launchTime
+                };
+                
+                projectiles.set(projectileId, projectile);
+                
+                // Broadcast del nuevo proyectil a todos los jugadores
+                broadcast({
+                    type: 'newProjectile',
+                    projectile: projectile
+                });
+                break;
+
+            case 'removeProjectile':
+                // Eliminar proyectil
+                projectiles.delete(data.projectileId);
+                broadcast({
+                    type: 'removeProjectile',
+                    projectileId: data.projectileId
+                });
+                break;
         }
     });
 
     // Manejar desconexión
     ws.on('close', () => {
+        // Eliminar todos los proyectiles del jugador
+        for (const [projectileId, projectile] of projectiles.entries()) {
+            if (projectile.playerId === playerId) {
+                projectiles.delete(projectileId);
+                broadcast({
+                    type: 'removeProjectile',
+                    projectileId: projectileId
+                });
+            }
+        }
+
         players.delete(playerId);
         broadcast({
             type: 'playerLeft',

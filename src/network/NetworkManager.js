@@ -4,9 +4,12 @@ export class NetworkManager {
         this.playerId = null;
         this.connected = false;
         this.players = new Map();
+        this.projectiles = new Map();
         this.onPlayerUpdate = null;
         this.onPlayerJoin = null;
         this.onPlayerLeave = null;
+        this.onProjectileUpdate = null;
+        this.onProjectileRemove = null;
     }
 
     connect() {
@@ -64,6 +67,22 @@ export class NetworkManager {
                         this.onPlayerLeave(data.id);
                     }
                     break;
+
+                case 'newProjectile':
+                    // Nuevo proyectil
+                    this.projectiles.set(data.projectile.id, data.projectile);
+                    if (this.onProjectileUpdate) {
+                        this.onProjectileUpdate(data.projectile);
+                    }
+                    break;
+
+                case 'removeProjectile':
+                    // Eliminar proyectil
+                    this.projectiles.delete(data.projectileId);
+                    if (this.onProjectileRemove) {
+                        this.onProjectileRemove(data.projectileId);
+                    }
+                    break;
             }
         };
 
@@ -78,7 +97,7 @@ export class NetworkManager {
         };
     }
 
-    // Enviar actualización de posición/rotación al servidor
+    // Enviar actualización de posición al servidor
     sendUpdate(position, rotation) {
         if (this.connected) {
             this.ws.send(JSON.stringify({
@@ -95,9 +114,87 @@ export class NetworkManager {
         }
     }
 
+    // Añadir método para enviar un proyectil al servidor
+    sendProjectile(projectileData) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message = {
+                type: 'fireProjectile',
+                data: {
+                    position: {
+                        x: projectileData.initialPosition.x,
+                        y: projectileData.initialPosition.y,
+                        z: projectileData.initialPosition.z
+                    },
+                    velocity: {
+                        x: projectileData.velocity.x,
+                        y: projectileData.velocity.y,
+                        z: projectileData.velocity.z
+                    },
+                    rotationSpeed: projectileData.rotationSpeed
+                }
+            };
+            this.ws.send(JSON.stringify(message));
+        }
+    }
+
+    // Añadir método para eliminar un proyectil del servidor
+    removeProjectile(projectileId) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message = {
+                type: 'removeProjectile',
+                data: {
+                    id: projectileId
+                }
+            };
+            this.ws.send(JSON.stringify(message));
+        }
+    }
+
+    // Modificar el método handleMessage para manejar proyectiles
+    handleMessage(event) {
+        const message = JSON.parse(event.data);
+        
+        switch (message.type) {
+            case 'playerUpdate':
+                if (this.onPlayerUpdate) {
+                    this.onPlayerUpdate(message.data);
+                }
+                break;
+                
+            case 'playerJoin':
+                if (this.onPlayerJoin) {
+                    this.onPlayerJoin(message.data);
+                }
+                break;
+                
+            case 'playerLeave':
+                if (this.onPlayerLeave) {
+                    this.onPlayerLeave(message.data);
+                }
+                break;
+
+            case 'projectileUpdate':
+                if (this.onProjectileUpdate) {
+                    this.onProjectileUpdate(message.data);
+                }
+                break;
+
+            case 'projectileRemove':
+                if (this.onProjectileRemove) {
+                    this.onProjectileRemove(message.data);
+                }
+                break;
+        }
+    }
+
     // Obtener lista de jugadores conectados
     getPlayers() {
         return Array.from(this.players.values());
+    }
+
+    // Obtener lista de proyectiles activos
+    getProjectiles() {
+        return Array.from(this.projectiles.values());
     }
 
     // Obtener ID del jugador local
@@ -106,9 +203,11 @@ export class NetworkManager {
     }
 
     // Establecer callbacks para eventos
-    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave }) {
+    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove }) {
         this.onPlayerUpdate = onPlayerUpdate;
         this.onPlayerJoin = onPlayerJoin;
         this.onPlayerLeave = onPlayerLeave;
+        this.onProjectileUpdate = onProjectileUpdate;
+        this.onProjectileRemove = onProjectileRemove;
     }
 }

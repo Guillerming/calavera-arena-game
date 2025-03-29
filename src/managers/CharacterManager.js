@@ -84,4 +84,50 @@ export class CharacterManager {
             }
         }
     }
+
+    // Añadir método para actualizar la posición de un jugador
+    updatePlayerPosition(playerData) {
+        const player = this.characters.get(playerData.id);
+        if (player) {
+            player.position.set(
+                playerData.position.x,
+                playerData.position.y,
+                playerData.position.z
+            );
+            player.rotation.y = playerData.rotation.y;
+        }
+    }
+
+    // Añadir método para crear un jugador remoto
+    createOtherPlayer(playerData) {
+        const player = this.createCharacter(playerData.id);
+        if (player) {
+            player.position.set(
+                playerData.position.x,
+                playerData.position.y,
+                playerData.position.z
+            );
+            player.rotation.y = playerData.rotation.y;
+        }
+    }
+
+    // Añadir método para eliminar un jugador
+    removePlayer(playerId) {
+        const player = this.characters.get(playerId);
+        if (player) {
+            // Eliminar todos los proyectiles del jugador
+            player.projectiles.forEach(projectile => {
+                if (projectile.mesh.parent) {
+                    projectile.mesh.parent.remove(projectile.mesh);
+                }
+            });
+            player.projectiles = [];
+
+            // Eliminar el jugador de la escena
+            if (player.parent) {
+                player.parent.remove(player);
+            }
+            this.characters.delete(playerId);
+        }
+    }
 }

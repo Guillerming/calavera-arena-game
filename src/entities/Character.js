@@ -8,6 +8,7 @@ export class Character extends THREE.Object3D {
         this.scene = scene;
         this.terrain = scene.terrain; // Guardamos referencia directa al terreno
         this.cameraController = null; // Referencia al controlador de la cámara
+        this.networkManager = null; // Referencia al NetworkManager
 
         // Configuración de movimiento y límites
         this.currentSpeed = 0;
@@ -66,8 +67,8 @@ export class Character extends THREE.Object3D {
         this.add(this.projectilesGroup);
 
         // Añadir propiedades de colisión
-        this.radius = 0.5;
-        this.height = 2;
+        this.radius = 1.5; // Radio de colisión del barco
+        this.height = 2;   // Altura de colisión del barco
         
         // Añadir estado de agua
         this.normalHeight = 1;
@@ -225,6 +226,24 @@ export class Character extends THREE.Object3D {
             const terrainHeight = this.terrain.getHeightAt(point.x, point.z);
             return terrainHeight > 0;
         });
+
+        // Verificar colisiones con otros jugadores antes de actualizar la posición
+        if (this.networkManager) {
+            const otherPlayers = this.networkManager.getPlayers();
+            let hasCollision = false;
+
+            for (const otherPlayer of otherPlayers) {
+                if (this.checkCollisionWithPlayer(newPosition, otherPlayer)) {
+                    hasCollision = true;
+                    break;
+                }
+            }
+
+            if (hasCollision) {
+                this.currentSpeed = 0;
+                return;
+            }
+        }
 
         if (!collision && isWithinBounds) {
             this.position.copy(newPosition);
@@ -506,8 +525,8 @@ export class Character extends THREE.Object3D {
         initialVelocity.y = Math.sin(this.cannonAngle) * this.projectileSpeed;
         initialVelocity.z = direction.z * Math.cos(this.cannonAngle) * this.projectileSpeed;
         
-        // Añadir el proyectil a la lista de proyectiles activos
-        this.projectiles.push({
+        // Añadir el proyectil a la lista local
+        const projectileData = {
             mesh: projectile,
             velocity: initialVelocity,
             initialPosition: initialPos.clone(),
@@ -517,7 +536,14 @@ export class Character extends THREE.Object3D {
                 y: (Math.random() - 0.5) * 0.3,
                 z: (Math.random() - 0.5) * 0.3
             }
-        });
+        };
+        
+        this.projectiles.push(projectileData);
+        
+        // Enviar el proyectil al servidor
+        if (this.networkManager) {
+            this.networkManager.sendProjectile(projectileData);
+        }
         
         // Añadir el proyectil a la escena y crear el efecto visual
         if (this.scene) {
@@ -731,31 +757,20 @@ export class Character extends THREE.Object3D {
             
             // Verificar colisiones
             if (newPosition.y <= 0) {
-                const splashPosition = new THREE.Vector3(
-                    newPosition.x,
-                    0,
-                    newPosition.z
-                );
-                this.createSplashEffect(splashPosition);
-                
-                // Eliminar el proyectil
-                if (projectile.mesh.parent) {
-                    projectile.mesh.parent.remove(projectile.mesh);
-                }
-                this.projectiles.splice(i, 1);
+                this.handleProjectileCollision(projectile, newPosition, 'water');
             } else if (newPosition.y <= terrainHeight) {
-                const explosionPosition = new THREE.Vector3(
-                    newPosition.x,
-                    terrainHeight,
-                    newPosition.z
-                );
-                this.createExplosionEffect(explosionPosition);
-                
-                // Eliminar el proyectil
-                if (projectile.mesh.parent) {
-                    projectile.mesh.parent.remove(projectile.mesh);
+                this.handleProjectileCollision(projectile, newPosition, 'terrain');
+            } else {
+                // Verificar colisiones con otros jugadores
+                if (this.networkManager) {
+                    const otherPlayers = this.networkManager.getPlayers();
+                    for (const otherPlayer of otherPlayers) {
+                        if (this.checkCollisionWithPlayer(newPosition, otherPlayer)) {
+                            this.handleProjectileCollision(projectile, newPosition, 'player');
+                            break;
+                        }
+                    }
                 }
-                this.projectiles.splice(i, 1);
             }
             
             // Aplicar rotación al proyectil
@@ -1122,5 +1137,58 @@ export class Character extends THREE.Object3D {
 
         // Actualizar la geometría de la línea
         this.aimingLine.geometry.setFromPoints(points);
+    }
+
+    // Añadir método para establecer el NetworkManager
+    setNetworkManager(networkManager) {
+        this.networkManager = networkManager;
+    }
+
+    // Añadir método para verificar colisiones con otros jugadores
+    checkCollisionWithPlayer(projectilePos, playerData) {
+        const playerPos = new THREE.Vector3(
+            playerData.position.x,
+            playerData.position.y,
+            playerData.position.z
+        );
+
+        // Calcular distancia entre el proyectil y el jugador
+        const distance = projectilePos.distanceTo(playerPos);
+        
+        // Verificar si el proyectil está dentro del radio de colisión del jugador
+        return distance <= this.radius;
+    }
+
+    // Añadir método para manejar colisiones de proyectiles
+    handleProjectileCollision(projectile, position, collisionType) {
+        // Crear efectos visuales según el tipo de colisión
+        switch (collisionType) {
+            case 'water':
+                this.createSplashEffect(position);
+                break;
+            case 'terrain':
+                this.createExplosionEffect(position);
+                break;
+            case 'player':
+                this.createExplosionEffect(position);
+                // Aquí podrías añadir lógica para dañar al jugador
+                break;
+        }
+        
+        // Eliminar el proyectil
+        if (projectile.mesh.parent) {
+            projectile.mesh.parent.remove(projectile.mesh);
+        }
+        
+        // Eliminar de la lista local
+        const index = this.projectiles.indexOf(projectile);
+        if (index > -1) {
+            this.projectiles.splice(index, 1);
+        }
+
+        // Notificar al servidor
+        if (this.networkManager) {
+            this.networkManager.removeProjectile(projectile.id);
+        }
     }
 } 
