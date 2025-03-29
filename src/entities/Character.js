@@ -13,7 +13,9 @@ export class Character extends THREE.Object3D {
         this.maxSpeed = 20;
         this.minSpeed = -5; // Velocidad máxima en reversa
         this.speedChangeRate = 20; // Velocidad de cambio al pulsar W/S
-        this.rotationSpeed = 0.03;
+        
+        // Configuración de rotación
+        this.maxRotationRate = (2 * Math.PI) / 15; // Una vuelta completa en 15 segundos a máxima velocidad
         
         // Configuración de basculación del barco
         this.currentRoll = 0;
@@ -121,11 +123,11 @@ export class Character extends THREE.Object3D {
             }
 
             // Control de rotación con A/D
-            // Para un giro de 360º en 15s, necesitamos 2π/15 radianes por segundo
-            const rotationRate = (2 * Math.PI) / 15;
-            
-            // Calcular el factor de velocidad para la basculación (0 a 1)
+            // Calcular el factor de velocidad (0 a 1) usando el valor absoluto de la velocidad
             const speedFactor = Math.abs(this.currentSpeed) / this.maxSpeed;
+            
+            // Calcular la velocidad de rotación actual basada en la velocidad del barco
+            const currentRotationRate = this.maxRotationRate * speedFactor;
             
             // Resetear el targetRoll si no se está girando
             if (!inputManager.isKeyPressed('KeyA') && !inputManager.isKeyPressed('KeyD')) {
@@ -133,16 +135,16 @@ export class Character extends THREE.Object3D {
             }
             
             if (inputManager.isKeyPressed('KeyA')) {
-                // Rotar a la izquierda
-                this.rotation.y += rotationRate * deltaTime;
+                // Rotar a la izquierda proporcionalmente a la velocidad
+                this.rotation.y += currentRotationRate * deltaTime;
                 if (this.boat) {
                     this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
                     this.targetRoll = this.maxRoll * speedFactor; // Bascular hacia la derecha proporcionalmente a la velocidad
                 }
             }
             if (inputManager.isKeyPressed('KeyD')) {
-                // Rotar a la derecha
-                this.rotation.y -= rotationRate * deltaTime;
+                // Rotar a la derecha proporcionalmente a la velocidad
+                this.rotation.y -= currentRotationRate * deltaTime;
                 if (this.boat) {
                     this.boat.rotation.y = Math.PI; // Mantener la rotación base del modelo
                     this.targetRoll = -this.maxRoll * speedFactor; // Bascular hacia la izquierda proporcionalmente a la velocidad
