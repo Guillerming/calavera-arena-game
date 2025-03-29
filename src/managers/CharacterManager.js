@@ -51,21 +51,23 @@ export class CharacterManager {
         }
     }
 
-    async createPlayer(playerName) {
-        if (!this.scene) {
-            console.error("No se ha establecido la escena en CharacterManager");
+    createPlayer(playerName) {
+        // Crear el personaje
+        const player = this.createCharacter(playerName);
+        if (!player) {
+            console.error('No se pudo crear el personaje');
             return null;
         }
 
-        // Crear el personaje del jugador
-        const player = this.createCharacter();
-        if (!player) return null;
+        // Configurar el personaje
+        player.setTerrain(this.scene.terrain);
+        player.setCameraController(this.scene.cameraController);
+        
+        // Añadir el personaje a la escena
+        this.scene.add(player);
         
         // Guardar referencia al personaje del jugador
         this.playerCharacter = player;
-        
-        // Establecer el nombre del jugador
-        player.playerName = playerName;
         
         return player;
     }

@@ -6,7 +6,7 @@ export class Character extends THREE.Object3D {
     constructor(scene) {
         super();
         this.scene = scene;
-        this.terrain = scene.terrain; // Guardamos referencia directa al terreno
+        this.terrain = null; // Inicializar como null
         this.cameraController = null; // Referencia al controlador de la cámara
         this.networkManager = null; // Referencia al NetworkManager
 
@@ -1190,5 +1190,10 @@ export class Character extends THREE.Object3D {
         if (this.networkManager) {
             this.networkManager.removeProjectile(projectile.id);
         }
+    }
+
+    // Añadir método para establecer el terreno
+    setTerrain(terrain) {
+        this.terrain = terrain;
     }
 } 

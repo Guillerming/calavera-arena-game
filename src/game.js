@@ -32,16 +32,6 @@ export class Game {
         this.initialized = false;
         this.worldInitialized = false;
         
-        // Comenzar a cargar el mundo inmediatamente
-        this.setupWorld().then(() => {
-            this.worldInitialized = true;
-            
-            // Si el jugador ya ha introducido su nombre, iniciar el juego
-            if (this.initialized) {
-                this.startGame();
-            }
-        });
-        
         // Crear pantalla de carga
         this.loadingScreen = new LoadingScreen((playerName) => {
             // Cuando el usuario completa la pantalla de carga
@@ -87,10 +77,27 @@ export class Game {
     }
 
     async startGame() {
+        // Asegurarnos de que el terreno está disponible
+        if (!this.terrain) {
+            console.error('El terreno no está inicializado');
+            return;
+        }
+
+        // Asegurarnos de que el terreno está en la escena
+        if (!this.engine.scene.terrain) {
+            this.engine.scene.terrain = this.terrain;
+        }
+
         // Crear el personaje del jugador
         this.player = this.characterManager.createPlayer(this.playerName);
-        this.player.setTerrain(this.terrain);
-        this.player.setNetworkManager(this.networkManager); // Pasar el NetworkManager al Character
+        if (!this.player) {
+            console.error('No se pudo crear el jugador');
+            return;
+        }
+
+        // Configurar el jugador
+        this.player.setNetworkManager(this.networkManager);
+        this.player.setCameraController(this.engine.getCameraController());
 
         // Posicionar la cámara para seguir al jugador
         this.engine.setPlayerTarget(this.player);
@@ -122,17 +129,14 @@ export class Game {
     }
 
     async start() {
-        // Este método ahora solo espera hasta que ambos (jugador y mundo) estén listos
-        await new Promise(resolve => {
-            const checkInitialization = () => {
-                if (this.initialized && this.worldInitialized) {
-                    resolve();
-                } else {
-                    setTimeout(checkInitialization, 100);
-                }
-            };
-            checkInitialization();
-        });
+        // Inicializar el mundo
+        await this.setupWorld();
+        this.worldInitialized = true;
+        
+        // Si el jugador ya ha introducido su nombre, iniciar el juego
+        if (this.initialized) {
+            this.startGame();
+        }
     }
 
     gameLoop() {
