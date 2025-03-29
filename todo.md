@@ -1,11 +1,12 @@
 - disparo de proyectil siguiendo la psición de la cámara
-    - impacto del proyectil quita vida
+    X impacto del proyectil quita vida
+    - colisiones entre barcos quita vida
 
 - arreglos en interfaz:
     - nombre de usuario centrado
     - poder enviar el form de nombre de usuario con Enter
     - ui para cadencia de disparo
-    - utilizar esta función en el intro: https://fonts.google.com/specimen/Henny+Penny?preview.text=calavera%20arena&categoryFilters=Feeling:%2FExpressive%2FPlayful
+    - utilizar esta fuente en el intro: https://fonts.google.com/specimen/Henny+Penny?preview.text=calavera%20arena&categoryFilters=Feeling:%2FExpressive%2FPlayful
     - mostrar un aviso si no está conectado al servidor
 
 - calavera deathmatch con countdown
@@ -16,7 +17,7 @@
     - chat de voz?
     - barcos llevan algún distintivo de color
     - barcos muestran nombre y vida del jugador
-    - al entrar en una partida/morir, spawnear en algun lugar random (q no sea sobre otro jugador ni sobre agua)
+    X al entrar en una partida/morir, spawnear en algun lugar random (q no sea sobre otro jugador ni sobre agua)
 
 - efectos de sonido
     - musica
