@@ -67,8 +67,10 @@ export class CharacterManager {
         
         // Asignar posición segura
         const safeCoordinates = this.getSafeCoordinates(15);
-        console.log(`Asignando coordenadas seguras para jugador local:`, safeCoordinates);
         player.position.set(safeCoordinates.x, 0, safeCoordinates.z);
+        
+        // Calcular rotación hacia el centro del mapa
+        player.rotation.y = this.getRotationTowardCenter(safeCoordinates.x, safeCoordinates.z);
         
         // Añadir el personaje a la escena
         this.scene.add(player);
@@ -121,13 +123,15 @@ export class CharacterManager {
             } else {
                 // Si no tiene posición, asignarle una segura
                 const safeCoordinates = this.getSafeCoordinates(15);
-                console.log(`Asignando coordenadas seguras para nuevo jugador ${playerData.id}:`, safeCoordinates);
                 player.position.set(safeCoordinates.x, 0, safeCoordinates.z);
             }
             
             // Si tiene rotación definida, usarla
             if (playerData.rotation) {
                 player.rotation.y = playerData.rotation.y;
+            } else {
+                // Si no tiene rotación, orientarlo hacia el centro
+                player.rotation.y = this.getRotationTowardCenter(player.position.x, player.position.z);
             }
             
             // Asegurarnos de que el jugador remoto tiene el radio de colisión correcto
@@ -313,6 +317,11 @@ export class CharacterManager {
                             playerData.position.y,
                             playerData.position.z
                         );
+                        
+                        // Si el servidor no especificó una rotación, orientar hacia el centro
+                        if (!playerData.rotation) {
+                            player.rotation.y = this.getRotationTowardCenter(playerData.position.x, playerData.position.z);
+                        }
                     }
                     
                     // Hacer visible el barco
@@ -404,7 +413,15 @@ export class CharacterManager {
             return { x: 0, z: 0 };
         }
         
-        console.log(`Lugar seguro encontrado en (${x.toFixed(2)}, ${z.toFixed(2)}) después de ${attempts} intentos`);
         return { x, z };
+    }
+    
+    // Calcular rotación para que el barco mire hacia el centro del mapa
+    getRotationTowardCenter(x, z) {
+        // El centro del mapa está en 0,0
+        // Calculamos el ángulo desde la posición (x,z) hacia (0,0)
+        // Matematicamente, este es el arco tangente de (-z/-x), pero con Math.atan2 para manejar los cuadrantes
+        // Añadimos Math.PI porque los barcos tienen rotación 180° por defecto
+        return Math.atan2(-z, -x) + Math.PI;
     }
 }
