@@ -93,6 +93,17 @@ wss.on('connection', (ws) => {
                     playerId: data.playerId
                 });
                 break;
+                
+            case 'projectileCollision':
+                // Reenviar información de colisión a todos los clientes
+                broadcast({
+                    type: 'projectileCollision',
+                    projectileId: data.projectileId,
+                    playerId: data.playerId,
+                    position: data.position,
+                    collisionType: data.collisionType
+                });
+                break;
         }
     });
 

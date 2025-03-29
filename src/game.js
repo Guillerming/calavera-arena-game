@@ -130,6 +130,11 @@ export class Game {
             this.characterManager.handleProjectileRemove(projectileData);
         };
 
+        // Añadir callback para colisiones de proyectiles
+        this.networkManager.onProjectileCollision = (collisionData) => {
+            this.characterManager.handleProjectileCollision(collisionData);
+        };
+
         // Conectar al servidor
         this.networkManager.connect();
 

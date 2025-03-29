@@ -1,4 +1,5 @@
 import { Character } from '../entities/Character.js';
+import * as THREE from 'three';
 
 export class CharacterManager {
     constructor() {
@@ -179,6 +180,46 @@ export class CharacterManager {
         const player = this.characters.get(projectileData.playerId);
         if (player) {
             player.removeProjectile(projectileData.projectileId);
+        }
+    }
+
+    // Añadir método para manejar colisiones de proyectiles
+    handleProjectileCollision(collisionData) {
+        // Verificar que tenemos los datos necesarios
+        if (!collisionData || !collisionData.position || !collisionData.collisionType) {
+            console.error('Datos de colisión de proyectil incompletos:', collisionData);
+            return;
+        }
+        
+        // Ignorar colisiones de proyectiles del jugador local (ya las manejamos localmente)
+        if (collisionData.playerId === this.playerCharacter?.name) {
+            return;
+        }
+        
+        // Crear los efectos visuales según el tipo de colisión
+        const position = new THREE.Vector3(
+            collisionData.position.x,
+            collisionData.position.y,
+            collisionData.position.z
+        );
+        
+        // Recrear el efecto visual correspondiente
+        switch (collisionData.collisionType) {
+            case 'water':
+                if (this.playerCharacter) {
+                    this.playerCharacter.createSplashEffect(position);
+                }
+                break;
+            case 'terrain':
+                if (this.playerCharacter) {
+                    this.playerCharacter.createExplosionEffect(position);
+                }
+                break;
+            case 'player':
+                if (this.playerCharacter) {
+                    this.playerCharacter.createExplosionEffect(position);
+                }
+                break;
         }
     }
 }

@@ -10,6 +10,7 @@ export class NetworkManager {
         this.onPlayerLeave = null;
         this.onProjectileUpdate = null;
         this.onProjectileRemove = null;
+        this.onProjectileCollision = null;
     }
 
     connect() {
@@ -100,6 +101,18 @@ export class NetworkManager {
                         });
                     }
                     break;
+                    
+                case 'projectileCollision':
+                    // Manejar colisión de proyectil
+                    if (this.onProjectileCollision) {
+                        this.onProjectileCollision({
+                            projectileId: data.projectileId,
+                            playerId: data.playerId,
+                            position: data.position,
+                            collisionType: data.collisionType
+                        });
+                    }
+                    break;
             }
         };
 
@@ -167,6 +180,21 @@ export class NetworkManager {
         }
     }
 
+    // Añadir método para enviar información de colisión de proyectiles
+    sendProjectileCollision(collisionData) {
+        if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+            const message = {
+                type: 'projectileCollision',
+                playerId: this.playerId,
+                projectileId: collisionData.projectileId,
+                position: collisionData.position,
+                collisionType: collisionData.collisionType,
+                timestamp: performance.now()
+            };
+            this.ws.send(JSON.stringify(message));
+        }
+    }
+
     // Modificar el método handleMessage para manejar proyectiles
     handleMessage(event) {
         const message = JSON.parse(event.data);
@@ -220,11 +248,12 @@ export class NetworkManager {
     }
 
     // Establecer callbacks para eventos
-    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove }) {
+    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove, onProjectileCollision }) {
         this.onPlayerUpdate = onPlayerUpdate;
         this.onPlayerJoin = onPlayerJoin;
         this.onPlayerLeave = onPlayerLeave;
         this.onProjectileUpdate = onProjectileUpdate;
         this.onProjectileRemove = onProjectileRemove;
+        this.onProjectileCollision = onProjectileCollision;
     }
 }

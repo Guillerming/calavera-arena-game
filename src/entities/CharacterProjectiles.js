@@ -67,7 +67,21 @@ export class CharacterProjectiles {
         }
 
         if (this.character.networkManager) {
+            // Primero notificar que se debe eliminar el proyectil
             this.character.networkManager.removeProjectile(projectile.id);
+            
+            // También enviar información sobre la colisión para que otros jugadores vean el efecto
+            if (this.character.networkManager.sendProjectileCollision) {
+                this.character.networkManager.sendProjectileCollision({
+                    projectileId: projectile.id,
+                    position: {
+                        x: position.x,
+                        y: position.y,
+                        z: position.z
+                    },
+                    collisionType: collisionType
+                });
+            }
         }
     }
     
