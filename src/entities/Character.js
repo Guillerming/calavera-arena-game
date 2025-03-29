@@ -15,7 +15,7 @@ export class Character extends THREE.Object3D {
         this.speedChangeRate = 20; // Velocidad de cambio al pulsar W/S
         this.rotationSpeed = 0.03;
         
-        // Configuración del cañón
+        // Configuración de disparo
         this.cannonReady = true;
         this.cannonCooldown = 1000; // 1 segundo entre disparos
         this.projectileSpeed = 60;
@@ -66,15 +66,15 @@ export class Character extends THREE.Object3D {
         // Cargar el nuevo modelo del barco
         loader.load('assets/models/lowpolyboat.glb', (gltf) => {
             this.boat = gltf.scene;
-
+            
             // Ajustar escala y rotación inicial del barco
-            this.boat.scale.set(0.6, 0.6, 0.6); // Reducir más la escala
-            this.boat.rotation.y = Math.PI; // Girar 180 grados para que mire hacia adelante
-            this.boat.position.y = -0.8; // Elevar más el barco
-
+            this.boat.scale.set(0.6, 0.6, 0.6);
+            this.boat.rotation.y = Math.PI;
+            this.boat.position.y = -0.8;
+            
             // Añadir el barco a la escena
             this.add(this.boat);
-
+            
             // Crear el collider después de cargar el barco
             this.colliderMesh = new THREE.Mesh(
                 new THREE.CylinderGeometry(this.radius, this.radius, this.height, 8),
@@ -83,37 +83,14 @@ export class Character extends THREE.Object3D {
                     visible: false
                 })
             );
-            this.colliderMesh.position.y = 0.8; // Ajustar también la posición del collider
+            this.colliderMesh.position.y = 0.8;
             this.boat.add(this.colliderMesh);
-            
-            // Crear y posicionar el cañón después de cargar el barco
-            this.createCannon();
 
             // Añadir el barco a la escena del juego
             if (this.scene) {
                 this.scene.add(this);
             }
         });
-    }
-
-    createCannon() {
-        // Geometría del cañón
-        const cannonGeometry = new THREE.CylinderGeometry(0.1, 0.15, 0.6, 12);
-        const cannonMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
-        this.cannon = new THREE.Mesh(cannonGeometry, cannonMaterial);
-        
-        // Posicionar el cañón en el barco
-        this.cannon.position.set(0, 1.1, -1.8); // Ajustar altura del cañón
-        this.cannon.rotation.x = Math.PI / 2 - this.cannonAngle;
-        
-        // Base del cañón
-        const baseGeometry = new THREE.CylinderGeometry(0.2, 0.2, 0.3, 12);
-        const base = new THREE.Mesh(baseGeometry, cannonMaterial);
-        base.position.set(0, 0.95, -1.8); // Ajustar altura de la base
-        
-        // Añadir el cañón y la base al barco
-        this.add(this.cannon);
-        this.add(base);
     }
 
     update(deltaTime = 0.016, inputManager = null) {
