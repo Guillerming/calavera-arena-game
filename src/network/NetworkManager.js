@@ -239,7 +239,8 @@ export class NetworkManager {
                 }
             } else {
                 // Muerte sin killer (p. ej. suicidio o causa ambiental)
-                this.scoreManager.registerDeath(data.playerId);
+                // No registramos muertes en el contador según requisito
+                console.log(`[DEBUG] Muerte sin asesino para ${data.playerId} (no se incrementa contador)`);
             }
         }
     }

@@ -155,7 +155,7 @@ export class ScoreboardUI {
             kills.style.color = '#55ff55';
             
             const deaths = document.createElement('div');
-            deaths.textContent = player.deaths.toString();
+            deaths.textContent = '0'; // Siempre mostrar 0 en la columna de calaveras
             deaths.style.textAlign = 'center';
             deaths.style.fontWeight = 'bold';
             deaths.style.color = '#ff5555';

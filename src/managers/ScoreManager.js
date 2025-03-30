@@ -39,23 +39,21 @@ export class ScoreManager {
         }
         
         if (killerId === victimId) {
-            // Es un suicidio, solo registramos la muerte
-            this.registerDeath(victimId);
+            // Es un suicidio, pero no incrementamos nada por ahora
+            console.log(`[ScoreManager] Suicidio detectado: ${killerId}`);
             return;
         }
         
         this.initPlayer(killerId);
         this.initPlayer(victimId);
         
-        // Incrementar kills del asesino
+        // Incrementar kills del asesino SOLAMENTE
         const killerScore = this.scores.get(killerId);
         killerScore.kills++;
         
-        // Incrementar muertes de la víctima
-        const victimScore = this.scores.get(victimId);
-        victimScore.deaths++;
+        // NO incrementamos muertes de la víctima según el requisito
         
-        console.log(`[ScoreManager] ${killerId} mató a ${victimId}. Kills: ${killerScore.kills}, Deaths: ${victimScore.deaths}`);
+        console.log(`[ScoreManager] ${killerId} mató a ${victimId}. Kills: ${killerScore.kills}`);
     }
     
     // Registrar muerte (sin asesino, por ejemplo, al salir del mapa)
@@ -131,5 +129,19 @@ export class ScoreManager {
                 console.log(`[ScoreManager] Eliminado jugador inactivo: ${playerId}`);
             }
         }
+    }
+    
+    // Método para la futura funcionalidad de calaveras
+    registerSkull(playerId) {
+        if (!playerId) {
+            console.warn('[ScoreManager] ID de jugador nulo en registerSkull');
+            return;
+        }
+        
+        this.initPlayer(playerId);
+        
+        // Esta funcionalidad se implementará después
+        // Por ahora solo hacemos logging
+        console.log(`[ScoreManager] Se registraría una calavera para: ${playerId}`);
     }
 } 
