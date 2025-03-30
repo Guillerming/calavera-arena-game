@@ -114,8 +114,9 @@ export class ScoreboardUI {
         killsHeader.style.textAlign = 'center';
         
         const deathsHeader = document.createElement('div');
-        deathsHeader.textContent = 'Muertes';
+        deathsHeader.textContent = '💀';
         deathsHeader.style.textAlign = 'center';
+        deathsHeader.style.fontSize = '1.2em'; // Aumentar tamaño para mejor visibilidad
         
         headerRow.appendChild(rankHeader);
         headerRow.appendChild(nameHeader);
