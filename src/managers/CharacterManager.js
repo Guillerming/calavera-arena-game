@@ -115,6 +115,12 @@ export class CharacterManager {
             // Guardar referencia al personaje del jugador
             this.playerCharacter = player;
             
+            // Añadir al ScoreManager con el ID correcto
+            if (this.scoreManager) {
+                this.scoreManager.initPlayer(serverId, playerName);
+                console.log(`[DEBUG] Jugador local añadido al ScoreManager: ${serverId} (${playerName})`);
+            }
+            
             // Restaurar callback original si existía
             if (originalOnInit) {
                 originalOnInit(serverId);
@@ -172,6 +178,12 @@ export class CharacterManager {
                 console.log(`[DEBUG] Asignado NetworkManager a jugador remoto: ${playerData.id}`);
             }
             
+            // Añadir al ScoreManager
+            if (this.scoreManager) {
+                this.scoreManager.initPlayer(playerData.id, playerData.name || playerData.id);
+                console.log(`[DEBUG] Jugador remoto añadido al ScoreManager: ${playerData.id}`);
+            }
+            
             // Si tiene una posición definida, usarla
             if (playerData.position) {
                 player.position.set(
@@ -218,6 +230,12 @@ export class CharacterManager {
                 player.parent.remove(player);
             }
             this.characters.delete(playerId);
+            
+            // Eliminar del ScoreManager
+            if (this.scoreManager) {
+                this.scoreManager.removePlayer(playerId);
+                console.log(`[DEBUG] Jugador eliminado del ScoreManager: ${playerId}`);
+            }
         }
     }
 
@@ -426,5 +444,32 @@ export class CharacterManager {
         if (this.scoreboardUI) {
             this.scoreboardUI.update();
         }
+        
+        // Sincronizar ScoreManager con jugadores activos cada 5 segundos
+        this._syncScoreManagerTimer = (this._syncScoreManagerTimer || 0) + deltaTime;
+        if (this._syncScoreManagerTimer > 5) {
+            this.syncScoreManager();
+            this._syncScoreManagerTimer = 0;
+        }
+    }
+    
+    // Método para sincronizar el ScoreManager con los jugadores activos
+    syncScoreManager() {
+        if (!this.scoreManager) return;
+        
+        // Obtener lista de IDs de jugadores activos
+        const activePlayerIds = Array.from(this.characters.keys());
+        
+        // Si hay jugador local, asegurarse de incluirlo
+        if (this.playerCharacter && this.playerCharacter.name) {
+            if (!activePlayerIds.includes(this.playerCharacter.name)) {
+                activePlayerIds.push(this.playerCharacter.name);
+            }
+        }
+        
+        // Sincronizar ScoreManager (eliminar jugadores que ya no están activos)
+        this.scoreManager.syncPlayers(activePlayerIds);
+        
+        console.log(`[DEBUG] ScoreManager sincronizado. Jugadores activos: ${activePlayerIds.length}`);
     }
 }
