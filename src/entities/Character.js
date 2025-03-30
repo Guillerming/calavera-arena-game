@@ -120,6 +120,7 @@ export class Character extends THREE.Object3D {
             if (this.projectilesManager) {
                 this.projectilesManager.updateProjectiles(deltaTime);
             }
+            
             return;
         }
         
@@ -421,7 +422,6 @@ export class Character extends THREE.Object3D {
         if (this.isLocalPlayer && this.networkManager) {
             this.networkManager.sendHealthUpdate(this.health, this.isAlive);
         }
-        
     }
     
     // Mostrar efecto visual de daño

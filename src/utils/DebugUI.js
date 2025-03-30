@@ -24,7 +24,13 @@ export class DebugUI {
             return;
         }
 
-        const position = character.mesh.position;
+        // Intentar obtener la posición, ya sea de character.mesh.position o character.position
+        const position = character.mesh ? character.mesh.position : character.position;
+        
+        if (!position) {
+            document.getElementById('debug-status').textContent = 'No se pudo obtener posición';
+            return;
+        }
         
         // Actualizar coordenadas X y Z
         document.getElementById('position-x').textContent = position.x.toFixed(2);

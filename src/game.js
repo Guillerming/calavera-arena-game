@@ -10,6 +10,7 @@ import * as THREE from 'three';
 import { DebugUI } from './utils/DebugUI.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
 import { Logger } from './utils/Logger.js';
+import { PlayerPlateSystem } from './utils/PlayerPlateSystem.js';
 
 export class Game {
     constructor() {
@@ -33,6 +34,9 @@ export class Game {
         
         // Inicializar el sistema de puntuaciones
         this.scoreManager = new ScoreManager();
+        
+        // Inicializar el sistema de playerPlates (puntos sobre jugadores)
+        this.playerPlateSystem = new PlayerPlateSystem(this.engine.scene);
         
         // Configurar el CharacterManager
         this.characterManager.setNetworkManager(this.networkManager);
@@ -129,10 +133,22 @@ export class Game {
         this.engine.camera.position.set(0, 10, 15);
         this.engine.camera.lookAt(0, 0, 0);
 
+        // Configurar la cámara para el sistema de playerPlates
+        this.playerPlateSystem.setCamera(this.engine.camera);
+
         // Configurar callbacks de red
         this.networkManager.onPlayerUpdate = (playerData) => {
             if (playerData.id !== this.networkManager.playerId) {
                 this.characterManager.updatePlayerPosition(playerData);
+                
+                // Actualizar la posición del playerPlate para este jugador
+                if (playerData && playerData.id) {
+                    this.playerPlateSystem.updatePlayerPlate(
+                        playerData.id,
+                        playerData.position,
+                        true // Asumimos que está vivo si recibimos actualizaciones
+                    );
+                }
             }
         };
 
@@ -143,11 +159,23 @@ export class Game {
                     this.scoreManager.initPlayer(playerData.id, playerData.name || playerData.id);
                 }
                 this.characterManager.createOtherPlayer(playerData);
+                
+                // Crear un playerPlate para este jugador
+                if (playerData && playerData.id && playerData.position) {
+                    this.playerPlateSystem.updatePlayerPlate(
+                        playerData.id,
+                        playerData.position,
+                        true // El jugador está vivo al unirse
+                    );
+                }
             }
         };
 
         this.networkManager.onPlayerLeave = (playerId) => {
             this.characterManager.removePlayer(playerId);
+            
+            // Eliminar el playerPlate de este jugador
+            this.playerPlateSystem.removePlayerPlate(playerId);
         };
 
         // Añadir callbacks para proyectiles
@@ -167,6 +195,21 @@ export class Game {
         // Añadir callback para actualizaciones de salud
         this.networkManager.onHealthUpdate = (playerData) => {
             this.characterManager.handleHealthUpdate(playerData);
+            
+            // Actualizar el playerPlate según el estado de vida del jugador
+            if (playerData && playerData.id) {
+                // Si el jugador es remoto (no el jugador local)
+                if (playerData.id !== this.networkManager.playerId) {
+                    const character = this.characterManager.getCharacter(playerData.id);
+                    if (character) {
+                        this.playerPlateSystem.updatePlayerPlate(
+                            playerData.id,
+                            character.position,
+                            playerData.isAlive
+                        );
+                    }
+                }
+            }
         };
         
         // Añadir callback para kills
@@ -198,25 +241,53 @@ export class Game {
         
         // Calcular delta time
         const now = performance.now();
-        const deltaTime = (now - (this.lastTime || now)) / 1000;
+        if (!this.lastTime) this.lastTime = now;
+        const deltaTime = (now - this.lastTime) / 1000; // Convertir a segundos
         this.lastTime = now;
         
-        // Actualizar el mundo
+        // Actualizar el motor con inputManager
         this.engine.update(deltaTime, this.inputManager);
-        this.inputManager.update();
-        this.characterManager.updateAll(deltaTime);
-        this.characterManager.update(deltaTime); // Actualizar componentes como ScoreboardUI
         
-        // Actualizar el agua - asegurando que se pasa el deltaTime correcto
+        // Actualizar inputManager
+        this.inputManager.update();
+        
+        // Actualizar los personajes
+        this.characterManager.updateAll(deltaTime);
+        
+        // Actualizar el agua
         this.water.update(deltaTime);
-
-        // Enviar actualización de posición al servidor
+        
+        // Obtener el personaje del jugador
         const player = this.characterManager.getPlayerCharacter();
+        
+        // Actualizar el debugUI con el personaje del jugador
+        if (player) {
+            this.debugUI.update(player);
+        }
+        
+        // Enviar actualizaciones al servidor
         if (player && this.networkManager.connected) {
             this.networkManager.sendUpdate(player.position, player.rotation);
         }
         
-        // Renderizar
+        // Actualizar el sistema de playerPlates
+        if (this.playerPlateSystem) {
+            this.playerPlateSystem.updateAllPlates();
+            
+            // Actualizar el playerPlate para cada personaje en la escena excepto el jugador local
+            for (const [characterId, character] of this.characterManager.characters.entries()) {
+                // No crear un punto sobre el jugador local
+                if (character.isLocalPlayer) continue;
+                
+                this.playerPlateSystem.updatePlayerPlate(
+                    characterId,
+                    character.position,
+                    character.isAlive
+                );
+            }
+        }
+        
+        // Renderizar la escena
         this.engine.render();
     }
 }
