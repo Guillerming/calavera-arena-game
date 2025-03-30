@@ -47,8 +47,10 @@ export class ScoreboardUI {
     }
     
     update() {
-        // Comprobar si se pulsó Tab para mostrar/ocultar el scoreboard
-        if (this.inputManager.isKeyPressed('Tab')) {
+        // Comprobar si se mantiene pulsada la tecla Shift para mostrar/ocultar el scoreboard
+        const isShiftPressed = this.inputManager.isKeyPressed('ShiftLeft') || this.inputManager.isKeyPressed('ShiftRight');
+        
+        if (isShiftPressed) {
             if (!this.isVisible) {
                 this.show();
             }
