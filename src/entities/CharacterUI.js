@@ -1,4 +1,9 @@
 export class CharacterUI {
+    // Variables estáticas para controlar si ya se ha creado la UI
+    static uiCreated = false;
+    static cameraAngleIndicatorCreated = false;
+    static healthIndicatorCreated = false;
+    
     constructor(character) {
         this.character = character;
         this.reloadIndicator = null;
@@ -13,6 +18,10 @@ export class CharacterUI {
     }
 
     createCannonIndicators() {
+        // Evitar crear múltiples interfaces de usuario
+        if (CharacterUI.uiCreated) return;
+        CharacterUI.uiCreated = true;
+        
         const indicatorContainer = document.createElement('div');
         indicatorContainer.style.position = 'fixed';
         indicatorContainer.style.bottom = '30%';
@@ -80,12 +89,16 @@ export class CharacterUI {
 
         document.body.appendChild(indicatorContainer);
         
-        // Crear indicador del ángulo de la cámara en la esquina
+        // Crear indicador del ángulo de la cámara (rotationX)
         this.createCameraAngleIndicator();
     }
     
     // Crear indicador del ángulo de la cámara (rotationX)
     createCameraAngleIndicator() {
+        // Evitar crear múltiples interfaces de usuario
+        if (CharacterUI.cameraAngleIndicatorCreated) return;
+        CharacterUI.cameraAngleIndicatorCreated = true;
+        
         // Contenedor para el indicador del ángulo de la cámara
         this.cameraAngleIndicator = document.createElement('div');
         this.cameraAngleIndicator.style.position = 'fixed';
@@ -102,6 +115,11 @@ export class CharacterUI {
     }
 
     updateCannonIndicators(angleToCamera) {
+        // Solo actualizar si existen los elementos UI
+        if (!this.reloadText || !this.directionText || !this.angleText) {
+            return;
+        }
+        
         if (!this.character.cannonReady) {
             const remainingTime = Math.max(0, (this.character.cannonCooldown - this.character.cannonTimer) / 1000).toFixed(1);
             this.reloadText.textContent = `Reloading: ${remainingTime}s`;
@@ -169,6 +187,10 @@ export class CharacterUI {
     
     // Crear indicador de salud
     createHealthIndicator() {
+        // Evitar crear múltiples interfaces de usuario
+        if (CharacterUI.healthIndicatorCreated) return;
+        CharacterUI.healthIndicatorCreated = true;
+        
         const healthContainer = document.createElement('div');
         healthContainer.style.position = 'fixed';
         healthContainer.style.top = '20px';
@@ -235,6 +257,8 @@ export class CharacterUI {
         if (!this.healthBar || !this.healthText) {
             this.createHealthIndicator();
         }
+        
+        if (!this.healthBar || !this.healthText) return;
         
         const percentage = Math.max(0, Math.min(100, health)) / 100;
         this.healthBar.style.width = `${percentage * 100}%`;

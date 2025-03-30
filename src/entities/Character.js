@@ -107,7 +107,7 @@ export class Character extends THREE.Object3D {
         this.ui = new CharacterUI(this);
         this.createCannonIndicators();
         
-        // Inicializar UI de salud si es el jugador local
+        // Inicializar UI de salud solo si es el jugador local
         if (this.isLocalPlayer) {
             this.updateHealthUI();
         }
