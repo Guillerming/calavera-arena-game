@@ -32,38 +32,37 @@ export class CharacterProjectiles {
                 projectile.mesh.rotation.z += projectile.rotationSpeed.z * deltaTime;
             }
             
-            // Comprobar colisión con el terreno
+            // Inicializar flag para eliminar el proyectil
             let removeProjectile = false;
             
-            // Solo comprobar colisiones si el terreno está disponible
-            if (this.character.terrain) {
+            // Comprobar colisión con el terreno
+            // Solo comprobar colisiones si el terreno está disponible y es el jugador local
+            if (this.character.terrain && this.character.isLocalPlayer) {
                 const terrainHeight = this.character.terrain.getHeightAt(projectile.position.x, projectile.position.z);
                 
                 // Si el proyectil está por debajo del terreno, ha colisionado
                 if (projectile.position.y <= terrainHeight) {
                     removeProjectile = true;
                     
-                    // Crear efecto de impacto si es el jugador local
-                    if (this.character.isLocalPlayer) {
-                        const impactPoint = new THREE.Vector3(
-                            projectile.position.x,
-                            terrainHeight,
-                            projectile.position.z
-                        );
-                        
-                        // Crear efecto de explosión en el punto de impacto
-                        if (this.character.createExplosionEffect) {
-                            this.character.createExplosionEffect(impactPoint);
-                        }
-                        
-                        // Informar al servidor sobre la colisión
-                        if (this.character.networkManager) {
-                            this.character.networkManager.sendProjectileCollision({
-                                projectileId: projectile.id,
-                                position: impactPoint,
-                                collisionType: 'terrain'
-                            });
-                        }
+                    // Crear efecto de impacto solo visual
+                    const impactPoint = new THREE.Vector3(
+                        projectile.position.x,
+                        terrainHeight,
+                        projectile.position.z
+                    );
+                    
+                    // Crear efecto de explosión en el punto de impacto
+                    if (this.character.createExplosionEffect) {
+                        this.character.createExplosionEffect(impactPoint);
+                    }
+                    
+                    // Informar al servidor sobre la colisión
+                    if (this.character.networkManager) {
+                        this.character.networkManager.sendProjectileCollision({
+                            projectileId: projectile.id,
+                            position: impactPoint,
+                            collisionType: 'terrain'
+                        });
                     }
                 }
             }
@@ -379,35 +378,37 @@ export class CharacterProjectiles {
     // Método para comprobar si un proyectil colisiona con un jugador
     checkProjectilePlayerCollision(projectile, player) {
         // Verificar que el proyectil y el jugador tienen las propiedades necesarias
-        if (!projectile || !projectile.position || !player || !player.position) {
+        if (!projectile || !projectile.position || !player || !player.position || !player.name) {
             return false;
         }
         
-        // Comprobar colisión con el personaje actual
+        // Comprobar colisión con el personaje
         const distance = projectile.position.distanceTo(player.position);
         
         // Si la distancia es menor que el radio del personaje, hay colisión
         if (distance < player.radius * 1.5) {
-            // Aplicar daño al personaje impactado
-            // Importante: pasamos el ID del jugador que disparó para registrar correctamente el kill
-            player.takeProjectileDamage(this.character.name);
+            // IMPORTANTE: Ya no aplicamos daño directamente
+            // Solo informamos al servidor de la colisión
             
-            // Crear efecto de explosión en el punto de impacto
+            // Crear efecto visual de impacto (solo visualización)
             const impactPoint = projectile.position.clone();
             if (this.character.createExplosionEffect) {
                 this.character.createExplosionEffect(impactPoint);
             }
             
-            // Enviar información de colisión al servidor si es el jugador local
+            // Enviar información de colisión al servidor SOLO si es el jugador local
             if (this.character.isLocalPlayer && this.character.networkManager) {
+                console.log(`[DEBUG] Detectada colisión: yo (${this.character.name}) golpeé a ${player.name}`);
+                
                 this.character.networkManager.sendProjectileCollision({
                     projectileId: projectile.id,
                     position: impactPoint,
-                    collisionType: 'player'
+                    collisionType: 'player',
+                    targetPlayerId: player.name  // El ID del jugador impactado
                 });
             }
             
-            return true;
+            return true; // Devolvemos true para que se elimine el proyectil localmente
         }
         
         return false;

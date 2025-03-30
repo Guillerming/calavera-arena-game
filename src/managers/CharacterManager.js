@@ -72,17 +72,25 @@ export class CharacterManager {
     }
 
     createPlayer(playerName) {
-        // Crear el personaje
-        const player = this.createCharacter(playerName);
+        if (!this.networkManager) {
+            console.error('No se ha establecido el NetworkManager');
+            return null;
+        }
+        
+        // Guardar el nombre del jugador en el NetworkManager
+        this.networkManager.setClientName(playerName);
+        
+        // Crear el personaje con un ID temporal
+        const player = this.createCharacter('temp_player');
         if (!player) {
             console.error('No se pudo crear el personaje');
             return null;
         }
 
         // Configurar el personaje
+        player.isLocalPlayer = true; // Marcar como jugador local
         player.setTerrain(this.scene.terrain);
         player.setCameraController(this.scene.cameraController);
-        player.isLocalPlayer = true; // Marcar como jugador local
         
         // Asignar posición segura
         const safeCoordinates = this.getSafeCoordinates(15);
@@ -94,8 +102,27 @@ export class CharacterManager {
         // Añadir el personaje a la escena
         this.scene.add(player);
         
-        // Guardar referencia al personaje del jugador
-        this.playerCharacter = player;
+        // Configurar callback para cuando el servidor asigne un ID
+        const originalOnInit = this.networkManager.onInit;
+        this.networkManager.onInit = (serverId) => {
+            console.log(`[CharacterManager] ID recibido del servidor: ${serverId}`);
+            
+            // Actualizar el ID del personaje con el asignado por el servidor
+            this.characters.delete('temp_player');
+            player.name = serverId;
+            this.characters.set(serverId, player);
+            
+            // Guardar referencia al personaje del jugador
+            this.playerCharacter = player;
+            
+            // Restaurar callback original si existía
+            if (originalOnInit) {
+                originalOnInit(serverId);
+            }
+        };
+        
+        // Asignar el NetworkManager al jugador
+        player.setNetworkManager(this.networkManager);
         
         return player;
     }
@@ -132,6 +159,19 @@ export class CharacterManager {
     createOtherPlayer(playerData) {
         const player = this.createCharacter(playerData.id);
         if (player) {
+            // Asignar nombre si está disponible
+            if (playerData.name) {
+                player.name = playerData.name;
+            } else {
+                player.name = playerData.id;
+            }
+            
+            // IMPORTANTE: Asignar NetworkManager al jugador remoto
+            if (this.networkManager) {
+                player.setNetworkManager(this.networkManager);
+                console.log(`[DEBUG] Asignado NetworkManager a jugador remoto: ${playerData.id}`);
+            }
+            
             // Si tiene una posición definida, usarla
             if (playerData.position) {
                 player.position.set(
@@ -268,100 +308,38 @@ export class CharacterManager {
 
     // Manejar actualizaciones de salud
     handleHealthUpdate(playerData) {
+        console.log(`[DEBUG] Procesando actualización de salud del SERVIDOR para: ${playerData.id}`);
         
-        // IMPORTANTE: Manejar actualizaciones para el jugador local
-        // Este es un caso especial para cuando el servidor determina que el jugador ha muerto (por ejemplo, por otro cliente)
-        if (playerData.id === this.playerCharacter?.name) {
+        // Verificar si es el jugador local
+        const isLocalPlayer = this.playerCharacter && this.playerCharacter.name === playerData.id;
+        
+        // Si es el jugador local
+        if (isLocalPlayer) {
+            console.log(`[DEBUG] Aplicando actualización del servidor para jugador local: ${playerData.id}`);
             
-            // Actualizar estado de salud del jugador local
-            if (this.playerCharacter.isAlive !== playerData.isAlive) {
-                this.playerCharacter.isAlive = playerData.isAlive;
-                
-                // Si el servidor dice que ha muerto, pero localmente no lo había procesado
-                if (!playerData.isAlive && this.playerCharacter.health > 0) {
-                    this.playerCharacter.health = 0;
-                    this.playerCharacter.onDeath();
-                }
-                // Si el servidor dice que está vivo (respawn), pero localmente no lo había procesado
-                else if (playerData.isAlive && !this.playerCharacter.isAlive) {
-                    this.playerCharacter.health = playerData.health;
-                    
-                    // Si viene con posición, actualizarla
-                    if (playerData.position) {
-                        this.playerCharacter.position.set(
-                            playerData.position.x,
-                            playerData.position.y,
-                            playerData.position.z
-                        );
-                    }
-                    
-                    // Hacer visible el barco
-                    if (this.playerCharacter.boat) {
-                        this.playerCharacter.boat.visible = true;
-                    }
-                    
-                    // Reactivar colisiones
-                    if (this.playerCharacter.colliderMesh) {
-                        this.playerCharacter.colliderMesh.visible = true;
-                    }
-                }
-            }
-            // Actualizar UI de salud
-            this.playerCharacter.updateHealthUI();
+            // Usar el nuevo método para actualizar desde el servidor
+            this.playerCharacter.updateStateFromServer(
+                playerData.health,
+                playerData.isAlive,
+                playerData.position
+            );
+            
             return;
         }
         
-        // Manejar actualizaciones para jugadores remotos
+        // Si llega aquí, es un jugador remoto
         const player = this.characters.get(playerData.id);
         if (player) {
+            console.log(`[DEBUG] Aplicando actualización del servidor para jugador remoto: ${playerData.id}`);
             
-            // Actualizar salud
-            player.health = playerData.health;
-            
-            // Verificar si el estado de vida cambió
-            if (player.isAlive !== playerData.isAlive) {
-                player.isAlive = playerData.isAlive;
-                
-                // Si el jugador acaba de morir
-                if (!player.isAlive) {
-                    player.onDeath();
-                } 
-                // Si el jugador acaba de reaparecer
-                else if (player.isAlive && player.health === 100) {
-                    
-                    // Actualizar posición si está incluida en los datos
-                    if (playerData.position) {
-                        player.position.set(
-                            playerData.position.x,
-                            playerData.position.y,
-                            playerData.position.z
-                        );
-                        
-                        // Si el servidor no especificó una rotación, orientar hacia el centro
-                        if (!playerData.rotation) {
-                            player.rotation.y = this.getRotationTowardCenter(playerData.position.x, playerData.position.z);
-                        }
-                    }
-                    
-                    // Hacer visible el barco
-                    if (player.boat) {
-                        player.boat.visible = true;
-                    }
-                    
-                    // Reactivar colisiones
-                    if (player.colliderMesh) {
-                        player.colliderMesh.visible = true;
-                    }
-                }
-            } else {
-                // Si solo cambió la salud, mostrar efectos de daño
-                if (player.health < 100 && player.isAlive) {
-                    player.showDamageEffect('projectile');
-                }
-            }
-            
-            // Actualizar UI de salud
-            player.updateHealthUI();
+            // Usar el nuevo método para actualizar desde el servidor
+            player.updateStateFromServer(
+                playerData.health,
+                playerData.isAlive,
+                playerData.position
+            );
+        } else {
+            console.warn(`[DEBUG] No se encontró el jugador remoto ${playerData.id} para actualizar su estado`);
         }
     }
 

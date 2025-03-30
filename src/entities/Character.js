@@ -250,50 +250,92 @@ export class Character extends THREE.Object3D {
     // Métodos para gestionar puntos de vida
     takeDamage(damage, damageType, sourceId = null) {
         // Si ya está muerto, no procesar más daño
-        if (!this.isAlive) return;
+        if (!this.isAlive) {
+            console.log(`[DEBUG] ${this.name} ya está muerto, ignorando daño`);
+            return;
+        }
         
-        // Aplicar el daño a la salud
-        this.health -= damage;
-        
-        // Verificar si el personaje ha muerto
-        if (this.health <= 0) {
-            this.health = 0;
-            this.isAlive = false;
+        // IMPORTANTE: Si el jugador es local, enviamos la solicitud al servidor
+        // pero no modificamos el estado directamente
+        if (this.isLocalPlayer) {
+            console.log(`[DEBUG] Jugador local ${this.name} recibe daño: ${damage}`);
             
-            // Mostrar efecto visual de daño (antes de onDeath para que sea visible)
+            // No reducimos la salud directamente, esperamos confirmación del servidor
+            // Solo mostramos efectos visuales inmediatos
             this.showDamageEffect(damageType);
             
-            // Manejar lógica de muerte
-            this.onDeath();
-            
-            // Enviar actualización de salud a través de la red
+            // Enviar al servidor la solicitud de aplicar daño
             if (this.networkManager) {
-                // Incluir información de quién causó la muerte
-                this.networkManager.sendHealthUpdate(this.health, this.isAlive, sourceId);
+                // Calcular nueva salud potencial
+                const newHealth = Math.max(0, this.health - damage);
+                const wouldDie = newHealth <= 0;
+                
+                console.log(`[DEBUG] Solicitando actualización de salud al servidor. Nueva salud: ${newHealth}, moriría: ${wouldDie}`);
+                this.networkManager.sendHealthUpdate(newHealth, !wouldDie, sourceId, this.name);
+            } else {
+                console.error(`[ERROR] No se puede enviar actualización de daño: networkManager no está definido`);
+                console.log(`[DEBUG] Character ${this.name}, isLocalPlayer: ${this.isLocalPlayer}`);
             }
             
-            // Actualizar UI de salud
-            this.updateHealthUI();
-            
-            return; // Salir después de procesar la muerte
+            return;
         }
         
-        // Si no murió, mostrar efecto visual de daño normalmente
+        // Para jugadores remotos, solo mostramos efectos visuales
+        // El servidor es quien actualiza el estado real
+        console.log(`[DEBUG] Jugador remoto ${this.name} mostrando efecto de daño (visual)`);
         this.showDamageEffect(damageType);
-        
-        // Enviar actualización de salud a través de la red
-        if (this.networkManager) {
-            this.networkManager.sendHealthUpdate(this.health, this.isAlive);
-        }
-        
-        // Actualizar UI de salud
-        this.updateHealthUI();
     }
     
-    // Método para daño por impacto de proyectil (cañonazo)
-    takeProjectileDamage(shooterId = null) {
-        // Cañonazos causan daño significativo (25 puntos)
-        this.takeDamage(25, 'projectile', shooterId);
+    // Método para recibir daño de proyectiles
+    takeProjectileDamage(sourcePlayerId) {
+        // Si ya está muerto, no procesar más daño
+        if (!this.isAlive) return;
+        
+        // Aplicar daño según la configuración
+        this.takeDamage(25, 'projectile', sourcePlayerId);
+    }
+    
+    // Método para actualizar el estado desde el servidor
+    updateStateFromServer(health, isAlive, position = null) {
+        console.log(`[DEBUG] Actualizando estado desde servidor: ${this.name}, salud=${health}, vivo=${isAlive}`);
+        
+        // Verificar si el estado de vida cambió
+        const wasAlive = this.isAlive;
+        
+        // Actualizar valores
+        this.health = health;
+        this.isAlive = isAlive;
+        
+        // Si murió
+        if (wasAlive && !isAlive) {
+            console.log(`[DEBUG] ${this.name} ha muerto según el servidor`);
+            this.onDeath();
+        } 
+        // Si revivió
+        else if (!wasAlive && isAlive) {
+            console.log(`[DEBUG] ${this.name} ha respawneado según el servidor`);
+            
+            // Actualizar posición si se proporcionó
+            if (position) {
+                this.position.set(position.x, position.y, position.z);
+            }
+            
+            // Hacer visible el barco y reactivar colisiones
+            if (this.boat) {
+                this.boat.visible = true;
+            }
+            
+            if (this.colliderMesh) {
+                this.colliderMesh.visible = true;
+            }
+        }
+        // Si solo cambió la salud
+        else if (this.isAlive && health < 100) {
+            this.showDamageEffect('projectile');
+        }
+        
+        // Actualizar UI
+        this.updateHealthUI();
     }
     
     // Método para daño por colisión
