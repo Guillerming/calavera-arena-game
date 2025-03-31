@@ -146,7 +146,9 @@ export class CharacterManager {
     }
 
     updateAll(deltaTime) {
-        for (const character of this.characters.values()) {
+        console.log(`Actualizando ${this.characters.size} personajes, playerCharacter: ${this.playerCharacter?.name}`);
+        for (const [id, character] of this.characters.entries()) {
+            console.log(`Actualizando personaje: ${character.name}, proyectiles: ${character.projectiles?.length || 0}`);
             // Pasar el inputManager solo al personaje del jugador
             if (character === this.playerCharacter && this.inputManager) {
                 character.update(deltaTime, this.inputManager);
@@ -252,14 +254,24 @@ export class CharacterManager {
             return;
         }
 
+        // Añadir depuración para ver los datos del proyectil y los jugadores
+        console.log('Llegó proyectil:', {
+            projectilePlayerId: projectileData.playerId,
+            localPlayerId: this.playerCharacter?.id,
+            localPlayerName: this.playerCharacter?.name,
+            charactersMap: Array.from(this.characters.keys())
+        });
+
         // Ignorar los proyectiles del jugador local (ya los manejamos localmente)
         if (projectileData.playerId === this.playerCharacter?.name) {
+            console.log('Ignorando proyectil local');
             return;
         }
 
         // Encontrar el jugador que disparó el proyectil
         const player = this.characters.get(projectileData.playerId);
         if (player) {
+            console.log('Creando proyectil para jugador:', projectileData.playerId);
             // Crear el proyectil remoto con todos los datos necesarios
             player.createOtherPlayerProjectile({
                 ...projectileData,
@@ -450,6 +462,9 @@ export class CharacterManager {
     }
 
     update(deltaTime) {
+        // Actualizar todos los personajes y sus proyectiles
+        this.updateAll(deltaTime);
+        
         // Asegurar que el ScoreboardUI se actualiza con la información más reciente
         if (this.scoreboardUI) {
             // Verificar que inputManager está disponible
