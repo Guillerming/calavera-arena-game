@@ -61,4 +61,4 @@
     X marcador no muestra bien los kills para todos los jugadores, tampoco el nombre
         X eliminar columna death
     - añadir portal al vibeverse
-    - 
+    - cada vez que cojo una calavera suma +2

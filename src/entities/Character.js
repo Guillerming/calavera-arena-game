@@ -16,6 +16,9 @@ export class Character extends THREE.Object3D {
         this.cameraController = null;
         this.networkManager = null;
 
+        // Constante para controlar visibilidad del colisionador
+        this.showColliderBox = false;
+
         this.currentSpeed = 0;
         this.maxSpeed = 20;
         this.minSpeed = -5;
@@ -59,8 +62,14 @@ export class Character extends THREE.Object3D {
         this.projectilesGroup = new THREE.Group();
         this.add(this.projectilesGroup);
 
-        this.radius = 1.5;
-        this.height = 2;
+        // Nuevas dimensiones para el colisionador
+        this.colliderWidth = 4.5; // Ancho del barco
+        this.colliderLength = 10; // Largo del barco
+        this.colliderHeight = 4; // Altura del barco (incluye velas)
+        
+        // Mantener radio para compatibilidad con código existente
+        this.radius = Math.max(this.colliderWidth, this.colliderLength) / 2;
+        this.height = this.colliderHeight;
         
         this.normalHeight = 1;
         this.waterHeight = 0.3;
@@ -77,15 +86,25 @@ export class Character extends THREE.Object3D {
             
             this.add(this.boat);
             
+            // Crear una caja como colisionador en lugar de un cilindro
             this.colliderMesh = new THREE.Mesh(
-                new THREE.CylinderGeometry(this.radius, this.radius, this.height, 8),
+                new THREE.BoxGeometry(this.colliderWidth, this.colliderHeight, this.colliderLength),
                 new THREE.MeshBasicMaterial({ 
+                    color: 0x00ff00,
                     wireframe: true, 
-                    visible: false
+                    transparent: true,
+                    opacity: 0.3
                 })
             );
-            this.colliderMesh.position.y = 0.8;
+            
+            // Ajustar posición vertical para que cubra desde el agua hasta las velas
+            this.colliderMesh.position.y = this.colliderHeight/2 - 0.5;
+            
+            // Añadir el colisionador al barco
             this.boat.add(this.colliderMesh);
+            
+            // Configurar visibilidad según el valor de showColliderBox
+            this.colliderMesh.material.visible = this.showColliderBox;
 
             if (this.scene) {
                 this.scene.add(this);
@@ -326,7 +345,7 @@ export class Character extends THREE.Object3D {
                 }
                 
                 if (this.colliderMesh) {
-                    this.colliderMesh.visible = true;
+                    this.colliderMesh.material.visible = true;
                 }
             }
         }
@@ -357,7 +376,7 @@ export class Character extends THREE.Object3D {
             
             // Desactivar colisiones
             if (this.colliderMesh) {
-                this.colliderMesh.visible = false;
+                this.colliderMesh.material.visible = false;
             }
             
             // Mostrar efecto grande de explosión de muerte
@@ -389,7 +408,7 @@ export class Character extends THREE.Object3D {
         
         // Reactivar colisiones
         if (this.colliderMesh) {
-            this.colliderMesh.visible = true;
+            this.colliderMesh.material.visible = true;
         }
         
         // Colocar el barco en una posición segura (solo para jugador local)
@@ -459,5 +478,88 @@ export class Character extends THREE.Object3D {
         if (this.ui) {
             this.ui.updateHealthIndicator(this.health);
         }
+    }
+
+    // Mostrar el collider visualmente para depuración
+    showColliderDebug() {
+        if (!this.colliderMesh) {
+            console.warn("No hay colliderMesh definido");
+            return;
+        }
+        
+        // Actualizar la variable de control y hacer visible el collider
+        this.showColliderBox = true;
+        this.colliderMesh.material.visible = true;
+        
+        console.log("Visualizador de colisión activado. Dimensiones actuales:");
+        console.log(`Ancho: ${this.colliderWidth}, Largo: ${this.colliderLength}, Altura: ${this.colliderHeight}`);
+        console.log(`Posición Y del collider: ${this.colliderMesh.position.y}`);
+    }
+    
+    // Ocultar el visualizador de colisión
+    hideColliderDebug() {
+        if (this.colliderMesh) {
+            // Actualizar la variable de control y ocultar el collider
+            this.showColliderBox = false;
+            this.colliderMesh.material.visible = false;
+        }
+    }
+    
+    // Actualizar el tamaño del colisionador
+    updateColliderSize(width, length, height) {
+        // Guardar los valores anteriores
+        const oldWidth = this.colliderWidth;
+        const oldLength = this.colliderLength;
+        const oldHeight = this.colliderHeight;
+        
+        // Actualizar propiedades
+        this.colliderWidth = width;
+        this.colliderLength = length;
+        this.colliderHeight = height;
+        
+        // Actualizar el radio para compatibilidad con el código existente
+        this.radius = Math.max(width, length) / 2;
+        this.height = height;
+        
+        // Si existe el colliderMesh, actualizarlo
+        if (this.colliderMesh) {
+            // Guardar el estado de visibilidad actual
+            const wasVisible = this.colliderMesh.material.visible;
+            
+            // Eliminar el mesh anterior
+            this.boat.remove(this.colliderMesh);
+            
+            // Crear un nuevo mesh con las dimensiones actualizadas
+            this.colliderMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(width, height, length),
+                new THREE.MeshBasicMaterial({ 
+                    color: 0x00ff00,
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.3,
+                    visible: wasVisible  // Mantener visibilidad anterior
+                })
+            );
+            
+            // Posicionar el colisionador
+            this.colliderMesh.position.y = height/2 - 0.5;
+            this.boat.add(this.colliderMesh);
+            
+            console.log(`Collider actualizado: Ancho ${oldWidth} → ${width}, Largo ${oldLength} → ${length}, Altura ${oldHeight} → ${height}`);
+        }
+    }
+
+    // Getter para showColliderBox
+    isColliderVisible() {
+        return this.showColliderBox;
+    }
+    
+    // Setter para showColliderBox
+    setColliderVisibility(visible) {
+        this.showColliderBox = visible;
+        if (this.colliderMesh) {
+            this.colliderMesh.material.visible = visible;
+        }
+        return this; // Para encadenamiento de métodos
     }
 } 
