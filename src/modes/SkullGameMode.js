@@ -284,9 +284,12 @@ export class SkullGameMode {
     // Manejar la activación del modo calavera
     onModeActivated() {
         this.isSkullModeActive = true;
-        this.isSkullCaptured = false;
-        this.skullMesh.visible = true;
         this.countdown = this.SKULL_MODE_DURATION;
+        
+        // Hacer visible la calavera
+        if (this.skullMesh) {
+            this.skullMesh.visible = true;
+        }
         
         // Generar posición aleatoria para la calavera
         this.generateRandomSkullPosition();
@@ -298,6 +301,114 @@ export class SkullGameMode {
         if (this.game && this.game.audioManager) {
             // Reproducir por 12 segundos (duración de la pista)
             this.game.audioManager.playTemporaryMusic('calaveramode', 12000);
+            
+            // Iniciar sistema de sonidos de fantasma aleatorios durante el modo calavera
+            this._startRandomCalaveraAudio();
+        }
+    }
+    
+    // Sistema para reproducir sonidos de fantasma aleatorios durante el modo calavera
+    _startRandomCalaveraAudio() {
+        // Guardar el estado actual para poder detenerlo después
+        this._calaveraAudioActive = true;
+        
+        // Función recursiva para reproducir sonidos aleatorios
+        const playRandomGhostSound = () => {
+            // Verificar si aún estamos en modo calavera y el sistema sigue activo
+            if (!this.isSkullModeActive || !this._calaveraAudioActive) {
+                this._calaveraAudioActive = false;
+                return;
+            }
+            
+            // Reproducir un sonido de fantasma aleatorio
+            if (this.game && this.game.playAudioEvent) {
+                // Calcular una posición que ayude a guiar al jugador
+                let soundPosition;
+                
+                // Verificar si hay un jugador local para guiar
+                const localPlayer = this.game.player;
+                
+                if (localPlayer && this.skullPosition) {
+                    // Vector desde el jugador hacia la calavera
+                    const directionToSkull = new THREE.Vector3().subVectors(
+                        this.skullPosition, 
+                        localPlayer.position
+                    );
+                    
+                    // Distancia entre el jugador y la calavera
+                    const distanceToSkull = directionToSkull.length();
+                    
+                    // Normalizar el vector de dirección
+                    directionToSkull.normalize();
+                    
+                    // Si el jugador está lejos, poner el sonido a medio camino
+                    // Si está cerca, poner el sonido en la calavera
+                    const positionFactor = Math.min(1.0, 20 / distanceToSkull);
+                    
+                    // Calcular una posición aleatoria cerca de la línea entre jugador y calavera
+                    const randomOffset = new THREE.Vector3(
+                        (Math.random() - 0.5) * 5,
+                        (Math.random() - 0.5) * 3,
+                        (Math.random() - 0.5) * 5
+                    );
+                    
+                    // Posición base: más cerca de la calavera a medida que el jugador se acerca
+                    const basePosition = new THREE.Vector3().addVectors(
+                        localPlayer.position,
+                        directionToSkull.multiplyScalar(distanceToSkull * positionFactor)
+                    );
+                    
+                    // Añadir offset aleatorio a la posición
+                    soundPosition = basePosition.add(randomOffset);
+                } else {
+                    // Si no hay jugador local, usar la posición de la calavera con un offset aleatorio
+                    soundPosition = this.skullPosition ? this.skullPosition.clone().add(
+                        new THREE.Vector3(
+                            (Math.random() - 0.5) * 10,
+                            (Math.random() - 0.5) * 5,
+                            (Math.random() - 0.5) * 10
+                        )
+                    ) : null;
+                }
+                
+                // Reproducir el evento de sonido 'calaveramode' en la posición calculada
+                this.game.playAudioEvent('calaveramode', soundPosition);
+            }
+            
+            // Programar el próximo sonido con tiempo aleatorio
+            // Cuanto más cerca esté el jugador de la calavera, más frecuentes serán los sonidos
+            let minTime = 3000;  // 3 segundos mínimo
+            let maxTime = 8000;  // 8 segundos máximo
+            
+            // Ajustar tiempos si el jugador está cerca de la calavera
+            if (this.game && this.game.player && this.skullPosition) {
+                const distanceToSkull = this.game.player.position.distanceTo(this.skullPosition);
+                
+                // Si el jugador está cerca, sonidos más frecuentes
+                if (distanceToSkull < 30) {
+                    minTime = 1500;  // 1.5 segundos mínimo
+                    maxTime = 4000;  // 4 segundos máximo
+                }
+            }
+            
+            const nextTime = minTime + Math.random() * (maxTime - minTime);
+            
+            // Guardar el timeout para poder cancelarlo si es necesario
+            this._nextCalaveraTimeout = setTimeout(playRandomGhostSound, nextTime);
+        };
+        
+        // Iniciar con un pequeño retraso para no interferir con la música inicial
+        this._nextCalaveraTimeout = setTimeout(playRandomGhostSound, 2000);
+    }
+    
+    // Detener el sistema de audio de calavera
+    _stopCalaveraAudio() {
+        this._calaveraAudioActive = false;
+        
+        // Cancelar cualquier timeout pendiente
+        if (this._nextCalaveraTimeout) {
+            clearTimeout(this._nextCalaveraTimeout);
+            this._nextCalaveraTimeout = null;
         }
     }
 
@@ -307,6 +418,9 @@ export class SkullGameMode {
         this.skullMesh.visible = false;
         this.isSkullCaptured = false;
         this.countdown = this.NORMAL_MODE_DURATION;
+        
+        // Detener el sistema de audio aleatorio de calavera
+        this._stopCalaveraAudio();
     }
 
     // Generar una posición aleatoria para la calavera

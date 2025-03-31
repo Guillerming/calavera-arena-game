@@ -149,25 +149,39 @@ export class CharacterCannon {
             this.character.createMuzzleFlash(muzzlePosition, cameraDirection);
             
             // Reproducir sonido del cañón
-            // Primero intentar con la referencia directa al juego
-            if (this.character.game && this.character.game.audioManager) {
-                this.character.game.audioManager.playSound('canon');
-            }
-            // Luego intentar con la referencia a la escena
-            else if (this.character.scene && this.character.scene.game && this.character.scene.game.audioManager) {
-                this.character.scene.game.audioManager.playSound('canon');
-            } 
-            // Finalmente intentar acceder al game global
-            else if (window.game && window.game.audioManager) {
-                window.game.audioManager.playSound('canon');
-            }
-            else {
-                console.warn('[CharacterCannon] No se puede reproducir sonido - Referencias no disponibles');
-            }
+            this.playCannonSound();
             
             // Crear proyectil en el cliente
             const projectileId = Math.random().toString(36).substring(2, 15);
             this.character.projectilesManager.createProjectile(position, cameraDirection, projectileId);
+        }
+    }
+    
+    // Reproducir sonido de disparo del cañón
+    playCannonSound() {
+        // Verificar si podemos usar el nuevo sistema de eventos de audio
+        if (this.character.game && this.character.game.playAudioEvent) {
+            // Reproducir el sonido del cañón (siempre)
+            this.character.game.playAudioEvent('shoot', this.character.position);
+            
+            // Reproducir una frase de pirata (aleatoria)
+            // Pequeño retraso para que no se superpongan exactamente
+            setTimeout(() => {
+                this.character.game.playAudioEvent('pirateShoot', this.character.position);
+            }, 150);
+        }
+        // Métodos de compatibilidad con versiones anteriores
+        else if (this.character.game && this.character.game.audioManager) {
+            // Método legado
+            this.character.game.audioManager.playSound('canon');
+        }
+        else if (this.character.scene && this.character.scene.game && this.character.scene.game.audioManager) {
+            // Método legado (acceso a través de scene)
+            this.character.scene.game.audioManager.playSound('canon');
+        }
+        else if (window.game && window.game.audioManager) {
+            // Método legado (acceso global)
+            window.game.audioManager.playSound('canon');
         }
     }
 } 

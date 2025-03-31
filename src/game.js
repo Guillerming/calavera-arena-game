@@ -106,6 +106,29 @@ export class Game {
     }
 
     async startGame() {
+        if (!this.worldInitialized) {
+            console.warn('Intentando iniciar el juego sin tener el mundo inicializado');
+            return;
+        }
+        
+        // Ocultar la pantalla de carga de forma segura
+        const loadingScreen = document.getElementById('loading-screen');
+        if (loadingScreen) {
+            loadingScreen.style.display = 'none';
+        } else {
+            console.warn('No se encontró el elemento loading-screen para ocultar');
+        }
+        
+        // Cambiar la música a "sailing" al iniciar el juego real
+        if (this.audioManager && this.audioManager.initialized) {
+            // Intentar cambiar la música a sailing (música de navegación)
+            try {
+                await this.audioManager.playMusic('sailing');
+            } catch (error) {
+                console.warn('[Game] Error al iniciar música de navegación:', error);
+            }
+        }
+
         // Asegurarnos de que el terreno está disponible
         if (!this.terrain) {
             console.error('El terreno no está inicializado');
@@ -340,6 +363,9 @@ export class Game {
             this.playerPlateSystem.updateAllPlates();
         }
         
+        // Actualizar el listener de audio para posicionamiento correcto
+        this.updateAudioListener();
+        
         // Si no hay jugador, no continuar con las actualizaciones dependientes
         if (!this.player) {
             requestAnimationFrame(this.gameLoop.bind(this));
@@ -410,81 +436,200 @@ export class Game {
         }
     }
 
-    async initialize(playerName) {
-        if (this.initialized) return;
+    async initialize() {
+        // Configurar escenario del juego
+        await this.setupWorld();
         
-        // Guardar nombre del jugador
-        this.playerName = playerName;
-        this.initialized = true;
+        // Inicializar el sistema de audio
+        await this.initializeAudio();
         
-        // Establecer referencia al game en el engine
-        this.engine.setGame(this);
-        
-        // Inicializar sistema de audio de forma asíncrona
-        try {
-            await this.audioManager.init();
-            
-            // Forzar la reproducción de la música de intro con un volumen alto
+        // Reproducir música de inicio al cargar
+        if (this.audioManager && this.audioManager.initialized) {
             const osdMusic = this.audioManager.music.get('osd');
             if (osdMusic) {
-                // Asegurar un volumen alto para osd también
+                // Aumentar volumen para la intro
                 osdMusic.volume = this.audioManager.musicVolume * this.audioManager.masterVolume * 1.2;
             }
             
-            // Reproducir con manejo de promesa para detectar posibles errores
-            const playPromise = this.audioManager.playMusic('osd');
-            if (playPromise && playPromise.catch) {
-                playPromise.catch(error => {
-                    console.error('[Game] Error al reproducir osd.mp3:', error);
-                    // Si falla, intentar reproducirlo de nuevo después de un momento
-                    setTimeout(() => {
-                        this.audioManager.playMusic('osd');
-                    }, 1000);
-                });
+            try {
+                const playPromise = this.audioManager.playMusic('osd');
+                if (playPromise) {
+                    await playPromise;
+                }
+            } catch (e) {
+                console.warn('[Game] Error al reproducir música de intro, intentando reproducir directamente:', e);
+                this.audioManager.playMusic('osd');
             }
-            
-            // Añadir un evento de interacción al documento para ayudar con la política de autoplay
-            const startAudio = () => {
-                this.audioManager.playMusic(this.audioManager.currentMusic || 'osd');
-                document.removeEventListener('click', startAudio);
-                document.removeEventListener('keydown', startAudio);
-            };
-            
-            document.addEventListener('click', startAudio);
-            document.addEventListener('keydown', startAudio);
-            
-            // Prueba de sonidos para debug
-            this.testAudioSystem();
-        } catch (error) {
-            console.error('[Game] Error al inicializar el audio:', error);
         }
         
-        // Si el mundo ya está inicializado, iniciar el juego
-        if (this.worldInitialized) {
+        // Marcar como initializado una vez que el mundo esté listo
+        this.worldInitialized = true;
+        
+        // Si el usuario ya completó la pantalla de carga, iniciar el juego
+        if (this.initialized) {
             this.startGame();
         }
     }
+
+    // Inicializar el sistema de audio
+    async initializeAudio() {
+        try {
+            if (!this.audioManager) {
+                console.warn('[Game] AudioManager no disponible, no se puede inicializar audio');
+                return;
+            }
+            
+            // Asegurarnos de que THREE está disponible
+            if (!window.THREE) {
+                console.error('[Game] THREE no está disponible, el audio posicional no funcionará');
+                return;
+            }
+            
+            console.log('[Game] Inicializando sistema de audio 3D...');
+            
+            // Crear un AudioListener de Three.js para audio posicional
+            this.audioListener = new window.THREE.AudioListener();
+            
+            // Guardar una referencia en la ventana para depuración
+            window.gameAudioListener = this.audioListener;
+            
+            // Añadir el AudioListener a la cámara del juego
+            if (this.engine && this.engine.camera) {
+                this.engine.camera.add(this.audioListener);
+                console.log('[Game] AudioListener añadido a la cámara principal');
+            } else {
+                console.warn('[Game] No se pudo añadir el AudioListener - cámara no disponible aún');
+                
+                // Programar un reintento para cuando la cámara esté disponible
+                setTimeout(() => {
+                    if (this.engine && this.engine.camera && this.audioListener) {
+                        console.log('[Game] Intentando añadir AudioListener a la cámara (reintento)');
+                        this.engine.camera.add(this.audioListener);
+                        
+                        // Actualizar el listener en el AudioManager
+                        if (this.audioManager) {
+                            this.audioManager.setListener(this.audioListener);
+                        }
+                    }
+                }, 1000);
+            }
+            
+            // Inicializar el AudioManager con el listener
+            if (!this.audioManager.initialized) {
+                await this.audioManager.init(this.audioListener);
+                console.log('[Game] AudioManager inicializado con éxito');
+            } else {
+                // Si ya está inicializado, asegurar que tiene el listener correcto
+                this.audioManager.setListener(this.audioListener);
+            }
+            
+            // Iniciar el sistema de "arr" aleatorio
+            this._startPirateArrSystem();
+            
+            // Programar una verificación periódica del listener
+            this._scheduleListenerCheck();
+        } catch (error) {
+            console.error('[Game] Error durante la inicialización del audio:', error);
+        }
+    }
     
-    // Programar verificación periódica del sistema de audio
-    scheduleAudioCheck() {
-        this._audioCheckScheduled = true;
+    // Actualizar la posición del listener (debe llamarse en cada frame)
+    updateAudioListener() {
+        // Si no tenemos listener o no está inicializado el audio, no hacer nada
+        if (!this.audioListener || !this.audioManager) return;
         
-        // Primera verificación después de 3 segundos
-        setTimeout(async () => {
-            await this.checkAudioPlayback();
-        }, 3000);
+        // Verificar que la cámara existe
+        if (!this.engine || !this.engine.camera) return;
         
-        // Verificaciones periódicas cada 15 segundos
-        setInterval(async () => {
-            await this.checkAudioPlayback();
-        }, 15000);
+        // Verificar si el listener está conectado a la cámara
+        let needsUpdate = false;
         
+        // Si no está en la lista de hijos de la cámara, reconectar
+        if (!this.engine.camera.children.includes(this.audioListener)) {
+            console.log('[Game] Reconectando AudioListener a la cámara');
+            this.engine.camera.add(this.audioListener);
+            this.audioManager.setListener(this.audioListener);
+            needsUpdate = true;
+        }
+        
+        // Si la posición del listener es (0,0,0) pero la cámara no está ahí, algo está mal
+        if (this.audioListener.position.x === 0 && 
+            this.audioListener.position.y === 0 && 
+            this.audioListener.position.z === 0 &&
+            (this.engine.camera.position.x !== 0 ||
+             this.engine.camera.position.y !== 0 ||
+             this.engine.camera.position.z !== 0)) {
+            
+            // Actualizar manualmente la matriz del listener
+            this.audioListener.updateMatrixWorld(true);
+            needsUpdate = true;
+        }
+        
+        if (needsUpdate) {
+            console.log('[Game] AudioListener actualizado: ', 
+                this.audioListener.getWorldPosition(new THREE.Vector3()));
+        }
+    }
+    
+    // Verificar periódicamente que el listener sigue conectado a la cámara
+    _scheduleListenerCheck() {
+        // Verificar cada 5 segundos
+        setInterval(() => {
+            if (!this.audioListener) {
+                console.warn('[Game] AudioListener no disponible - recreando');
+                this.audioListener = new THREE.AudioListener();
+            }
+            
+            // Verificar que está conectado a la cámara actual
+            if (this.engine && this.engine.camera) {
+                // Si la cámara ha cambiado o el listener no está conectado, reconectar
+                if (!this.engine.camera.children.includes(this.audioListener)) {
+                    console.log('[Game] Reconectando AudioListener a la cámara');
+                    this.engine.camera.add(this.audioListener);
+                    
+                    // Actualizar el listener en el AudioManager
+                    if (this.audioManager) {
+                        this.audioManager.setListener(this.audioListener);
+                    }
+                    
+                    // Forzar actualización de la matriz mundial
+                    this.audioListener.updateMatrixWorld(true);
+                }
+            }
+        }, 5000);
+    }
+    
+    // Sistema para reproducir "arr" aleatoriamente mientras el jugador navega
+    _startPirateArrSystem() {
+        // Solo iniciar si aún no está iniciado
+        if (this._arrSystemActive) return;
+        
+        this._arrSystemActive = true;
+        
+        // Función para reproducir "arr" aleatoriamente
+        const playRandomArr = () => {
+            // Solo reproducir si hay un jugador activo
+            if (this.player && this.player.isAlive) {
+                // Reproducir el evento 'idle' que reproduce "arr"
+                this.playAudioEvent('idle', this.player.position);
+            }
+            
+            // Programar el próximo "arr" con tiempo aleatorio
+            const minTime = 15000;  // 15 segundos mínimo
+            const maxTime = 45000;  // 45 segundos máximo
+            const nextTime = minTime + Math.random() * (maxTime - minTime);
+            
+            setTimeout(playRandomArr, nextTime);
+        };
+        
+        // Iniciar la primera reproducción después de un tiempo inicial
+        const initialDelay = 10000 + Math.random() * 5000;  // 10-15 segundos
+        setTimeout(playRandomArr, initialDelay);
     }
     
     // Verificar si el audio está reproduciéndose correctamente
     async checkAudioPlayback() {
         if (!this.audioManager) return;
-        
         
         // Si el audio no está inicializado, intentar inicializarlo
         if (!this.audioManager.initialized) {
@@ -544,7 +689,7 @@ export class Game {
             
             // Determinar qué música reproducir basado en el estado del juego
             if (this.player) {
-                // Si el juego ya comenzó, reproducir música del juego
+                // Si el juego ya comenzó, reproducir música del juego (sailing)
                 this.audioManager.playMusic('sailing');
             } else {
                 // Si estamos en la pantalla de intro, reproducir música de intro
@@ -564,5 +709,180 @@ export class Game {
         setTimeout(() => {
             this.audioManager.playSound('impact');
         }, 2000);
+    }
+
+    // Reproducir un evento de sonido
+    playAudioEvent(eventName, position = null, sourcePlayer = null) {
+        if (!this.audioManager || !this.audioManager.initialized) {
+            console.warn('[Game Debug] No se puede reproducir evento de audio - AudioManager no disponible');
+            return;
+        }
+        
+        // Verificar que tenemos un listener disponible
+        if (!this.audioListener) {
+            console.warn('[Game Debug] No hay AudioListener disponible - intentando recrearlo');
+            this.audioListener = new THREE.AudioListener();
+            
+            if (this.engine && this.engine.camera) {
+                this.engine.camera.add(this.audioListener);
+                this.audioManager.setListener(this.audioListener);
+                console.log('[Game Debug] AudioListener recreado y conectado');
+            } else {
+                console.warn('[Game Debug] No se pudo recrear el AudioListener - cámara no disponible');
+            }
+        }
+        
+        // Validar la posición antes de pasarla
+        let validatedPosition = null;
+        
+        if (position) {
+            // Si la posición es un objeto THREE.Vector3, validar sus propiedades
+            if (position instanceof THREE.Vector3) {
+                if (isFinite(position.x) && isFinite(position.y) && isFinite(position.z)) {
+                    validatedPosition = position; // Ya es un Vector3 válido
+                } else {
+                    console.warn('[Game Debug] Vector3 con componentes no válidos:', position);
+                }
+            } 
+            // Si es un objeto con propiedades x, y, z, crear un Vector3
+            else if (position.x !== undefined && position.z !== undefined) {
+                try {
+                    // Intentar crear un Vector3 con valores válidos
+                    validatedPosition = new THREE.Vector3(
+                        Number(position.x) || 0,
+                        Number(position.y) || 0,
+                        Number(position.z) || 0
+                    );
+                } catch (error) {
+                    console.warn('[Game Debug] Error al crear Vector3:', error);
+                }
+            } else {
+                console.warn('[Game Debug] Formato de posición no reconocido:', position);
+            }
+        }
+        
+        // Verificar explícitamente que el listener está bien inicializado
+        console.log(`[Game Debug] Reproduciendo evento: ${eventName}, Listener disponible: ${!!this.audioListener}, Posición válida: ${!!validatedPosition}`);
+        
+        // Reproducir el evento de sonido
+        return this.audioManager.playSoundEvent(eventName, validatedPosition, sourcePlayer);
+    }
+
+    handleNetworkEvents() {
+        // Configurar callbacks para eventos de red
+        this.networkManager.onProjectileFired = (projectileData) => {
+            // ... código existente ...
+            
+            // Verificar que tenemos datos de posición válidos
+            const hasValidPosition = projectileData.initialPosition && 
+                typeof projectileData.initialPosition.x === 'number' &&
+                typeof projectileData.initialPosition.z === 'number';
+                
+            console.log('[Game Debug] Proyectil disparado:', {
+                jugador: projectileData.playerId,
+                posiciónVálida: hasValidPosition,
+                posición: hasValidPosition ? 
+                    `x:${projectileData.initialPosition.x.toFixed(1)}, y:${projectileData.initialPosition.y?.toFixed(1)}, z:${projectileData.initialPosition.z.toFixed(1)}` : 
+                    'inválida'
+            });
+            
+            // Reproducir sonido de disparo en la posición del proyectil
+            if (hasValidPosition) {
+                this.playAudioEvent('shoot', projectileData.initialPosition, projectileData.playerId);
+            } else {
+                console.warn('[Game Debug] No se puede reproducir sonido de disparo - posición inválida');
+            }
+        };
+        
+        this.networkManager.onProjectileImpact = (impactData) => {
+            // ... código existente ...
+            
+            // Verificar que tenemos datos de posición válidos
+            const hasValidPosition = impactData.position && 
+                typeof impactData.position.x === 'number' &&
+                typeof impactData.position.z === 'number';
+                
+            console.log('[Game Debug] Impacto de proyectil:', {
+                jugador: impactData.playerId,
+                posiciónVálida: hasValidPosition,
+                posición: hasValidPosition ? 
+                    `x:${impactData.position.x.toFixed(1)}, y:${impactData.position.y?.toFixed(1)}, z:${impactData.position.z.toFixed(1)}` : 
+                    'inválida',
+                tipo: impactData.hitType || 'desconocido'
+            });
+            
+            // Reproducir sonido apropiado según el tipo de impacto
+            if (hasValidPosition) {
+                // Determinar qué sonido reproducir según el tipo de impacto
+                const soundEvent = impactData.hitType === 'water' ? 'splash' : 'impact';
+                this.playAudioEvent(soundEvent, impactData.position);
+            } else {
+                console.warn('[Game Debug] No se puede reproducir sonido de impacto - posición inválida');
+            }
+        };
+        
+        this.networkManager.onPlayerDamaged = (damageData) => {
+            // ... código existente ...
+            
+            // Verificar que tenemos datos de posición válidos
+            const hasValidPosition = damageData.position && 
+                typeof damageData.position.x === 'number' &&
+                typeof damageData.position.z === 'number';
+                
+            console.log('[Game Debug] Jugador dañado:', {
+                jugador: damageData.playerId,
+                posiciónVálida: hasValidPosition,
+                posición: hasValidPosition ? 
+                    `x:${damageData.position.x.toFixed(1)}, y:${damageData.position.y?.toFixed(1)}, z:${damageData.position.z.toFixed(1)}` : 
+                    'inválida',
+                daño: damageData.damage || 0
+            });
+            
+            // Reproducir sonido de daño
+            if (hasValidPosition) {
+                this.playAudioEvent('hit', damageData.position, damageData.playerId);
+            } else {
+                console.warn('[Game Debug] No se puede reproducir sonido de daño - posición inválida');
+            }
+        };
+        
+        this.networkManager.onPlayerKilled = (killData) => {
+            // ... código existente ...
+            
+            // Reproducir sonido de muerte para la víctima
+            if (killData.position) {
+                this.playAudioEvent('die', killData.position, killData.victimId);
+            }
+            
+            // Reproducir sonido de victoria para el asesino
+            if (killData.killerPosition) {
+                this.playAudioEvent('kill', killData.killerPosition, killData.killerId);
+            }
+        };
+        
+        this.networkManager.onSkullCaptured = (captureData) => {
+            // ... código existente ...
+            
+            // Reproducir sonido de captura de calavera
+            if (captureData.position) {
+                this.playAudioEvent('score', captureData.position, captureData.playerId);
+            }
+        };
+    }
+
+    // Programar verificación periódica del sistema de audio
+    scheduleAudioCheck() {
+        this._audioCheckScheduled = true;
+        
+        // Primera verificación después de 3 segundos
+        setTimeout(async () => {
+            await this.checkAudioPlayback();
+        }, 3000);
+        
+        // Verificaciones periódicas cada 15 segundos
+        setInterval(async () => {
+            await this.checkAudioPlayback();
+        }, 15000);
+        
     }
 }
