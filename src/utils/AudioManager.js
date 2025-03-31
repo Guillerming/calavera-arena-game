@@ -154,7 +154,7 @@ export class AudioManager {
     }
 
     // Reproducir un efecto de sonido
-    playSound(id) {
+    playSound(id, volume = null, loop = false, position = null) {
         if (!this.enabled) {
             return;
         }
@@ -167,7 +167,21 @@ export class AudioManager {
         
         // Clonar el sonido para permitir múltiples reproducciones simultáneas
         const soundClone = sound.cloneNode();
-        soundClone.volume = this.sfxVolume * this.masterVolume;
+        
+        // Usar volumen personalizado si se proporciona, de lo contrario usar el predeterminado
+        if (volume !== null) {
+            soundClone.volume = volume * this.masterVolume;
+        } else {
+            soundClone.volume = this.sfxVolume * this.masterVolume;
+        }
+        
+        // Configurar si el sonido debe repetirse
+        soundClone.loop = loop;
+        
+        // Log para depuración de sonidos posicionales
+        if (position) {
+            console.log(`[AudioManager] Reproduciendo sonido ${id} en posición:`, position);
+        }
         
         // Añadir manejador de errores en la reproducción
         soundClone.addEventListener('error', (e) => {

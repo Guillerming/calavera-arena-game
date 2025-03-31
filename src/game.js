@@ -233,17 +233,17 @@ export class Game {
         };
 
         // Añadir callbacks para proyectiles
-        this.networkManager.onProjectileUpdate = (projectileData) => {
-            this.characterManager.handleProjectileUpdate(projectileData);
+        this.networkManager.onProjectileFired = (projectileData) => {
+            // Solo reproducir el sonido si no es el jugador local quien disparó
+            if (projectileData.playerId !== this.networkManager.playerId) {
+                // Siempre reproducir el sonido, independientemente de si tenemos posición o no
+                // Usar volumen alto para asegurar que se escuche
+                this.audioManager.playSound('canon', 1.0);
+            }
         };
 
-        this.networkManager.onProjectileRemove = (projectileId, playerId) => {
-            // Construir el objeto projectileData con el formato esperado por handleProjectileRemove
-            const projectileData = {
-                projectileId: projectileId,
-                playerId: playerId
-            };
-            this.characterManager.handleProjectileRemove(projectileData);
+        this.networkManager.onProjectileUpdate = (projectileData) => {
+            this.characterManager.handleProjectileUpdate(projectileData);
         };
 
         // Añadir callback para colisiones de proyectiles
