@@ -11,6 +11,7 @@ import { DebugUI } from './utils/DebugUI.js';
 import { LoadingScreen } from './ui/LoadingScreen.js';
 import { Logger } from './utils/Logger.js';
 import { PlayerPlateSystem } from './utils/PlayerPlateSystem.js';
+import { SkullGameMode } from './modes/SkullGameMode.js';
 
 export class Game {
     constructor() {
@@ -31,6 +32,9 @@ export class Game {
         
         this.debugUI = new DebugUI();
         this.networkManager = new NetworkManager();
+        
+        // Asignar referencia al juego en el NetworkManager
+        this.networkManager.setGame(this);
         
         // Inicializar el sistema de puntuaciones
         this.scoreManager = new ScoreManager();
@@ -123,6 +127,9 @@ export class Game {
             this.networkManager
         );
         this.characterManager.setScoreboardUI(this.scoreboardUI);
+        
+        // Inicializar el modo de juego Calavera
+        this.skullGameMode = new SkullGameMode(this);
 
         // Configurar el jugador
         this.player.setNetworkManager(this.networkManager);
@@ -220,6 +227,9 @@ export class Game {
 
         // Conectar al servidor
         this.networkManager.connect();
+        
+        // Iniciar el modo de juego Calavera
+        this.skullGameMode.start();
 
         // Iniciar el bucle del juego
         this.gameLoop();
@@ -285,6 +295,11 @@ export class Game {
                     character.isAlive
                 );
             }
+        }
+        
+        // Actualizar el modo de juego Calavera
+        if (this.skullGameMode) {
+            this.skullGameMode.update(deltaTime);
         }
         
         // Renderizar la escena

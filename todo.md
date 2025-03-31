@@ -1,6 +1,7 @@
 - disparo de proyectil siguiendo la psición de la cámara
     X impacto del proyectil quita vida
     - colisiones entre barcos quita vida
+    - colisiones con barcos/tierra divierte el rumbo
 
 - arreglos en interfaz:
     - nombre de usuario centrado
@@ -8,8 +9,12 @@
     - ui para cadencia de disparo
     - utilizar esta fuente en el intro: https://fonts.google.com/specimen/Henny+Penny?preview.text=calavera%20arena&categoryFilters=Feeling:%2FExpressive%2FPlayful
     - mostrar un aviso si no está conectado al servidor
+    - añadir casilla de participación en jam
 
 - calavera deathmatch con countdown
+    - bare minimum
+    - cambio de música
+    - escenario con niebla y/o nubes negras
 
 - multijugador
     - asignar colores automáticamente

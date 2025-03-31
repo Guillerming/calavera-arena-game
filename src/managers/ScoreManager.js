@@ -3,6 +3,7 @@ export class ScoreManager {
         this.scores = new Map(); // playerID -> {kills, deaths, name}
         this.localStorageKey = 'gameScores';
         this.knownPlayers = new Set(); // Conjunto para seguimiento de jugadores activos
+        this.skullScores = new Map(); // playerID -> número de calaveras capturadas
         
         // Cargar puntuaciones solo para la sesión actual
         // No usamos localStorage para evitar mezclar jugadores de sesiones anteriores
@@ -25,6 +26,11 @@ export class ScoreManager {
                 deaths: 0
             });
             this.knownPlayers.add(playerId);
+            
+            // Inicializar puntuación de calaveras
+            if (!this.skullScores.has(playerId)) {
+                this.skullScores.set(playerId, 0);
+            }
         } else if (playerName && this.scores.get(playerId).name !== playerName) {
             // Actualizar nombre si ha cambiado
             this.scores.get(playerId).name = playerName;
@@ -94,6 +100,7 @@ export class ScoreManager {
     // Resetear puntuaciones para la sesión actual
     resetScores() {
         this.scores.clear();
+        this.skullScores.clear();
         this.knownPlayers.clear();
     }
     
@@ -131,17 +138,47 @@ export class ScoreManager {
         }
     }
     
-    // Método para la futura funcionalidad de calaveras
+    // Registrar captura de calavera
     registerSkull(playerId) {
-        if (!playerId) {
-            console.warn('[ScoreManager] ID de jugador nulo en registerSkull');
-            return;
+        console.log(`Jugador ${playerId} ha capturado una calavera`);
+        
+        // Verificar que exista la estructura de datos
+        if (!this.skullScores) {
+            this.skullScores = new Map();
         }
         
-        this.initPlayer(playerId);
+        // Incrementar contador de calaveras
+        const current = this.skullScores.get(playerId) || 0;
+        this.skullScores.set(playerId, current + 1);
         
-        // Esta funcionalidad se implementará después
-        // Por ahora solo hacemos logging
-        console.log(`[ScoreManager] Se registraría una calavera para: ${playerId}`);
+        console.log(`Nueva puntuación de calaveras para ${playerId}: ${current + 1}`);
+        
+        // Actualizar UI
+        this.updateUI();
+    }
+    
+    // Obtener el número de calaveras capturadas por un jugador
+    getPlayerSkullCount(playerId) {
+        return this.skullScores.get(playerId) || 0;
+    }
+    
+    // Obtener todas las puntuaciones de calaveras ordenadas
+    getSkullScores() {
+        const result = [];
+        
+        for (const [playerId, skullCount] of this.skullScores.entries()) {
+            // Obtener información del jugador
+            const playerInfo = this.scores.get(playerId);
+            if (playerInfo) {
+                result.push({
+                    id: playerId,
+                    name: playerInfo.name,
+                    skulls: skullCount
+                });
+            }
+        }
+        
+        // Ordenar por número de calaveras (descendente)
+        return result.sort((a, b) => b.skulls - a.skulls);
     }
 } 

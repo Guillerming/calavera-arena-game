@@ -20,7 +20,23 @@ const CONFIG = {
         maxX: 195,
         minZ: -195,
         maxZ: 195
+    },
+    // Configuración del modo calavera
+    SKULL_MODE: {
+        NORMAL_MODE_DURATION: 60 * 0.5, // 30 segundos (en segundos) - modo normal
+        SKULL_MODE_DURATION: 60 * 2,    // 2 minutos (en segundos) - modo calavera
+        SKULL_RADIUS: 1                 // Radio de detección (unidades)
     }
+};
+
+// Estado del modo calavera
+const skullGameState = {
+    isSkullModeActive: false,      // Indica si estamos en modo calavera
+    countdown: CONFIG.SKULL_MODE.NORMAL_MODE_DURATION, // Contador para el próximo cambio de modo
+    lastUpdateTime: Date.now(),    // Tiempo de la última actualización
+    skullPosition: { x: 0, y: 3, z: 0 }, // Posición de la calavera
+    isSkullCaptured: false,        // Indica si la calavera ya fue capturada
+    skullCapturingPlayer: null     // Jugador que está capturando la calavera
 };
 
 // Manejar nuevas conexiones
@@ -217,6 +233,11 @@ wss.on('connection', (ws) => {
                     // IMPORTANTE: El servidor ahora decide sobre actualizaciones de salud
                     // El cliente solo SOLICITA cambios, el servidor los valida y propaga
                     handleHealthUpdateRequest(data);
+                    break;
+
+                case 'skullCaptured':
+                    // El cliente informa que ha capturado la calavera
+                    handleSkullCapture(playerId);
                     break;
             }
         } catch (error) {
@@ -415,7 +436,12 @@ function broadcastToAll(data) {
 
 // Función de actualización del servidor
 function updateServer() {
+    const now = Date.now();
+    const deltaTime = (now - skullGameState.lastUpdateTime) / 1000; // Convertir a segundos
+    skullGameState.lastUpdateTime = now;
+    
     updateProjectiles();
+    updateSkullGameMode(deltaTime);
     checkTimeouts();
 }
 
@@ -528,6 +554,126 @@ function checkTimeouts() {
             // El evento 'close' del WebSocket manejará la limpieza
         }
     }
+}
+
+// Función para actualizar el modo calavera
+function updateSkullGameMode(deltaTime) {
+    // No actualizar si la calavera ha sido capturada (esperamos la transición manual)
+    if (skullGameState.isSkullCaptured) return;
+    
+    // Actualizar countdown
+    skullGameState.countdown -= deltaTime;
+    
+    // Comprobar cambio de modo
+    if (skullGameState.countdown <= 0) {
+        if (skullGameState.isSkullModeActive) {
+            // Cambiar a modo normal
+            startNormalMode();
+        } else {
+            // Cambiar a modo calavera
+            startSkullMode();
+        }
+        
+        // Enviar actualización a todos los clientes
+        broadcastSkullModeStatus();
+    }
+    
+    // Comprobar colisiones de jugadores con la calavera si está activa
+    if (skullGameState.isSkullModeActive && !skullGameState.isSkullCaptured) {
+        checkSkullCollisions();
+    }
+}
+
+// Iniciar modo normal
+function startNormalMode() {
+    skullGameState.isSkullModeActive = false;
+    skullGameState.countdown = CONFIG.SKULL_MODE.NORMAL_MODE_DURATION;
+    skullGameState.isSkullCaptured = false;
+    console.log(`[SERVER] Modo normal activado. Próximo modo calavera en ${CONFIG.SKULL_MODE.NORMAL_MODE_DURATION} segundos`);
+}
+
+// Iniciar modo calavera
+function startSkullMode() {
+    skullGameState.isSkullModeActive = true;
+    skullGameState.countdown = CONFIG.SKULL_MODE.SKULL_MODE_DURATION;
+    skullGameState.isSkullCaptured = false;
+    
+    // Generar posición aleatoria para la calavera (lejos de tierra si es posible)
+    generateRandomSkullPosition();
+    
+    console.log(`[SERVER] ¡MODO CALAVERA ACTIVADO! Calavera spawneada en [${skullGameState.skullPosition.x.toFixed(2)}, ${skullGameState.skullPosition.z.toFixed(2)}]`);
+}
+
+// Generar posición aleatoria para la calavera
+function generateRandomSkullPosition() {
+    const limits = CONFIG.MAP_LIMITS;
+    
+    // Generar posición aleatoria
+    const x = Math.random() * (limits.maxX - limits.minX) + limits.minX;
+    const z = Math.random() * (limits.maxZ - limits.minZ) + limits.minZ;
+    
+    skullGameState.skullPosition = {
+        x: x,
+        y: 3, // Altura fija de 3 unidades
+        z: z
+    };
+}
+
+// Comprobar colisiones de jugadores con la calavera
+function checkSkullCollisions() {
+    // Iterar por todos los jugadores
+    for (const [playerId, player] of players.entries()) {
+        // Ignorar jugadores muertos
+        if (!player.isAlive) continue;
+        
+        // Calcular distancia horizontal (ignorando Y)
+        const dx = player.position.x - skullGameState.skullPosition.x;
+        const dz = player.position.z - skullGameState.skullPosition.z;
+        const distanceSquared = dx * dx + dz * dz;
+        
+        // Si está dentro del radio
+        if (distanceSquared <= (CONFIG.SKULL_MODE.SKULL_RADIUS * CONFIG.SKULL_MODE.SKULL_RADIUS)) {
+            // Capturar la calavera
+            handleSkullCapture(playerId);
+            break;
+        }
+    }
+}
+
+// Manejar la captura de la calavera
+function handleSkullCapture(playerId) {
+    const player = players.get(playerId);
+    if (!player || !skullGameState.isSkullModeActive || skullGameState.isSkullCaptured) return;
+    
+    // Marcar la calavera como capturada
+    skullGameState.isSkullCaptured = true;
+    skullGameState.skullCapturingPlayer = playerId;
+    
+    console.log(`[SERVER] ¡Jugador ${playerId} ha capturado la calavera!`);
+    
+    // Notificar a todos los clientes
+    broadcastToAll({
+        type: 'skullCaptured',
+        playerId: playerId
+    });
+    
+    // Cambiar inmediatamente a modo normal
+    startNormalMode();
+    broadcastSkullModeStatus();
+}
+
+// Enviar estado del modo calavera a todos los clientes
+function broadcastSkullModeStatus() {
+    broadcastToAll({
+        type: 'gameModeStatus',
+        mode: 'skull',
+        isActive: skullGameState.isSkullModeActive,
+        countdown: skullGameState.countdown,
+        data: {
+            skullPosition: skullGameState.skullPosition,
+            isSkullCaptured: skullGameState.isSkullCaptured
+        }
+    });
 }
 
 // Iniciar bucle de actualización del servidor (10 actualizaciones por segundo)

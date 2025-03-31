@@ -15,6 +15,7 @@ export class NetworkManager {
         this.onHealthUpdate = null;
         this.onKill = null;
         this.scoreManager = null;
+        this.game = null; // Referencia al objeto game
         this.onInit = null; // Callback para cuando se recibe el ID del servidor
     }
 
@@ -23,136 +24,139 @@ export class NetworkManager {
         this.clientName = name;
     }
 
+    // Asignar la referencia al game
+    setGame(game) {
+        this.game = game;
+    }
+
     connect() {
         // Conectar al servidor WebSocket
-        this.ws = new WebSocket('ws://localhost:8050');
-
-        this.ws.onopen = () => {
-            this.connected = true;
-            console.log("[DEBUG] Conexión WebSocket establecida");
+        try {
+            // Usar location.hostname para que funcione tanto en desarrollo como en producción
+            // En desarrollo, será localhost, en producción, el nombre del servidor
+            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${protocol}//${window.location.hostname}:8050`;
             
-            // Enviar nombre del jugador al iniciar conexión
+            console.log(`[NetworkManager] Conectando a ${wsUrl}`);
+            this.ws = new WebSocket(wsUrl);
+        } catch (error) {
+            console.error('Error al conectar al servidor:', error);
+            return;
+        }
+        
+        // Evento: Conexión establecida
+        this.ws.onopen = () => {
+            console.log('[NetworkManager] Conectado al servidor WebSocket');
+            this.connected = true;
+            
+            // Si ya tenemos un nombre, enviarlo al servidor
             if (this.clientName) {
-                this.ws.send(JSON.stringify({
-                    type: 'setName',
-                    name: this.clientName
-                }));
+                this.setClientName(this.clientName);
             }
         };
-
+        
+        // Evento: Conexión cerrada
+        this.ws.onclose = () => {
+            console.log('[NetworkManager] Desconectado del servidor WebSocket');
+            this.connected = false;
+            this.playerId = null;
+        };
+        
+        // Evento: Error en la conexión
+        this.ws.onerror = (error) => {
+            console.error('[NetworkManager] Error WebSocket:', error);
+            this.connected = false;
+        };
+        
+        // Evento: Mensaje recibido del servidor
         this.ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
+
+            //console.log(`[WebSocket] Recibido: ${data.type}`);
             
             switch (data.type) {
+                // SERVIDOR -> CLIENTE: Inicialización, recibimos nuestro ID
                 case 'init':
                     this.playerId = data.id;
-                    console.log(`[DEBUG] ID asignado por el servidor: ${this.playerId}, nombre del cliente: ${this.clientName}`);
+                    console.log(`[NetworkManager] ID asignado por el servidor: ${this.playerId}`);
                     
-                    // Notificar que se ha recibido el ID del servidor
+                    // Llamar al callback de inicialización si existe
                     if (this.onInit) {
-                        this.onInit(data.id);
+                        this.onInit(this.playerId);
                     }
                     break;
-                    
+                
+                // SERVIDOR -> CLIENTE: Lista de jugadores existentes
                 case 'players':
-                    // Recibir lista inicial de jugadores
                     data.players.forEach(player => {
                         this.players.set(player.id, player);
+                        
                         if (this.onPlayerJoin) {
                             this.onPlayerJoin(player);
                         }
                     });
                     break;
-                    
+                
+                // SERVIDOR -> CLIENTE: Nuevo jugador conectado
                 case 'newPlayer':
-                    // Nuevo jugador se ha unido
                     this.players.set(data.player.id, data.player);
+                    
                     if (this.onPlayerJoin) {
                         this.onPlayerJoin(data.player);
                     }
                     break;
-                    
+                
+                // SERVIDOR -> CLIENTE: Actualización de un jugador existente
                 case 'playerUpdate':
-                    // Actualización de posición/rotación de un jugador
                     const player = this.players.get(data.id);
                     if (player) {
-                        player.position = data.position;
-                        player.rotation = data.rotation;
+                        // Actualizar solo las propiedades que vienen en el mensaje
+                        if (data.position) player.position = data.position;
+                        if (data.rotation) player.rotation = data.rotation;
+                        if (data.name) player.name = data.name;
+                        
                         if (this.onPlayerUpdate) {
                             this.onPlayerUpdate(player);
                         }
                     }
                     break;
-                    
+                
+                // SERVIDOR -> CLIENTE: Jugador desconectado
                 case 'playerLeft':
-                    // Jugador se ha desconectado
                     this.players.delete(data.id);
+                    
                     if (this.onPlayerLeave) {
                         this.onPlayerLeave(data.id);
                     }
                     break;
-
+                
+                // SERVIDOR -> CLIENTE: Nuevo proyectil disparado
                 case 'newProjectile':
-                    // Nuevo proyectil desde el servidor
+                    this.projectiles.set(data.projectile.id, data.projectile);
+                    
                     if (this.onProjectileUpdate) {
-                        // Verificar que el proyectil tiene todos los datos necesarios
-                        if (!data.projectile || !data.projectile.position || !data.projectile.velocity) {
-                            console.error('Datos de proyectil incompletos:', data.projectile);
-                            break;
-                        }
-                        
-                        this.onProjectileUpdate({
-                            id: data.projectile.id,
-                            playerId: data.projectile.playerId,
-                            position: {
-                                x: data.projectile.position.x,
-                                y: data.projectile.position.y,
-                                z: data.projectile.position.z
-                            },
-                            velocity: {
-                                x: data.projectile.velocity.x,
-                                y: data.projectile.velocity.y,
-                                z: data.projectile.velocity.z
-                            },
-                            rotationSpeed: data.projectile.rotationSpeed || {
-                                x: (Math.random() - 0.5) * 0.3,
-                                y: (Math.random() - 0.5) * 0.3,
-                                z: (Math.random() - 0.5) * 0.3
-                            }
-                        });
+                        this.onProjectileUpdate(data.projectile);
                     }
                     break;
-
+                
+                // SERVIDOR -> CLIENTE: Proyectil eliminado
                 case 'removeProjectile':
-                    // Eliminar proyectil por orden del servidor
+                    this.projectiles.delete(data.projectileId);
+                    
                     if (this.onProjectileRemove) {
-                        this.onProjectileRemove({
-                            projectileId: data.projectileId,
-                            playerId: data.playerId
-                        });
+                        this.onProjectileRemove(data.projectileId, data.playerId);
                     }
                     break;
-                    
+                
+                // SERVIDOR -> CLIENTE: Colisión de proyectil
                 case 'projectileCollision':
-                    // Manejar colisión de proyectil determinada por el servidor
-                    console.log(`[DEBUG] Colisión de proyectil recibida del servidor: tipo=${data.collisionType}`);
-                    
                     if (this.onProjectileCollision) {
-                        this.onProjectileCollision({
-                            projectileId: data.projectileId,
-                            playerId: data.playerId,
-                            position: data.position,
-                            collisionType: data.collisionType,
-                            targetPlayerId: data.targetPlayerId
-                        });
+                        this.onProjectileCollision(data);
                     }
                     break;
-                    
+                
+                // SERVIDOR -> CLIENTE: Actualización de salud de un jugador
                 case 'healthUpdate':
-                    // IMPORTANTE: Esta es la actualización de salud desde el servidor
-                    // Todos los clientes deben obedecer estrictamente este estado
-                    console.log(`[DEBUG] Actualización de salud desde servidor: jugador=${data.playerId}, salud=${data.health}, vivo=${data.isAlive}`);
-                    
                     // Si la actualización es para el jugador local
                     if (data.playerId === this.playerId) {
                         // Crear objeto con los datos recibidos
@@ -171,57 +175,41 @@ export class NetworkManager {
                         if (this.onHealthUpdate) {
                             this.onHealthUpdate(localPlayer);
                         }
-                    } 
-                    // Actualización para otro jugador
-                    else {
-                        // Buscar el jugador en nuestra lista local
-                        let updatedPlayer = this.players.get(data.playerId);
-                        
-                        // Si no existe en nuestra lista, podría ser un jugador que acaba de unirse
-                        if (!updatedPlayer) {
-                            console.warn(`[DEBUG] Recibida actualización de salud para jugador desconocido: ${data.playerId}`);
-                            updatedPlayer = {
-                                id: data.playerId,
-                                name: data.name || data.playerId,
-                                health: data.health,
-                                isAlive: data.isAlive,
-                                position: data.position || { x: 0, y: 0, z: 0 }
-                            };
-                            this.players.set(data.playerId, updatedPlayer);
-                        } else {
-                            // Actualizar los datos del jugador remoto
-                            updatedPlayer.health = data.health;
-                            updatedPlayer.isAlive = data.isAlive;
-                            
-                            // Actualizar posición si está incluida
-                            if (data.position) {
-                                updatedPlayer.position = data.position;
-                            }
-                        }
-                        
-                        // Procesar datos de kills/muertes
-                        this._processKillData(data);
-                        
-                        // Notificar la actualización
-                        if (this.onHealthUpdate) {
-                            this.onHealthUpdate(updatedPlayer);
-                        }
+                    }
+                    break;
+                
+                // SERVIDOR -> CLIENTE: Calavera capturada
+                case 'skullCaptured':
+                    console.log(`[NETWORK] Calavera capturada por jugador ${data.playerId}`);
+                    
+                    // Actualizar puntuación de calaveras si existe el score manager
+                    if (this.scoreManager) {
+                        this.scoreManager.registerSkull(data.playerId);
+                    }
+                    
+                    // Actualizar modo de juego si existe
+                    if (this.game && this.game.skullGameMode) {
+                        this.game.skullGameMode.onSkullCaptured(data.playerId);
+                    } else {
+                        console.log('[NETWORK] No se puede notificar captura de calavera: no hay referencia al game.skullGameMode');
+                    }
+                    break;
+                
+                // SERVIDOR -> CLIENTE: Actualización de estado del modo de juego
+                case 'gameModeStatus':
+                    console.log(`[NETWORK] Actualización del estado del modo de juego: ${data.mode}`);
+                    
+                    // Si es modo calavera y existe la instancia del modo
+                    if (data.mode === 'skull' && this.game && this.game.skullGameMode) {
+                        this.game.skullGameMode.syncWithServer(data);
+                    } else if (data.mode === 'skull') {
+                        console.log('[NETWORK] No se puede sincronizar modo calavera: no hay referencia al game.skullGameMode');
                     }
                     break;
                 
                 default:
-                    console.log(`[DEBUG] Mensaje desconocido recibido: ${data.type}`);
+                    console.log(`[NetworkManager] Tipo de mensaje desconocido: ${data.type}`);
             }
-        };
-
-        this.ws.onclose = () => {
-            this.connected = false;
-            console.log("[DEBUG] Conexión WebSocket cerrada");
-        };
-
-        this.ws.onerror = (error) => {
-            this.connected = false;
-            console.error("[DEBUG] Error en WebSocket:", error);
         };
     }
 
@@ -397,5 +385,47 @@ export class NetworkManager {
     // Configurar ScoreManager
     setScoreManager(scoreManager) {
         this.scoreManager = scoreManager;
+    }
+    
+    // CLIENTE -> SERVIDOR: Enviar información genérica (para extensiones como el modo calavera)
+    send(data) {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        this.ws.send(JSON.stringify(data));
+    }
+    
+    // CLIENTE -> SERVIDOR: Notificar captura de calavera
+    sendSkullCaptured(playerId) {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        console.log(`[DEBUG] Notificando captura de calavera por jugador ${playerId}`);
+        
+        const message = {
+            type: 'skullCaptured',
+            capturedBy: playerId
+        };
+        
+        this.ws.send(JSON.stringify(message));
+    }
+    
+    // CLIENTE -> SERVIDOR: Sincronizar estado del modo de juego
+    sendGameModeStatus(modeData) {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        const message = {
+            type: 'gameModeStatus',
+            mode: modeData.mode,
+            isActive: modeData.isActive,
+            countdown: modeData.countdown,
+            data: modeData.data
+        };
+        
+        this.ws.send(JSON.stringify(message));
     }
 }

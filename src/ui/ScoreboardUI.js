@@ -95,7 +95,7 @@ export class ScoreboardUI {
         // Crear encabezado de la tabla
         const headerRow = document.createElement('div');
         headerRow.style.display = 'grid';
-        headerRow.style.gridTemplateColumns = '1fr 4fr 1fr 1fr';
+        headerRow.style.gridTemplateColumns = '1fr 4fr 1fr 1fr 1fr';
         headerRow.style.padding = '8px 0';
         headerRow.style.borderBottom = '1px solid #555';
         headerRow.style.fontWeight = 'bold';
@@ -114,14 +114,19 @@ export class ScoreboardUI {
         killsHeader.style.textAlign = 'center';
         
         const deathsHeader = document.createElement('div');
-        deathsHeader.textContent = '💀';
+        deathsHeader.textContent = 'Deaths';
         deathsHeader.style.textAlign = 'center';
-        deathsHeader.style.fontSize = '1.2em'; // Aumentar tamaño para mejor visibilidad
+        
+        const skullsHeader = document.createElement('div');
+        skullsHeader.textContent = '💀';
+        skullsHeader.style.textAlign = 'center';
+        skullsHeader.style.fontSize = '1.2em'; // Aumentar tamaño para mejor visibilidad
         
         headerRow.appendChild(rankHeader);
         headerRow.appendChild(nameHeader);
         headerRow.appendChild(killsHeader);
         headerRow.appendChild(deathsHeader);
+        headerRow.appendChild(skullsHeader);
         
         this.scoresContainer.appendChild(headerRow);
         
@@ -129,7 +134,7 @@ export class ScoreboardUI {
         scores.forEach((player, index) => {
             const row = document.createElement('div');
             row.style.display = 'grid';
-            row.style.gridTemplateColumns = '1fr 4fr 1fr 1fr';
+            row.style.gridTemplateColumns = '1fr 4fr 1fr 1fr 1fr';
             row.style.padding = '8px 0';
             row.style.borderBottom = '1px solid #333';
             
@@ -155,15 +160,24 @@ export class ScoreboardUI {
             kills.style.color = '#55ff55';
             
             const deaths = document.createElement('div');
-            deaths.textContent = '0'; // Siempre mostrar 0 en la columna de calaveras
+            deaths.textContent = player.deaths.toString();
             deaths.style.textAlign = 'center';
             deaths.style.fontWeight = 'bold';
             deaths.style.color = '#ff5555';
+            
+            // Columna de calaveras
+            const skulls = document.createElement('div');
+            const skullCount = this.scoreManager.getPlayerSkullCount(player.id);
+            skulls.textContent = skullCount.toString();
+            skulls.style.textAlign = 'center';
+            skulls.style.fontWeight = 'bold';
+            skulls.style.color = '#ffff55'; // Color amarillo para calaveras
             
             row.appendChild(rank);
             row.appendChild(name);
             row.appendChild(kills);
             row.appendChild(deaths);
+            row.appendChild(skulls);
             
             this.scoresContainer.appendChild(row);
         });
