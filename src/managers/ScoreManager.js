@@ -13,12 +13,10 @@ export class ScoreManager {
     // Inicializar un jugador si no existe
     initPlayer(playerId, playerName) {
         if (!playerId) {
-            console.warn('[ScoreManager] Intento de inicializar jugador con ID nulo');
             return;
         }
         
         if (!this.scores.has(playerId)) {
-            console.log(`[DEBUG] ScoreManager: Inicializando nuevo jugador ${playerId}`);
             this.scores.set(playerId, {
                 id: playerId,
                 name: playerName || playerId,
@@ -40,13 +38,11 @@ export class ScoreManager {
     // Registrar una muerte
     registerKill(killerId, victimId) {
         if (!killerId || !victimId) {
-            console.warn('[ScoreManager] ID de jugador nulo en registerKill');
             return;
         }
         
         if (killerId === victimId) {
             // Es un suicidio, pero no incrementamos nada por ahora
-            console.log(`[ScoreManager] Suicidio detectado: ${killerId}`);
             return;
         }
         
@@ -58,14 +54,11 @@ export class ScoreManager {
         killerScore.kills++;
         
         // NO incrementamos muertes de la víctima según el requisito
-        
-        console.log(`[ScoreManager] ${killerId} mató a ${victimId}. Kills: ${killerScore.kills}`);
     }
     
     // Registrar muerte (sin asesino, por ejemplo, al salir del mapa)
     registerDeath(playerId) {
         if (!playerId) {
-            console.warn('[ScoreManager] ID de jugador nulo en registerDeath');
             return;
         }
         
@@ -79,7 +72,6 @@ export class ScoreManager {
     // Establecer nombre para un jugador
     setPlayerName(playerId, name) {
         if (!playerId || !name) {
-            console.warn('[ScoreManager] ID o nombre de jugador nulo en setPlayerName');
             return;
         }
         
@@ -114,7 +106,6 @@ export class ScoreManager {
         if (this.scores.has(playerId)) {
             this.scores.delete(playerId);
             this.knownPlayers.delete(playerId);
-            console.log(`[ScoreManager] Jugador eliminado del scoreboard: ${playerId}`);
         }
     }
     
@@ -133,15 +124,12 @@ export class ScoreManager {
             if (!activeIds.has(playerId)) {
                 this.scores.delete(playerId);
                 this.knownPlayers.delete(playerId);
-                console.log(`[ScoreManager] Eliminado jugador inactivo: ${playerId}`);
             }
         }
     }
     
     // Registrar captura de calavera
     registerSkull(playerId) {
-        console.log(`Jugador ${playerId} ha capturado una calavera`);
-        
         // Verificar que exista la estructura de datos
         if (!this.skullScores) {
             this.skullScores = new Map();
@@ -150,8 +138,6 @@ export class ScoreManager {
         // Incrementar contador de calaveras
         const current = this.skullScores.get(playerId) || 0;
         this.skullScores.set(playerId, current + 1);
-        
-        console.log(`Nueva puntuación de calaveras para ${playerId}: ${current + 1}`);
     }
     
     // Obtener el número de calaveras capturadas por un jugador

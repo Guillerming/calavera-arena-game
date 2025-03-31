@@ -12,7 +12,6 @@ export class AudioManager {
 
     // Verificar la validez de las rutas de audio cargadas
     verifyAudioPaths() {
-        console.log('[AudioManager] Verificando rutas de audio...');
         
         // Verificar música
         for (const [id, audio] of this.music.entries()) {
@@ -30,13 +29,11 @@ export class AudioManager {
         // Extraer la URL relativa
         const url = src.split('/').slice(-3).join('/');
         
-        console.log(`[AudioManager] Verificando ${description} - URL: ${url}`);
         
         // Realizar solicitud fetch para verificar si el archivo existe
         fetch(url)
             .then(response => {
                 if (response.ok) {
-                    console.log(`[AudioManager] ✅ ${description} - El archivo existe: ${url}`);
                 } else {
                     console.error(`[AudioManager] ❌ ${description} - Error al cargar el archivo: ${url} (${response.status})`);
                 }
@@ -50,7 +47,6 @@ export class AudioManager {
     async init() {
         if (this.initialized) return;
 
-        console.log('[AudioManager] Iniciando carga de archivos de audio...');
         
         try {
             // Cargar música de fondo - verificando archivos primero
@@ -62,7 +58,6 @@ export class AudioManager {
             if (this.music.has('sailing')) {
                 const sailingMusic = this.music.get('sailing');
                 sailingMusic.volume = this.musicVolume * this.masterVolume * 1.5; // 50% más alto que el resto
-                console.log(`[AudioManager] Volumen de sailing configurado a: ${sailingMusic.volume}`);
             } else {
                 console.error('[AudioManager] ⚠️ No se pudo cargar sailing.mp3');
             }
@@ -72,7 +67,6 @@ export class AudioManager {
             await this.verifyAndLoadSound('impact', 'assets/audio/fx/impact.mp3');
     
             this.initialized = true;
-            console.log('[AudioManager] Sistema de audio inicializado correctamente');
             
             // Verificar que todo esté cargado
             this.logLoadedAudio();
@@ -91,7 +85,6 @@ export class AudioManager {
                 return false;
             }
             
-            console.log(`[AudioManager] ✅ Archivo verificado: ${url}`);
             
             // Cargar el audio normalmente
             this.loadMusic(id, url);
@@ -112,7 +105,6 @@ export class AudioManager {
                 return false;
             }
             
-            console.log(`[AudioManager] ✅ Archivo verificado: ${url}`);
             
             // Cargar el audio normalmente
             this.loadSound(id, url);
@@ -125,14 +117,10 @@ export class AudioManager {
     
     // Registrar todo el audio cargado
     logLoadedAudio() {
-        console.log('[AudioManager] === Resumen de audio cargado ===');
-        console.log(`[AudioManager] Música: ${Array.from(this.music.keys()).join(', ') || 'Ninguna'}`);
-        console.log(`[AudioManager] Efectos: ${Array.from(this.sounds.keys()).join(', ') || 'Ninguno'}`);
     }
 
     // Cargar un efecto de sonido
     loadSound(id, url) {
-        console.log(`[AudioManager] Cargando efecto de sonido: ${id} desde ${url}`);
         const audio = new Audio(url);
         audio.volume = this.sfxVolume * this.masterVolume;
         
@@ -149,7 +137,6 @@ export class AudioManager {
 
     // Cargar una pista de música
     loadMusic(id, url) {
-        console.log(`[AudioManager] Cargando música: ${id} desde ${url}`);
         const audio = new Audio(url);
         audio.volume = this.musicVolume * this.masterVolume;
         
@@ -168,7 +155,6 @@ export class AudioManager {
     // Reproducir un efecto de sonido
     playSound(id) {
         if (!this.enabled) {
-            console.log(`[AudioManager] Audio deshabilitado, no se reproduce: ${id}`);
             return;
         }
         if (!this.sounds.has(id)) {
@@ -176,7 +162,6 @@ export class AudioManager {
             return;
         }
 
-        console.log(`[AudioManager] Reproduciendo sonido: ${id}`);
         const sound = this.sounds.get(id);
         
         // Clonar el sonido para permitir múltiples reproducciones simultáneas
@@ -190,7 +175,6 @@ export class AudioManager {
         
         // Añadir manejador para confirmar que se está reproduciendo
         soundClone.addEventListener('playing', () => {
-            console.log(`[AudioManager] Sonido ${id} reproduciendo correctamente`);
         });
         
         // Intentar reproducir
@@ -203,7 +187,6 @@ export class AudioManager {
         
         // Eliminar el clon cuando termine de reproducirse
         soundClone.onended = () => {
-            console.log(`[AudioManager] Sonido ${id} finalizado`);
             soundClone.remove();
         };
     }
@@ -211,7 +194,6 @@ export class AudioManager {
     // Reproducir música de fondo
     playMusic(id) {
         if (!this.enabled) {
-            console.log(`[AudioManager] Audio deshabilitado, no se reproduce música: ${id}`);
             return Promise.reject(new Error('Audio deshabilitado'));
         }
         if (!this.music.has(id)) {
@@ -219,11 +201,9 @@ export class AudioManager {
             return Promise.reject(new Error(`Música no encontrada: ${id}`));
         }
 
-        console.log(`[AudioManager] Reproduciendo música: ${id}`);
         
         // Detener música actual si existe
         if (this.currentMusic) {
-            console.log(`[AudioManager] Deteniendo música actual: ${this.currentMusic}`);
             this.music.get(this.currentMusic).pause();
             this.music.get(this.currentMusic).currentTime = 0;
         }
@@ -234,7 +214,6 @@ export class AudioManager {
         // Volumen especial para sailing
         if (id === 'sailing') {
             music.volume = this.musicVolume * this.masterVolume * 1.5; // 50% más alto
-            console.log(`[AudioManager] Volumen especial para sailing: ${music.volume}`);
         } else {
             music.volume = this.musicVolume * this.masterVolume;
         }
@@ -246,7 +225,6 @@ export class AudioManager {
         
         // Añadir manejador para confirmar que se está reproduciendo
         music.addEventListener('playing', () => {
-            console.log(`[AudioManager] Música ${id} reproduciendo correctamente con volumen ${music.volume}`);
         });
         
         // Intentar reproducir y devolver la promesa para manejar errores
@@ -261,7 +239,6 @@ export class AudioManager {
                 console.error(`[AudioManager] Error en reproducción de música ${id}:`, error);
                 
                 // Los navegadores requieren interacción del usuario para reproducir automáticamente
-                console.log(`[AudioManager] Intentando reproducir ${id} después de evento de usuario...`);
                 
                 // Devolver el error para manejo adicional
                 throw error;
@@ -297,7 +274,6 @@ export class AudioManager {
             tempMusic.volume = this.musicVolume * this.masterVolume;
             tempMusic.play();
             
-            console.log(`[AudioManager] Reproduciendo música temporal: ${id} por ${duration}ms`);
             
             // Restaurar después de la duración especificada
             setTimeout(() => {
@@ -308,7 +284,6 @@ export class AudioManager {
                 tempMusic.pause();
                 tempMusic.currentTime = 0;
                 
-                console.log(`[AudioManager] Música temporal finalizada, restaurando: ${previousMusic}`);
             }, duration);
         } else {
             // Si no hay música actualmente, simplemente reproducir la temporal

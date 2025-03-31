@@ -135,7 +135,6 @@ export class Game {
         
         // Asegurarse de que el sistema de audio esté inicializado
         if (!this.audioManager.initialized) {
-            console.log('[Game] Inicializando el sistema de audio...');
             await this.audioManager.init();
         }
         
@@ -143,14 +142,11 @@ export class Game {
         // Programar el cambio a la música del juego después de 10 segundos
         // para dar tiempo a escuchar la intro
         if (this.audioManager.currentMusic === 'osd') {
-            console.log('[Game] Música de intro en reproducción, cambiará a música de juego en 10 segundos...');
             setTimeout(() => {
-                console.log('[Game] Cambiando a música de juego (sailing)...');
                 this.audioManager.playMusic('sailing');
             }, 10000); // 10 segundos para escuchar la intro
         } else {
             // Si por alguna razón no está sonando osd, reproducir sailing directamente
-            console.log('[Game] Reproduciendo música de juego (sailing)...');
             this.audioManager.playMusic('sailing');
         }
         
@@ -184,7 +180,6 @@ export class Game {
                 const character = this.characterManager.getCharacter(playerData.id);
                 if (character && playerData.name && character.name !== playerData.name) {
                     character.name = playerData.name;
-                    console.log(`[Game] Nombre de personaje actualizado: ${playerData.id} -> ${playerData.name}`);
                 }
                 
                 // Actualizar la posición y el nombre del playerPlate para este jugador
@@ -253,7 +248,6 @@ export class Game {
         // Añadir callback para actualizaciones de salud
         this.networkManager.onHealthUpdate = (playerData) => {
             // Log para depuración
-            console.log(`[Game] Recibida actualización de salud: Jugador ${playerData.id}, Salud: ${playerData.health}, Vivo: ${playerData.isAlive}`);
             
             this.characterManager.handleHealthUpdate(playerData);
             
@@ -283,7 +277,6 @@ export class Game {
         // Añadir callback para kills
         this.networkManager.onKill = (killerId, victimId) => {
             // Mostrar mensaje de kill en la consola y posiblemente en la UI
-            console.log(`¡${killerId} eliminó a ${victimId}!`);
         };
 
         // Conectar al servidor
@@ -393,7 +386,6 @@ export class Game {
     // Solicitar nombres actualizados de todos los jugadores
     requestAllPlayerNames() {
         if (this.networkManager && this.networkManager.connected) {
-            console.log('[Game] Solicitando nombres actualizados de todos los jugadores');
             this.networkManager.requestPlayerNames();
             
             // Actualizar los playerPlates con los nombres actuales
@@ -430,17 +422,14 @@ export class Game {
         this.engine.setGame(this);
         
         // Inicializar sistema de audio de forma asíncrona
-        console.log('[Game] Inicializando sistema de audio...');
         try {
             await this.audioManager.init();
             
             // Forzar la reproducción de la música de intro con un volumen alto
-            console.log('[Game] Reproduciendo música de intro (osd)...');
             const osdMusic = this.audioManager.music.get('osd');
             if (osdMusic) {
                 // Asegurar un volumen alto para osd también
                 osdMusic.volume = this.audioManager.musicVolume * this.audioManager.masterVolume * 1.2;
-                console.log(`[Game] Volumen para osd: ${osdMusic.volume}`);
             }
             
             // Reproducir con manejo de promesa para detectar posibles errores
@@ -450,7 +439,6 @@ export class Game {
                     console.error('[Game] Error al reproducir osd.mp3:', error);
                     // Si falla, intentar reproducirlo de nuevo después de un momento
                     setTimeout(() => {
-                        console.log('[Game] Reintentando reproducir osd.mp3...');
                         this.audioManager.playMusic('osd');
                     }, 1000);
                 });
@@ -458,7 +446,6 @@ export class Game {
             
             // Añadir un evento de interacción al documento para ayudar con la política de autoplay
             const startAudio = () => {
-                console.log('[Game] Interacción detectada, asegurando reproducción de audio...');
                 this.audioManager.playMusic(this.audioManager.currentMusic || 'osd');
                 document.removeEventListener('click', startAudio);
                 document.removeEventListener('keydown', startAudio);
@@ -493,14 +480,12 @@ export class Game {
             await this.checkAudioPlayback();
         }, 15000);
         
-        console.log('[Game] Verificación periódica de audio programada');
     }
     
     // Verificar si el audio está reproduciéndose correctamente
     async checkAudioPlayback() {
         if (!this.audioManager) return;
         
-        console.log('[Game] Verificando reproducción de audio...');
         
         // Si el audio no está inicializado, intentar inicializarlo
         if (!this.audioManager.initialized) {
@@ -525,11 +510,9 @@ export class Game {
                     // Volver a reproducir la música actual
                     this.audioManager.playMusic(this.audioManager.currentMusic);
                 } else {
-                    console.log(`[Game] Música ${this.audioManager.currentMusic} reproduciendo correctamente`);
                 }
                 
                 // Verificar el volumen actual
-                console.log(`[Game] Volumen actual de música: ${currentMusic.volume}`);
                 
                 // Si el volumen es demasiado bajo, aumentarlo
                 if (currentMusic.volume < 0.3) {
@@ -573,16 +556,13 @@ export class Game {
     
     // Método para probar todos los sonidos del sistema
     testAudioSystem() {
-        console.log('[Game] Probando el sistema de audio...');
         
         // Intentar reproducir cada sonido una vez para asegurar que están cargados correctamente
         setTimeout(() => {
-            console.log('[Game] Probando efecto: canon');
             this.audioManager.playSound('canon');
         }, 1000);
         
         setTimeout(() => {
-            console.log('[Game] Probando efecto: impact');
             this.audioManager.playSound('impact');
         }, 2000);
     }

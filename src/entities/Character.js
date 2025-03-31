@@ -252,14 +252,12 @@ export class Character extends THREE.Object3D {
     takeDamage(damage, damageType, sourceId = null) {
         // Si ya está muerto, no procesar más daño
         if (!this.isAlive) {
-            console.log(`[DEBUG] ${this.name} ya está muerto, ignorando daño`);
             return;
         }
         
         // IMPORTANTE: Si el jugador es local, enviamos la solicitud al servidor
         // pero no modificamos el estado directamente
         if (this.isLocalPlayer) {
-            console.log(`[DEBUG] Jugador local ${this.name} recibe daño: ${damage}`);
             
             // No reducimos la salud directamente, esperamos confirmación del servidor
             // Solo mostramos efectos visuales inmediatos
@@ -271,11 +269,9 @@ export class Character extends THREE.Object3D {
                 const newHealth = Math.max(0, this.health - damage);
                 const wouldDie = newHealth <= 0;
                 
-                console.log(`[DEBUG] Solicitando actualización de salud al servidor. Nueva salud: ${newHealth}, moriría: ${wouldDie}`);
                 this.networkManager.sendHealthUpdate(newHealth, !wouldDie, sourceId, this.name);
             } else {
                 console.error(`[ERROR] No se puede enviar actualización de daño: networkManager no está definido`);
-                console.log(`[DEBUG] Character ${this.name}, isLocalPlayer: ${this.isLocalPlayer}`);
             }
             
             return;
@@ -283,7 +279,6 @@ export class Character extends THREE.Object3D {
         
         // Para jugadores remotos, solo mostramos efectos visuales
         // El servidor es quien actualiza el estado real
-        console.log(`[DEBUG] Jugador remoto ${this.name} mostrando efecto de daño (visual)`);
         this.showDamageEffect(damageType);
     }
     
@@ -300,13 +295,11 @@ export class Character extends THREE.Object3D {
     updateStateFromServer(health, isAlive, position = null) {
         // Crear logger para esta función
         const logPrefix = `[Character ${this.name || 'desconocido'}] updateStateFromServer:`;
-        console.log(`${logPrefix} health=${health}, isAlive=${isAlive}, position=${position ? JSON.stringify(position) : 'null'}`);
         
         // Actualizar salud si es diferente
         if (health !== undefined && health !== this.health) {
             const oldHealth = this.health;
             this.health = health;
-            console.log(`${logPrefix} Salud actualizada: ${oldHealth} -> ${health}`);
             
             // Si es el jugador local, actualizar la UI de salud
             if (this.isLocalPlayer) {
@@ -321,18 +314,15 @@ export class Character extends THREE.Object3D {
             
             // Si acaba de morir
             if (wasAlive && !isAlive) {
-                console.log(`${logPrefix} El jugador ha muerto`);
                 this.onDeath();
             }
             
             // Si acaba de revivir
             if (!wasAlive && isAlive) {
-                console.log(`${logPrefix} El jugador ha revivido`);
                 
                 // Restaurar visibilidad del barco y colisiones
                 if (this.boat) {
                     this.boat.visible = true;
-                    console.log(`${logPrefix} Restaurando visibilidad del modelo del barco`);
                 }
                 
                 if (this.colliderMesh) {
@@ -387,7 +377,6 @@ export class Character extends THREE.Object3D {
     
     // Método para hacer respawn del barco
     respawn() {
-        console.log(`[Character ${this.name}] Iniciando respawn...`);
         
         // Restaurar salud completa
         this.health = 100;
@@ -396,7 +385,6 @@ export class Character extends THREE.Object3D {
         // Hacer visible nuevamente el barco para todos los clientes
         if (this.boat) {
             this.boat.visible = true;
-            console.log(`[Character ${this.name}] Restaurando visibilidad del barco (local)`);
         }
         
         // Reactivar colisiones
@@ -432,7 +420,6 @@ export class Character extends THREE.Object3D {
         
         // Enviar actualización de salud y posición a través de la red (solo jugador local)
         if (this.isLocalPlayer && this.networkManager) {
-            console.log(`[Character ${this.name}] Enviando actualización de respawn al servidor`);
             this.networkManager.sendHealthUpdate(this.health, this.isAlive);
         }
     }

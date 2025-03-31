@@ -57,16 +57,13 @@ export class ScoreboardUI {
         const isShiftPressed = this.inputManager.isKeyPressed('ShiftLeft') || this.inputManager.isKeyPressed('ShiftRight');
         
         // Log para depuración (comentar en producción)
-        // console.log(`[ScoreboardUI] Estado de tecla Shift: ${isShiftPressed ? 'PULSADA' : 'NO PULSADA'}`);
         
         if (isShiftPressed) {
             if (!this.isVisible) {
-                console.log("[ScoreboardUI] Mostrando scoreboard (Shift detectado)");
                 this.show();
             }
         } else {
             if (this.isVisible) {
-                console.log("[ScoreboardUI] Ocultando scoreboard (Shift liberado)");
                 this.hide();
             }
         }

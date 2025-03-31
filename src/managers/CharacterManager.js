@@ -115,7 +115,6 @@ export class CharacterManager {
         // Configurar callback para cuando el servidor asigne un ID
         const originalOnInit = this.networkManager.onInit;
         this.networkManager.onInit = (serverId) => {
-            console.log(`[CharacterManager] ID recibido del servidor: ${serverId}`);
             
             // Actualizar el ID del personaje con el asignado por el servidor
             this.characters.delete('temp_player');
@@ -128,7 +127,6 @@ export class CharacterManager {
             // Añadir al ScoreManager con el ID correcto
             if (this.scoreManager) {
                 this.scoreManager.initPlayer(serverId, playerName);
-                console.log(`[DEBUG] Jugador local añadido al ScoreManager: ${serverId} (${playerName})`);
             }
             
             // Restaurar callback original si existía
@@ -185,13 +183,11 @@ export class CharacterManager {
             // IMPORTANTE: Asignar NetworkManager al jugador remoto
             if (this.networkManager) {
                 player.setNetworkManager(this.networkManager);
-                console.log(`[DEBUG] Asignado NetworkManager a jugador remoto: ${playerData.id}`);
             }
             
             // Añadir al ScoreManager
             if (this.scoreManager) {
                 this.scoreManager.initPlayer(playerData.id, playerData.name || playerData.id);
-                console.log(`[DEBUG] Jugador remoto añadido al ScoreManager: ${playerData.id}`);
             }
             
             // Si tiene una posición definida, usarla
@@ -244,7 +240,6 @@ export class CharacterManager {
             // Eliminar del ScoreManager
             if (this.scoreManager) {
                 this.scoreManager.removePlayer(playerId);
-                console.log(`[DEBUG] Jugador eliminado del ScoreManager: ${playerId}`);
             }
         }
     }
@@ -339,16 +334,13 @@ export class CharacterManager {
         const character = this.getCharacter(playerData.id);
         
         if (character) {
-            console.log(`[CharacterManager] Actualizando salud de ${playerData.id}: ${playerData.health}, vivo: ${playerData.isAlive}, respawn: ${playerData.isRespawn || false}`);
             
             // Si es un respawn, asegurar que el barco sea visible
             if (playerData.isRespawn) {
-                console.log(`[CharacterManager] Procesando respawn para ${playerData.id}`);
                 
                 // Asegurar que el barco sea visible
                 if (character.boat) {
                     character.boat.visible = true;
-                    console.log(`[CharacterManager] Restaurando visibilidad del barco para ${playerData.id}`);
                 }
                 
                 // Reactivar colisiones
@@ -488,6 +480,5 @@ export class CharacterManager {
         // Sincronizar ScoreManager (eliminar jugadores que ya no están activos)
         this.scoreManager.syncPlayers(activePlayerIds);
         
-        console.log(`[DEBUG] ScoreManager sincronizado. Jugadores activos: ${activePlayerIds.length}`);
     }
 }

@@ -89,7 +89,6 @@ export class CharacterProjectiles {
             
             if (isOutOfBounds) {
                 removeProjectile = true;
-                console.log(`Proyectil fuera de límites: [${projectile.position.x.toFixed(2)}, ${projectile.position.z.toFixed(2)}]`);
             }
             
             // Comprobar colisión con otros jugadores
@@ -413,7 +412,6 @@ export class CharacterProjectiles {
             
             // Enviar información de colisión al servidor SOLO si es el jugador local
             if (this.character.isLocalPlayer && this.character.networkManager) {
-                console.log(`[DEBUG] Detectada colisión: yo (${this.character.name}) golpeé a ${player.name}`);
                 
                 this.character.networkManager.sendProjectileCollision({
                     projectileId: projectile.id,

@@ -151,17 +151,14 @@ export class CharacterCannon {
             // Reproducir sonido del cañón
             // Primero intentar con la referencia directa al juego
             if (this.character.game && this.character.game.audioManager) {
-                console.log('[CharacterCannon] Reproduciendo sonido de cañón (via character.game)');
                 this.character.game.audioManager.playSound('canon');
             }
             // Luego intentar con la referencia a la escena
             else if (this.character.scene && this.character.scene.game && this.character.scene.game.audioManager) {
-                console.log('[CharacterCannon] Reproduciendo sonido de cañón (via scene.game)');
                 this.character.scene.game.audioManager.playSound('canon');
             } 
             // Finalmente intentar acceder al game global
             else if (window.game && window.game.audioManager) {
-                console.log('[CharacterCannon] Reproduciendo sonido de cañón (via window.game)');
                 window.game.audioManager.playSound('canon');
             }
             else {

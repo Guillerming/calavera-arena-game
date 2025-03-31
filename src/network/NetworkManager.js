@@ -27,7 +27,6 @@ export class NetworkManager {
         const storedName = localStorage.getItem('playerName');
         if (storedName) {
             this.clientName = storedName;
-            console.log(`[NetworkManager] Nombre cargado desde localStorage: ${this.clientName}`);
         }
     }
 
@@ -35,7 +34,6 @@ export class NetworkManager {
     saveNameToStorage(name) {
         if (name) {
             localStorage.setItem('playerName', name);
-            console.log(`[NetworkManager] Nombre guardado en localStorage: ${name}`);
         }
     }
 
@@ -58,7 +56,6 @@ export class NetworkManager {
             return;
         }
         
-        console.log(`[NetworkManager] Enviando nombre de cliente al servidor: ${this.clientName}`);
         
         this.ws.send(JSON.stringify({
             type: 'setName',
@@ -79,7 +76,6 @@ export class NetworkManager {
             const host = window.location.host; // Incluye hostname:port
             const wsUrl = `${protocol}//${host}`;
             
-            console.log(`[NetworkManager] Conectando a ${wsUrl}`);
             this.ws = new WebSocket(wsUrl);
         } catch (error) {
             console.error('Error al conectar al servidor:', error);
@@ -88,7 +84,6 @@ export class NetworkManager {
         
         // Evento: Conexión establecida
         this.ws.onopen = () => {
-            console.log('[NetworkManager] Conectado al servidor WebSocket');
             this.connected = true;
             
             // Si ya tenemos un nombre, enviarlo al servidor
@@ -99,7 +94,6 @@ export class NetworkManager {
         
         // Evento: Conexión cerrada
         this.ws.onclose = () => {
-            console.log('[NetworkManager] Desconectado del servidor WebSocket');
             this.connected = false;
             this.playerId = null;
         };
@@ -114,13 +108,11 @@ export class NetworkManager {
         this.ws.onmessage = (event) => {
             const data = JSON.parse(event.data);
 
-            //console.log(`[WebSocket] Recibido: ${data.type}`);
             
             switch (data.type) {
                 // SERVIDOR -> CLIENTE: Inicialización, recibimos nuestro ID
                 case 'init':
                     this.playerId = data.id;
-                    console.log(`[NetworkManager] ID asignado por el servidor: ${this.playerId}`);
                     
                     // Enviar nuestro nombre al servidor si lo tenemos
                     if (this.clientName) {
@@ -169,11 +161,9 @@ export class NetworkManager {
                         if (data.name) {
                             const nameChanged = player.name !== data.name;
                             player.name = data.name;
-                            console.log(`[NetworkManager] Nombre de jugador ${data.id} actualizado: ${data.name}`);
                             
                             // Si hay un cambio de nombre, solicitar nombres actualizados para sincronizar
                             if (nameChanged && this.game) {
-                                console.log(`[NetworkManager] Solicitando actualización de nombres por cambio detectado`);
                                 this.requestPlayerNames();
                             }
                         }
@@ -229,7 +219,6 @@ export class NetworkManager {
                         playerToUpdate.health = data.health;
                         playerToUpdate.isAlive = data.isAlive;
                         
-                        console.log(`[NetworkManager] Actualizando salud de jugador ${playerId}: ${data.health} (vivo: ${data.isAlive})`);
                     }
                 
                     // Si la actualización es para el jugador local
@@ -266,7 +255,6 @@ export class NetworkManager {
                 
                 // SERVIDOR -> CLIENTE: Calavera capturada
                 case 'skullCaptured':
-                    console.log(`[NETWORK] Calavera capturada por jugador ${data.playerId}`);
                     
                     // Actualizar puntuación de calaveras si existe el score manager
                     if (this.scoreManager) {
@@ -277,25 +265,21 @@ export class NetworkManager {
                     if (this.game && this.game.skullGameMode) {
                         this.game.skullGameMode.onSkullCaptured(data.playerId);
                     } else {
-                        console.log('[NETWORK] No se puede notificar captura de calavera: no hay referencia al game.skullGameMode');
                     }
                     break;
                 
                 // SERVIDOR -> CLIENTE: Actualización de estado del modo de juego
                 case 'gameModeStatus':
-                    console.log(`[NETWORK] Actualización del estado del modo de juego: ${data.mode}`);
                     
                     // Si es modo calavera y existe la instancia del modo
                     if (data.mode === 'skull' && this.game && this.game.skullGameMode) {
                         this.game.skullGameMode.syncWithServer(data);
                     } else if (data.mode === 'skull') {
-                        console.log('[NETWORK] No se puede sincronizar modo calavera: no hay referencia al game.skullGameMode');
                     }
                     break;
                 
                 // SERVIDOR -> CLIENTE: Recibir nombres actualizados de todos los jugadores
                 case 'playerNames':
-                    console.log(`[NetworkManager] Recibidos nombres actualizados de jugadores`);
                     
                     // Actualizar la información de los jugadores
                     if (data.players && Array.isArray(data.players)) {
@@ -305,7 +289,6 @@ export class NetworkManager {
                                 if (player) {
                                     // Actualizar el nombre si es diferente
                                     if (player.name !== playerInfo.name) {
-                                        console.log(`[NetworkManager] Actualizando nombre de jugador ${playerInfo.id}: ${playerInfo.name}`);
                                         player.name = playerInfo.name;
                                         
                                         // Notificar la actualización si no es el jugador local
@@ -320,7 +303,6 @@ export class NetworkManager {
                     break;
                 
                 default:
-                    console.log(`[NetworkManager] Tipo de mensaje desconocido: ${data.type}`);
             }
         };
     }
@@ -340,7 +322,6 @@ export class NetworkManager {
             } else {
                 // Muerte sin killer (p. ej. suicidio o causa ambiental)
                 // No registramos muertes en el contador según requisito
-                console.log(`[DEBUG] Muerte sin asesino para ${data.playerId} (no se incrementa contador)`);
             }
         }
     }
@@ -371,7 +352,6 @@ export class NetworkManager {
             return;
         }
         
-        console.log(`[DEBUG] Enviando solicitud de disparo de proyectil`);
         
         // Solo enviamos información básica, el servidor calculará todo lo demás
         const message = {
@@ -418,7 +398,6 @@ export class NetworkManager {
             return;
         }
         
-        console.log(`[DEBUG] Enviando datos de colisión: tipo=${collisionData.collisionType}, targetPlayer=${collisionData.targetPlayerId || 'ninguno'}`);
         
         const message = {
             type: 'projectileCollision',
@@ -443,7 +422,6 @@ export class NetworkManager {
         // El ID a enviar es siempre el playerName o el ID local
         const idToSend = playerName || this.playerId;
         
-        console.log(`[DEBUG] Solicitando actualización de salud: ID=${idToSend}, salud=${health}, vivo=${isAlive}`);
         
         const message = {
             type: 'healthUpdate',
@@ -461,7 +439,6 @@ export class NetworkManager {
         // restauren la visibilidad del barco
         if (health === 100 && isAlive === true) {
             message.isRespawn = true;
-            console.log(`[NetworkManager] Enviando señal de respawn para ${idToSend}`);
             
             // Solo incluir posición en caso de respawn
             const player = Array.from(this.players.values()).find(p => p.id === this.playerId);
@@ -520,7 +497,6 @@ export class NetworkManager {
             return;
         }
         
-        console.log(`[NetworkManager] Solicitando nombres actualizados de todos los jugadores`);
         
         const message = {
             type: 'requestPlayerNames'
@@ -535,7 +511,6 @@ export class NetworkManager {
             return;
         }
         
-        console.log(`[DEBUG] Notificando captura de calavera por jugador ${playerId}`);
         
         const message = {
             type: 'skullCaptured',
