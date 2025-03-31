@@ -152,9 +152,6 @@ export class ScoreManager {
         this.skullScores.set(playerId, current + 1);
         
         console.log(`Nueva puntuación de calaveras para ${playerId}: ${current + 1}`);
-        
-        // Actualizar UI
-        this.updateUI();
     }
     
     // Obtener el número de calaveras capturadas por un jugador
