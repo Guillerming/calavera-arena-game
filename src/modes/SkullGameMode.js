@@ -47,10 +47,10 @@ export class SkullGameMode {
         this.transitionDirection = 1; // 1: normal->calavera, -1: calavera->normal
         
         // Colores de efecto calavera
-        this.skullBackgroundColor = new THREE.Color(0x14080A);
-        this.skullFogColor = new THREE.Color(0x221419);
+        this.skullBackgroundColor = new THREE.Color(0x141408);  // Color amarillo oscuro
+        this.skullFogColor = new THREE.Color(0x222214);  // Niebla amarilla oscura
         this.skullFogDensity = 0.04;
-        this.skullLightColor = new THREE.Color(0xCC9999);
+        this.skullLightColor = new THREE.Color(0xCCCC99);  // Color amarillo claro
         
         this.initializeVisualEffects();
     }
@@ -85,7 +85,7 @@ export class SkullGameMode {
         filterDiv.style.left = '0';
         filterDiv.style.width = '100vw';
         filterDiv.style.height = '100vh';
-        filterDiv.style.backgroundColor = 'rgba(255, 0, 0, 0.04)'; // Reducido a 40% del valor original (0.1)
+        filterDiv.style.backgroundColor = 'rgba(255, 255, 0, 0.04)';  // Amarillo en lugar de rojo
         filterDiv.style.pointerEvents = 'none';
         filterDiv.style.opacity = '0';
         filterDiv.style.transition = 'opacity 1.5s ease-in-out';
