@@ -131,11 +131,13 @@ button:hover {
 /* Health UI */
 .health-container {
     top: 20px;
-    left: 20px;
+    left: 50%;
     width: 250px;
+    transform: translateX(-50%);
 }
 
 .health-title {
+    display: none;
     font-weight: bold;
     margin-bottom: 5px;
     text-align: center;
@@ -144,7 +146,7 @@ button:hover {
 .health-bar-container {
     position: relative;
     height: 20px;
-    background-color: #333;
+    background-color: rgba(0,0,0,0.2);
     border-radius: 3px;
     overflow: hidden;
 }
@@ -269,12 +271,12 @@ button:hover {
     transition: background-color 0.2s ease;
 }
 
-.speed-bar:nth-child(1) { width: 40px; }
-.speed-bar:nth-child(2) { width: 52px; }
-.speed-bar:nth-child(3) { width: 64px; }
-.speed-bar:nth-child(4) { width: 76px; }
-.speed-bar:nth-child(5) { width: 88px; }
-.speed-bar:nth-child(6) { width: 100px; }
+.speed-bar:nth-child(6) { width: 40px; }
+.speed-bar:nth-child(5) { width: 52px; }
+.speed-bar:nth-child(4) { width: 64px; }
+.speed-bar:nth-child(3) { width: 76px; }
+.speed-bar:nth-child(2) { width: 88px; }
+.speed-bar:nth-child(1) { width: 100px; }
 
 .speed-bar.active {
     background-color: rgba(10, 255, 30, 1);
