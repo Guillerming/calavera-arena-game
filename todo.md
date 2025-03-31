@@ -83,3 +83,4 @@
             - calavera mode start
     - traducir todos los textos al inglés
     - ya no se ve el proyectil que disparan los demás, es como que la posición  nose actualiza
+    - línea amarilla random
