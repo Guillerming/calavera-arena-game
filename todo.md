@@ -6,10 +6,10 @@
 - arreglos en interfaz:
     - nombre de usuario centrado
     - poder enviar el form de nombre de usuario con Enter
-    - ui para cadencia de disparo
+    X ui para cadencia de disparo
     - utilizar esta fuente en el intro: https://fonts.google.com/specimen/Henny+Penny?preview.text=calavera%20arena&categoryFilters=Feeling:%2FExpressive%2FPlayful
     - mostrar un aviso si no está conectado al servidor
-    - añadir casilla de participación en jam
+    X añadir casilla de participación en jam
 
 - calavera deathmatch con countdown
     X bare minimum
@@ -60,22 +60,26 @@
     X impactos contra el agua
     X marcador no muestra bien los kills para todos los jugadores, tampoco el nombre
         X eliminar columna death
-    - añadir portal al vibeverse
+    X añadir portal al vibeverse
     X cada vez que cojo una calavera suma +2
     X el mesh de collisiones reaparece dsp de morir
     - refactor sonidos:
+        - soundtrack
+            - osd.mp3 -> en loop, toggle con letra M, inicia off
         - sistema de eventos
             - sonido/s asociado/s
             - oido por [jugador, todos]
             - sensible a la distancia
         - lista de eventos:
-            - idle (randomly play arr sounds)
-            - maxspeed
-            - hit (suffered)
-            - hit (other)
-            - kill
-            - die
-            - shoot
-            - impact
+            - idle (arr.mp3 en momentos random, sailing.mp3 en bucle con volumen bajito)
+            - maxspeed (cuando se alcanza la velocidad más alta)
+            - hit (cuando recibimos un golpe: hit01-02.mp3 + impact.mp3)
+            - impact (cuando el proyectil impacta sobre tierra u otro jugador)
+            - kill (cuando matamos a otro jugador. victory.mp3)
+            - die (cuando nos matan. death.mp3)
+            - shoot (shot01-05.mp3 + canon.mp3)
             - water splash
             - score (calavera catched)
+            - calavera mode start
+    - traducir todos los textos al inglés
+    - ya no se ve el proyectil que disparan los demás, es como que la posición  nose actualiza
