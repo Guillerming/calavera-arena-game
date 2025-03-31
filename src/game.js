@@ -475,9 +475,14 @@ export class Game {
         setInterval(async () => {
             await this.checkAudioPlayback();
         }, 15000);
-        
     }
     
+    // Método para buscar un personaje por su ID
+    findCharacterById(characterId) {
+        if (!this.characterManager) return null;
+        return this.characterManager.getCharacter(characterId);
+    }
+
     // Verificar si el audio está reproduciéndose correctamente
     async checkAudioPlayback() {
         if (!this.audioManager) return;
