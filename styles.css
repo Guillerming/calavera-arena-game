@@ -293,7 +293,7 @@ button:hover {
     right: 20px;
     text-align: right;
     padding: 5px 10px;
-    z-index: 1001;
+    z-index: 900;
 }
 
 .skull-mode-active {
@@ -394,4 +394,21 @@ button:hover {
     text-align: center;
     color: #999;
     padding: 10px;
+}
+
+/* Enlace a Twitter */
+.twitter-link {
+    position: fixed;
+    bottom: 7px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 5px 10px;
+    font-size: 14px;
+    font-weight: bold;
+    background: #fff;
+    color: #000;
+    text-decoration: none;
+    z-index: 900;
+    border-radius: 12px;
+    border: 1px solid #fff;
 } 
