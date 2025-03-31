@@ -255,8 +255,13 @@ export class SkullGameMode {
     
     // Método para manejar el evento de captura de calavera desde el servidor
     onSkullCaptured(playerId) {
-        // Buscar el jugador en la lista de caracteres
-        const character = this.characters.get(playerId);
+        // Si no está en modo calavera o ya fue capturada, ignorar
+        if (!this.isSkullModeActive || this.isSkullCaptured) {
+            return;
+        }
+        
+        // Encontrar el carácter relacionado con este playerId
+        const character = this.game.findCharacterById(playerId);
         const playerName = character ? character.name : playerId;
         
         // Actualizar estado
@@ -265,11 +270,6 @@ export class SkullGameMode {
         
         // Mostrar mensaje de captura
         this.showMessage(`¡${playerName} ha capturada la calavera!`);
-        
-        // Registrar la captura en el scoreManager si existe
-        if (this.scoreManager) {
-            this.scoreManager.registerSkull(playerId);
-        }
     }
     
     // Manejar la activación del modo calavera

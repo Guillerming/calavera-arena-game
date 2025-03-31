@@ -44,11 +44,11 @@
 - DEPLOY:
     X añadir casilla participación en jam
     - calavera spawnea en tierra muy a menudo
-    - pantalla de atajos de teclado
-        - shift para score board
-        - WASD movimiento
-        - click para disparar
-        - M para detener la música
+    X pantalla de atajos de teclado
+        X shift para score board
+        X WASD movimiento
+        X click para disparar
+        X M para detener la música
     X eliminar elementos de UI
         X velocidad
         X indicador de angulo arriba a la derecha
