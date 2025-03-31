@@ -7,7 +7,7 @@
     - nombre de usuario centrado
     - poder enviar el form de nombre de usuario con Enter
     X ui para cadencia de disparo
-    - utilizar esta fuente en el intro: https://fonts.google.com/specimen/Henny+Penny?preview.text=calavera%20arena&categoryFilters=Feeling:%2FExpressive%2FPlayful
+    X utilizar esta fuente en el intro: https://fonts.google.com/specimen/Henny+Penny?preview.text=calavera%20arena&categoryFilters=Feeling:%2FExpressive%2FPlayful
     - mostrar un aviso si no está conectado al servidor
     X añadir casilla de participación en jam
 
@@ -18,7 +18,7 @@
         X comprobar que si nadie alcanza la calavera se elimina y reanuda el ciclo de modo normal
     - habilitar disparos en cualquier sentido
     - cambio de música
-    - escenario con niebla y/o nubes negras
+    X escenario con niebla y/o nubes negras
 
 - multijugador
     - asignar colores automáticamente
@@ -81,6 +81,6 @@
             - water splash
             - score (calavera catched)
             - calavera mode start
-    - traducir todos los textos al inglés
-    - ya no se ve el proyectil que disparan los demás, es como que la posición  nose actualiza
+    X traducir todos los textos al inglés
+    X ya no se ve el proyectil que disparan los demás, es como que la posición  nose actualiza
     - línea amarilla random
