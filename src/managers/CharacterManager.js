@@ -441,8 +441,14 @@ export class CharacterManager {
     }
 
     update(deltaTime) {
+        // Asegurar que el ScoreboardUI se actualiza con la información más reciente
         if (this.scoreboardUI) {
-            this.scoreboardUI.update();
+            // Verificar que inputManager está disponible
+            if (this.inputManager) {
+                this.scoreboardUI.update();
+            } else {
+                console.warn("[CharacterManager] No se puede actualizar scoreboardUI: falta inputManager");
+            }
         }
         
         // Sincronizar ScoreManager con jugadores activos cada 5 segundos

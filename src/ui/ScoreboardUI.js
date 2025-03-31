@@ -47,15 +47,26 @@ export class ScoreboardUI {
     }
     
     update() {
+        // Verificar que el InputManager está disponible
+        if (!this.inputManager) {
+            console.error("[ScoreboardUI] No hay referencia a inputManager");
+            return;
+        }
+        
         // Comprobar si se mantiene pulsada la tecla Shift para mostrar/ocultar el scoreboard
         const isShiftPressed = this.inputManager.isKeyPressed('ShiftLeft') || this.inputManager.isKeyPressed('ShiftRight');
         
+        // Log para depuración (comentar en producción)
+        // console.log(`[ScoreboardUI] Estado de tecla Shift: ${isShiftPressed ? 'PULSADA' : 'NO PULSADA'}`);
+        
         if (isShiftPressed) {
             if (!this.isVisible) {
+                console.log("[ScoreboardUI] Mostrando scoreboard (Shift detectado)");
                 this.show();
             }
         } else {
             if (this.isVisible) {
+                console.log("[ScoreboardUI] Ocultando scoreboard (Shift liberado)");
                 this.hide();
             }
         }

@@ -297,6 +297,11 @@ export class Game {
             }
         }
         
+        // Actualizar el ScoreboardUI para detectar la tecla Shift
+        if (this.scoreboardUI) {
+            this.scoreboardUI.update();
+        }
+        
         // Actualizar el modo de juego Calavera
         if (this.skullGameMode) {
             this.skullGameMode.update(deltaTime);
