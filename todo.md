@@ -55,12 +55,27 @@
     X eliminar logs de la consola
     X comprobar eliminación de proyectiles (Revisar logs)
     X agrandar área de impacto de los barcos (más fácil que se les de)
-    - ampliar el círculo de la calavera
-        - añadir animación a la calavera
+    X ampliar el círculo de la calavera
+        X añadir animación a la calavera
     X impactos contra el agua
     X marcador no muestra bien los kills para todos los jugadores, tampoco el nombre
         X eliminar columna death
     - añadir portal al vibeverse
-    - cada vez que cojo una calavera suma +2
-    - el mesh de collisiones reaparece dsp de morir
-    - el sonido d cañon solo lo oye el que dispara
+    X cada vez que cojo una calavera suma +2
+    X el mesh de collisiones reaparece dsp de morir
+    - refactor sonidos:
+        - sistema de eventos
+            - sonido/s asociado/s
+            - oido por [jugador, todos]
+            - sensible a la distancia
+        - lista de eventos:
+            - idle (randomly play arr sounds)
+            - maxspeed
+            - hit (suffered)
+            - hit (other)
+            - kill
+            - die
+            - shoot
+            - impact
+            - water splash
+            - score (calavera catched)

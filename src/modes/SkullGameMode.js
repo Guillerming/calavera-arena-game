@@ -20,6 +20,12 @@ export class SkullGameMode {
         this.skullPosition = new THREE.Vector3();
         this.isSkullCaptured = false;
         
+        // Propiedades para la animación de la calavera
+        this.skullAnimationTime = 0;
+        this.skullFloatAmplitude = 0.3; // Amplitud de la flotación
+        this.skullFloatSpeed = 2.0;     // Velocidad de la flotación (aumentada)
+        this.skullRotationSpeed = 0.8;  // Velocidad de rotación (aumentada)
+        
         // Referencias a los jugadores
         this.characters = null;
         
@@ -70,6 +76,9 @@ export class SkullGameMode {
         if (this.isSkullModeActive && !this.isSkullCaptured && this.skullMesh) {
             // Actualizar orientación de la calavera
             this.updateSkullOrientation();
+            
+            // Actualizar animación de la calavera
+            this.updateSkullAnimation(deltaTime);
         }
     }
     
@@ -106,8 +115,8 @@ export class SkullGameMode {
             side: THREE.DoubleSide
         });
         
-        // Crear geometría (un plano simple)
-        const geometry = new THREE.PlaneGeometry(2, 2);
+        // Crear geometría (un plano simple pero más grande - 1.5 veces el tamaño anterior)
+        const geometry = new THREE.PlaneGeometry(4.5, 4.5);
         
         // Crear mesh
         this.skullMesh = new THREE.Mesh(geometry, material);
@@ -319,5 +328,22 @@ export class SkullGameMode {
         // Actualizar posición
         this.skullPosition.set(x, y, z);
         this.skullMesh.position.copy(this.skullPosition);
+    }
+
+    // Método para animar la calavera
+    updateSkullAnimation(deltaTime) {
+        if (!this.skullMesh || !this.skullMesh.visible) return;
+        
+        // Incrementar tiempo de animación
+        this.skullAnimationTime += deltaTime * this.skullFloatSpeed;
+        
+        // Calcular movimiento vertical (sinusoidal)
+        const verticalOffset = Math.sin(this.skullAnimationTime) * this.skullFloatAmplitude;
+        
+        // Aplicar movimiento vertical
+        this.skullMesh.position.y = this.skullPosition.y + verticalOffset;
+        
+        // Aplicar rotación
+        this.skullMesh.rotation.y += deltaTime * this.skullRotationSpeed;
     }
 } 

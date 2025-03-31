@@ -28,7 +28,7 @@ export function initializeWebSocketServer(server, wss) {
         SKULL_MODE: {
             NORMAL_MODE_DURATION: 60 * 3, // 30 segundos (en segundos) - modo normal
             SKULL_MODE_DURATION: 60 * 1.5,    // 2 minutos (en segundos) - modo calavera
-            SKULL_RADIUS: 2                 // Radio de detección (unidades)
+            SKULL_RADIUS: 4                 // Radio de detección (unidades)
         }
     };
     
