@@ -180,7 +180,6 @@ export class AudioManager {
         
         // Log para depuración de sonidos posicionales
         if (position) {
-            console.log(`[AudioManager] Reproduciendo sonido ${id} en posición:`, position);
         }
         
         // Añadir manejador de errores en la reproducción

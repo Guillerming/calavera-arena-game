@@ -84,6 +84,21 @@ export class Character extends THREE.Object3D {
             this.boat.rotation.y = Math.PI;
             this.boat.position.y = -0.8;
             
+            // Modificar los materiales para que parezcan más de madera
+            this.boat.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    // Si el material es un array, procesar cada material
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => {
+                            this._applyWoodMaterial(mat);
+                        });
+                    } else {
+                        // Si es un solo material
+                        this._applyWoodMaterial(child.material);
+                    }
+                }
+            });
+            
             this.add(this.boat);
             
             // Crear una caja como colisionador en lugar de un cilindro
@@ -486,4 +501,31 @@ export class Character extends THREE.Object3D {
         }
     }
 
+    // Método auxiliar para aplicar propiedades de madera al material
+    _applyWoodMaterial(material) {
+        // Reducir el brillo/reflectividad
+        if (material.metalness !== undefined) {
+            material.metalness = 0.1;  // Casi nada metálico
+        }
+        if (material.roughness !== undefined) {
+            material.roughness = 0.8;  // Bastante rugoso (como la madera)
+        }
+        if (material.shininess !== undefined) {
+            material.shininess = 5;    // Poco brillo
+        }
+        
+        // Ajustar el color ligeramente para que parezca más madera
+        if (material.color) {
+            // Dar un tono más cálido a los colores existentes
+            const currentColor = material.color.getHSL({});
+            material.color.setHSL(
+                0.08,  // Tono marrón-rojizo
+                0.5,   // Saturación media
+                currentColor.l * 0.9  // Mantener luminosidad similar pero ligeramente más oscura
+            );
+        }
+        
+        // Actualizar el material
+        material.needsUpdate = true;
+    }
 }

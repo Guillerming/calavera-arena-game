@@ -243,11 +243,6 @@ export class Game {
         };
 
         this.networkManager.onProjectileUpdate = (projectileData) => {
-            console.log('Game recibió projectileUpdate:', {
-                projectileId: projectileData.id,
-                playerId: projectileData.playerId,
-                networkPlayerId: this.networkManager.playerId
-            });
             this.characterManager.handleProjectileUpdate(projectileData);
         };
 
@@ -361,7 +356,6 @@ export class Game {
         
         // Actualizar el gestor de personajes
         if (this.characterManager) {
-            console.log('Llamando a characterManager.update()');
             this.characterManager.update(boundedDeltaTime);
         }
         

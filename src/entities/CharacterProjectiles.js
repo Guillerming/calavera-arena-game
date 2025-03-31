@@ -8,7 +8,6 @@ export class CharacterProjectiles {
     updateProjectiles(deltaTime) {
         // Añadir log para ver cuántos proyectiles tiene cada personaje
         if (this.character.projectiles.length > 0) {
-            console.log(`Actualizando ${this.character.projectiles.length} proyectiles para ${this.character.isLocalPlayer ? 'jugador local' : 'enemigo'} (${this.character.name})`);
         }
         
         // Actualizar cada proyectil
@@ -241,12 +240,6 @@ export class CharacterProjectiles {
             return null;
         }
         
-        console.log('Creando proyectil para enemigo:', {
-            projectileId: projectileData.id,
-            characterName: this.character.name,
-            scene: !!this.character.scene
-        });
-        
         const projectileGeometry = new THREE.SphereGeometry(0.3, 12, 12);
         const projectileMaterial = new THREE.MeshStandardMaterial({ 
             color: 0x333333,
@@ -299,10 +292,6 @@ export class CharacterProjectiles {
         this.character.projectiles.push(projectileObj);
         
         if (this.character.scene) {
-            console.log(`Añadiendo proyectil enemigo a la escena. Escena:`, {
-                isSceneObject: this.character.scene instanceof THREE.Scene,
-                childrenCount: this.character.scene.children?.length || 0
-            });
             this.character.scene.add(projectile);
             
             // Crear efecto de disparo para proyectiles de otros jugadores
@@ -516,7 +505,6 @@ export class CharacterProjectiles {
             };
             
             // Console log para debuggear qué contiene cada proyectil
-            console.log('[CharacterProjectiles] Enviando proyectil:', projectileData);
             
             // Enviar al servidor
             this.character.networkManager.sendProjectile(projectileData);
