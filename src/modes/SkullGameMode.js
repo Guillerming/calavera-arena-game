@@ -181,10 +181,10 @@ export class SkullGameMode {
         
         // Show text based on mode
         if (this.isSkullModeActive) {
-            this.timerElement.textContent = `SKULL MODE: ${timeString}`;
+            this.timerElement.textContent = `CALAVERA MODE: ${timeString}`;
             this.skullModeContainer.classList.add('skull-mode-active');
         } else {
-            this.timerElement.textContent = `Next skull mode: ${timeString}`;
+            this.timerElement.textContent = `Next Calavera mode: ${timeString}`;
             this.skullModeContainer.classList.remove('skull-mode-active');
         }
     }
@@ -233,7 +233,7 @@ export class SkullGameMode {
             // If we changed mode, show message
             if (wasModeActive !== this.isSkullModeActive) {
                 if (this.isSkullModeActive) {
-                    this.showMessage("SKULL MODE ACTIVATED! Capture the skull!");
+                    this.showMessage("CALAVERA MODE ACTIVATED! Capture the skull!");
                 } else {
                     this.showMessage("Normal mode restored");
                 }
@@ -292,7 +292,7 @@ export class SkullGameMode {
         this.generateRandomSkullPosition();
         
         // Show start message
-        this.showMessage("SKULL MODE ACTIVATED! Capture the skull!");
+        this.showMessage("CALAVERA MODE ACTIVATED! Capture the skull!");
         
         // Play skull mode music if exists audioManager
         if (this.game && this.game.audioManager) {
