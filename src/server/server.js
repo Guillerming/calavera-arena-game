@@ -67,9 +67,18 @@ wss.on('connection', (ws) => {
 
     console.log(`[SERVER] Nuevo jugador conectado: ${playerId}`);
 
-    // Enviar lista de jugadores existentes al nuevo jugador
+    // Enviar lista de jugadores existentes al nuevo jugador con nombres completos
     const existingPlayers = Array.from(players.values())
-        .filter(p => p.id !== playerId);
+        .filter(p => p.id !== playerId)
+        .map(p => ({
+            id: p.id,
+            name: p.name,
+            position: p.position,
+            rotation: p.rotation,
+            health: p.health,
+            isAlive: p.isAlive
+        }));
+        
     ws.send(JSON.stringify({
         type: 'players',
         players: existingPlayers
@@ -78,7 +87,14 @@ wss.on('connection', (ws) => {
     // Notificar a otros jugadores sobre el nuevo jugador
     broadcast({
         type: 'newPlayer',
-        player: players.get(playerId)
+        player: {
+            id: playerId,
+            name: players.get(playerId).name,
+            position: players.get(playerId).position,
+            rotation: players.get(playerId).rotation,
+            health: players.get(playerId).health,
+            isAlive: players.get(playerId).isAlive
+        }
     }, ws);
 
     // Manejar mensajes del jugador
@@ -109,14 +125,24 @@ wss.on('connection', (ws) => {
                         player.name = data.name;
                         console.log(`[SERVER] Jugador ${playerId} estableció nombre: ${data.name}`);
                         
-                        // Actualizar a otros jugadores
-                        broadcast({
+                        // Actualizar a TODOS los jugadores (incluyendo el remitente)
+                        broadcastToAll({
                             type: 'playerUpdate',
                             id: playerId,
                             name: data.name,
                             position: player.position,
                             rotation: player.rotation
                         });
+                        
+                        // Enviar la lista completa de jugadores con sus nombres al jugador actual
+                        const allPlayers = Array.from(players.values())
+                            .filter(p => p.id !== playerId)
+                            .map(p => ({ id: p.id, name: p.name }));
+                            
+                        ws.send(JSON.stringify({
+                            type: 'playerNames',
+                            players: allPlayers
+                        }));
                     }
                     break;
                     
@@ -140,12 +166,19 @@ wss.on('connection', (ws) => {
                         player.position = data.position;
                         player.rotation = data.rotation;
                         
+                        // Actualizar el nombre del jugador si se proporciona
+                        if (data.name && data.name !== player.name) {
+                            player.name = data.name;
+                            console.log(`[SERVER] Actualizado nombre de jugador ${playerId} a: ${data.name}`);
+                        }
+                        
                         // Broadcast de la actualización a otros jugadores
                         broadcast({
                             type: 'playerUpdate',
                             id: playerId,
                             position: data.position,
-                            rotation: data.rotation
+                            rotation: data.rotation,
+                            name: player.name // Incluir siempre el nombre en las actualizaciones
                         }, ws);
                     }
                     break;
@@ -239,6 +272,22 @@ wss.on('connection', (ws) => {
                 case 'skullCaptured':
                     // El cliente informa que ha capturado la calavera
                     handleSkullCapture(playerId);
+                    break;
+                    
+                case 'requestPlayerNames':
+                    // El cliente solicita los nombres actualizados de todos los jugadores
+                    console.log(`[SERVER] Jugador ${playerId} solicita nombres actualizados`);
+                    
+                    // Enviar solo a este cliente la lista actualizada de todos los jugadores
+                    const currentPlayers = Array.from(players.values());
+                    const client = Array.from(wss.clients).find(c => c.playerId === playerId);
+                    
+                    if (client && client.readyState === WebSocket.OPEN) {
+                        client.send(JSON.stringify({
+                            type: 'playerNames',
+                            players: currentPlayers.map(p => ({ id: p.id, name: p.name }))
+                        }));
+                    }
                     break;
             }
         } catch (error) {

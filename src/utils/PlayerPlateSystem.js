@@ -23,7 +23,20 @@ export class PlayerPlateSystem {
         
         // Almacenar el nombre del jugador si se proporciona
         if (playerName) {
-            this.playerNames.set(playerId, playerName);
+            const oldName = this.playerNames.get(playerId);
+            if (oldName !== playerName) {
+                console.log(`[PlayerPlateSystem] Actualizando nombre: ${playerId} -> "${playerName}"`);
+                this.playerNames.set(playerId, playerName);
+                
+                // Si ya existe un sprite pero el nombre cambió, recrearlo
+                if (this.playerPlates.has(playerId)) {
+                    const oldSprite = this.playerPlates.get(playerId);
+                    this.scene.remove(oldSprite);
+                    this.playerPlates.delete(playerId);
+                    this.createPlayerPlate(playerId, playerPosition);
+                    return;
+                }
+            }
         }
         
         // Si no existe el sprite para este jugador, lo creamos
@@ -45,7 +58,13 @@ export class PlayerPlateSystem {
     // Crear un nuevo nombre para un jugador
     createPlayerPlate(playerId, playerPosition) {
         // Crear el sprite con el nombre del jugador
-        const playerName = this.playerNames.get(playerId) || playerId;
+        // Solo usar el nombre real, nunca el ID como fallback
+        const playerName = this.playerNames.get(playerId);
+        
+        // Si no hay nombre disponible, no mostrar nada
+        if (!playerName) {
+            return null;
+        }
         
         // Crear un canvas para el texto
         const canvas = document.createElement('canvas');

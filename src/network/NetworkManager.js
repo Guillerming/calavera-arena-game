@@ -17,11 +17,53 @@ export class NetworkManager {
         this.scoreManager = null;
         this.game = null; // Referencia al objeto game
         this.onInit = null; // Callback para cuando se recibe el ID del servidor
+        
+        // Recuperar nombre del localStorage si existe
+        this.loadNameFromStorage();
+    }
+
+    // Cargar el nombre de usuario desde localStorage
+    loadNameFromStorage() {
+        const storedName = localStorage.getItem('playerName');
+        if (storedName) {
+            this.clientName = storedName;
+            console.log(`[NetworkManager] Nombre cargado desde localStorage: ${this.clientName}`);
+        }
+    }
+
+    // Guardar el nombre de usuario en localStorage
+    saveNameToStorage(name) {
+        if (name) {
+            localStorage.setItem('playerName', name);
+            console.log(`[NetworkManager] Nombre guardado en localStorage: ${name}`);
+        }
     }
 
     // Asignar el nombre del cliente antes de la conexión
     setClientName(name) {
         this.clientName = name;
+        
+        // Guardar en localStorage para futuras sesiones
+        this.saveNameToStorage(name);
+        
+        // Si ya estamos conectados, informar al servidor del nombre
+        if (this.connected && this.ws && this.ws.readyState === WebSocket.OPEN) {
+            this.sendClientName();
+        }
+    }
+    
+    // Enviar el nombre del cliente al servidor
+    sendClientName() {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN || !this.clientName) {
+            return;
+        }
+        
+        console.log(`[NetworkManager] Enviando nombre de cliente al servidor: ${this.clientName}`);
+        
+        this.ws.send(JSON.stringify({
+            type: 'setName',
+            name: this.clientName
+        }));
     }
 
     // Asignar la referencia al game
@@ -51,7 +93,7 @@ export class NetworkManager {
             
             // Si ya tenemos un nombre, enviarlo al servidor
             if (this.clientName) {
-                this.setClientName(this.clientName);
+                this.sendClientName();
             }
         };
         
@@ -79,6 +121,17 @@ export class NetworkManager {
                 case 'init':
                     this.playerId = data.id;
                     console.log(`[NetworkManager] ID asignado por el servidor: ${this.playerId}`);
+                    
+                    // Enviar nuestro nombre al servidor si lo tenemos
+                    if (this.clientName) {
+                        this.sendClientName();
+                    }
+                    
+                    // Solicitar nombres actualizados de todos los jugadores
+                    // Pequeño timeout para asegurar que se procese primero la lista inicial de jugadores
+                    setTimeout(() => {
+                        this.requestPlayerNames();
+                    }, 500);
                     
                     // Llamar al callback de inicialización si existe
                     if (this.onInit) {
@@ -113,7 +166,17 @@ export class NetworkManager {
                         // Actualizar solo las propiedades que vienen en el mensaje
                         if (data.position) player.position = data.position;
                         if (data.rotation) player.rotation = data.rotation;
-                        if (data.name) player.name = data.name;
+                        if (data.name) {
+                            const nameChanged = player.name !== data.name;
+                            player.name = data.name;
+                            console.log(`[NetworkManager] Nombre de jugador ${data.id} actualizado: ${data.name}`);
+                            
+                            // Si hay un cambio de nombre, solicitar nombres actualizados para sincronizar
+                            if (nameChanged && this.game) {
+                                console.log(`[NetworkManager] Solicitando actualización de nombres por cambio detectado`);
+                                this.requestPlayerNames();
+                            }
+                        }
                         
                         if (this.onPlayerUpdate) {
                             this.onPlayerUpdate(player);
@@ -207,6 +270,32 @@ export class NetworkManager {
                     }
                     break;
                 
+                // SERVIDOR -> CLIENTE: Recibir nombres actualizados de todos los jugadores
+                case 'playerNames':
+                    console.log(`[NetworkManager] Recibidos nombres actualizados de jugadores`);
+                    
+                    // Actualizar la información de los jugadores
+                    if (data.players && Array.isArray(data.players)) {
+                        data.players.forEach(playerInfo => {
+                            if (playerInfo.id && playerInfo.name) {
+                                const player = this.players.get(playerInfo.id);
+                                if (player) {
+                                    // Actualizar el nombre si es diferente
+                                    if (player.name !== playerInfo.name) {
+                                        console.log(`[NetworkManager] Actualizando nombre de jugador ${playerInfo.id}: ${playerInfo.name}`);
+                                        player.name = playerInfo.name;
+                                        
+                                        // Notificar la actualización si no es el jugador local
+                                        if (playerInfo.id !== this.playerId && this.onPlayerUpdate) {
+                                            this.onPlayerUpdate(player);
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                    break;
+                
                 default:
                     console.log(`[NetworkManager] Tipo de mensaje desconocido: ${data.type}`);
             }
@@ -248,7 +337,8 @@ export class NetworkManager {
             },
             rotation: {
                 y: rotation.y
-            }
+            },
+            name: this.clientName // Incluir el nombre en cada actualización
         }));
     }
 
@@ -394,6 +484,21 @@ export class NetworkManager {
         }
         
         this.ws.send(JSON.stringify(data));
+    }
+    
+    // CLIENTE -> SERVIDOR: Solicitar los nombres actualizados de todos los jugadores
+    requestPlayerNames() {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        console.log(`[NetworkManager] Solicitando nombres actualizados de todos los jugadores`);
+        
+        const message = {
+            type: 'requestPlayerNames'
+        };
+        
+        this.ws.send(JSON.stringify(message));
     }
     
     // CLIENTE -> SERVIDOR: Notificar captura de calavera

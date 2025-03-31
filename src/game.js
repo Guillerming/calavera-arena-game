@@ -146,9 +146,17 @@ export class Game {
         // Configurar callbacks de red
         this.networkManager.onPlayerUpdate = (playerData) => {
             if (playerData.id !== this.networkManager.playerId) {
+                // Actualizar posición y datos en el character manager
                 this.characterManager.updatePlayerPosition(playerData);
                 
-                // Actualizar la posición del playerPlate para este jugador
+                // Actualizar el nombre en el character si está disponible
+                const character = this.characterManager.getCharacter(playerData.id);
+                if (character && playerData.name && character.name !== playerData.name) {
+                    character.name = playerData.name;
+                    console.log(`[Game] Nombre de personaje actualizado: ${playerData.id} -> ${playerData.name}`);
+                }
+                
+                // Actualizar la posición y el nombre del playerPlate para este jugador
                 if (playerData && playerData.id) {
                     this.playerPlateSystem.updatePlayerPlate(
                         playerData.id,
@@ -231,6 +239,11 @@ export class Game {
         // Conectar al servidor
         this.networkManager.connect();
         
+        // Añadir un timeout para solicitar nombres de usuario actualizados después de la conexión
+        setTimeout(() => {
+            this.requestAllPlayerNames();
+        }, 2000); // 2 segundos después de conectarse
+        
         // Iniciar el modo de juego Calavera
         this.skullGameMode.start();
 
@@ -292,11 +305,22 @@ export class Game {
                 // No crear un punto sobre el jugador local
                 if (character.isLocalPlayer) continue;
                 
+                // Obtener el nombre del jugador desde networkManager si está disponible
+                let playerName = character.name;
+                const networkPlayer = this.networkManager.players.get(characterId);
+                if (networkPlayer && networkPlayer.name && networkPlayer.name !== characterId) {
+                    playerName = networkPlayer.name;
+                    // Actualizar el nombre del personaje si es necesario
+                    if (character.name !== playerName) {
+                        character.name = playerName;
+                    }
+                }
+                
                 this.playerPlateSystem.updatePlayerPlate(
                     characterId,
                     character.position,
                     character.isAlive,
-                    character.name // Pasar el nombre del personaje
+                    playerName // Usar el nombre actualizado
                 );
             }
         }
@@ -313,5 +337,33 @@ export class Game {
         
         // Renderizar la escena
         this.engine.render();
+    }
+
+    // Solicitar nombres actualizados de todos los jugadores
+    requestAllPlayerNames() {
+        if (this.networkManager && this.networkManager.connected) {
+            console.log('[Game] Solicitando nombres actualizados de todos los jugadores');
+            this.networkManager.requestPlayerNames();
+            
+            // Actualizar los playerPlates con los nombres actuales
+            const players = this.networkManager.getPlayers();
+            players.forEach(player => {
+                if (player.id !== this.networkManager.playerId) {
+                    const character = this.characterManager.getCharacter(player.id);
+                    if (character && player.name) {
+                        // Actualizar el nombre en el character
+                        character.name = player.name;
+                        
+                        // Actualizar el playerPlate
+                        this.playerPlateSystem.updatePlayerPlate(
+                            player.id,
+                            character.position,
+                            true,
+                            player.name
+                        );
+                    }
+                }
+            });
+        }
     }
 }
