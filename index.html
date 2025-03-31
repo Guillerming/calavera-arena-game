@@ -15,6 +15,27 @@
     </script>
 </head>
 <body>
+    <!-- Pantalla de carga -->
+    <div id="loading-screen" class="loading-screen">
+        <div class="loading-content">
+            <div class="skull">💀</div>
+            <h1>Calavera Arena</h1>
+            
+            <!-- Atajos de teclado -->
+            <div class="loading-shortcuts">
+                <div class="shortcut"><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> Move ship</div>
+                <div class="shortcut"><span class="key">SHIFT</span> Show scoreboard</div>
+                <div class="shortcut"><span class="key">CLICK</span> Fire cannon</div>
+                <div class="shortcut"><span class="key">M</span> Toggle music</div>
+            </div>
+            
+            <form id="player-form" class="player-form">
+                <input type="text" id="player-name" placeholder="Username" required>
+                <button type="submit">Join</button>
+            </form>
+        </div>
+    </div>
+
     <!-- UI de Salud -->
     <div id="health-container" class="ui-container health-container">
         <div id="health-title" class="health-title">Estado del Barco</div>

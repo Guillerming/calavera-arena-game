@@ -63,3 +63,4 @@
     - añadir portal al vibeverse
     - cada vez que cojo una calavera suma +2
     - el mesh de collisiones reaparece dsp de morir
+    - el sonido d cañon solo lo oye el que dispara
