@@ -12,7 +12,11 @@
     - añadir casilla de participación en jam
 
 - calavera deathmatch con countdown
-    - bare minimum
+    X bare minimum
+        - alargar modo espera a 3 min
+        - reducir modo calavera a 1.5min
+        - comprobar que si nadie alcanza la calavera se elimina y reanuda el ciclo de modo normal
+    - habilitar disparos en cualquier sentido
     - cambio de música
     - escenario con niebla y/o nubes negras
 

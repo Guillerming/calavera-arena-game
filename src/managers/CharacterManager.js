@@ -407,8 +407,8 @@ export class CharacterManager {
         
         do {
             // Generar coordenadas aleatorias dentro del mapa
-            x = (Math.random() * 300) - 150; // -150 a 150
-            z = (Math.random() * 300) - 150; // -150 a 150
+            x = (Math.random() * 400) - 200; // -200 a 200
+            z = (Math.random() * 400) - 200; // -200 a 200
             
             // Verificar si es un lugar seguro (lejos de tierra)
             const isSafeTerrain = this.terrain.isSafePlace(x, z, safeDistance);

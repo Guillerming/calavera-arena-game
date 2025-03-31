@@ -38,10 +38,10 @@ export class Character extends THREE.Object3D {
         this.prevMouseDown = false;
         
         this.mapLimits = {
-            minX: -195,
-            maxX: 195,
-            minZ: -195,
-            maxZ: 195
+            minX: -200,
+            maxX: 200,
+            minZ: -200,
+            maxZ: 200
         };
         
         this.projectiles = [];

@@ -16,16 +16,16 @@ const CONFIG = {
     MAX_PROJECTILE_RANGE: 200, // Distancia máxima que puede recorrer un proyectil
     COLLISION_RADIUS: 1.5,     // Radio de colisión de los jugadores
     MAP_LIMITS: {              // Límites del mapa (mismo que en el cliente)
-        minX: -195,
-        maxX: 195,
-        minZ: -195,
-        maxZ: 195
+        minX: -200,
+        maxX: 200,
+        minZ: -200,
+        maxZ: 200
     },
     // Configuración del modo calavera
     SKULL_MODE: {
-        NORMAL_MODE_DURATION: 60 * 0.5, // 30 segundos (en segundos) - modo normal
-        SKULL_MODE_DURATION: 60 * 2,    // 2 minutos (en segundos) - modo calavera
-        SKULL_RADIUS: 1                 // Radio de detección (unidades)
+        NORMAL_MODE_DURATION: 60 * 3, // 30 segundos (en segundos) - modo normal
+        SKULL_MODE_DURATION: 60 * 1.5,    // 2 minutos (en segundos) - modo calavera
+        SKULL_RADIUS: 2                 // Radio de detección (unidades)
     }
 };
 
