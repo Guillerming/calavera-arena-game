@@ -285,6 +285,24 @@ export function initializeWebSocketServer(server, wss) {
                             }));
                         }
                         break;
+                        
+                    case 'requestScoreSync':
+                        // El cliente solicita sincronización de marcadores
+                        console.log(`[SERVER] Jugador ${playerId} solicita sincronización de marcadores`);
+                        
+                        // Preparar marcadores para todos los jugadores
+                        const playersScores = Array.from(players.values()).map(p => ({
+                            id: p.id,
+                            name: p.name,
+                            kills: getPlayerKills(p.id) || 0  // Obtener kills del jugador
+                        }));
+                        
+                        // Enviar actualizaciones de marcadores a TODOS los clientes para mantener sincronizado
+                        broadcastToAll({
+                            type: 'scoreSync',
+                            scores: playersScores
+                        });
+                        break;
                 }
             } catch (error) {
                 console.error('[SERVER] Error procesando mensaje:', error);
@@ -388,6 +406,9 @@ export function initializeWebSocketServer(server, wss) {
         // Actualizar estado del jugador
         player.health = newHealth;
         player.isAlive = !isDead;
+        
+        console.log(`[SERVER] Jugador ${playerId} recibe daño: ${damage}. Nueva salud: ${newHealth}, muerto: ${isDead}`);
+        
         // Crear mensaje de actualización
         const healthUpdate = {
             type: 'healthUpdate',
@@ -400,6 +421,9 @@ export function initializeWebSocketServer(server, wss) {
         if (!wasDead && isDead && sourcePlayerId) {
             healthUpdate.killedBy = sourcePlayerId;
             console.log(`[SERVER] [KILL] Jugador ${sourcePlayerId} mató a ${playerId}`);
+            
+            // Registrar kill para el jugador que lo mató
+            registerKill(sourcePlayerId, playerId);
             
             // Programar respawn automático
             scheduleRespawn(playerId);
@@ -474,7 +498,16 @@ export function initializeWebSocketServer(server, wss) {
         };
         
         // Preservar datos adicionales relevantes
-        if (data.killedBy) message.killedBy = data.killedBy;
+        if (data.killedBy) {
+            message.killedBy = data.killedBy;
+            
+            // Si es una muerte (salud 0) y hay un killedBy, registrar el kill
+            if (data.health === 0 && !data.isAlive) {
+                console.log(`[SERVER] Registrando kill desde actualización de salud: ${data.killedBy} mató a ${data.playerId}`);
+                registerKill(data.killedBy, data.playerId);
+            }
+        }
+        
         if (data.position) message.position = data.position;
         
         // Preservar el flag isRespawn si está presente
@@ -503,6 +536,40 @@ export function initializeWebSocketServer(server, wss) {
                 client.send(JSON.stringify(data));
             }
         });
+    }
+
+    // Obtener el número de kills de un jugador
+    function getPlayerKills(playerId) {
+        // Si no existe el jugador, retornar 0
+        if (!players.has(playerId)) return 0;
+        
+        // Si el jugador tiene una propiedad kills, usarla directamente
+        const player = players.get(playerId);
+        if (player.kills !== undefined) return player.kills;
+        
+        // Si no tiene la propiedad kills, crearla e inicializarla a 0
+        player.kills = 0;
+        return 0;
+    }
+    
+    // Registrar un kill para un jugador
+    function registerKill(killerId, victimId) {
+        // Verificar que los jugadores existen
+        if (!players.has(killerId) || !players.has(victimId)) return;
+        
+        // Registrar el kill para el asesino
+        const killer = players.get(killerId);
+        
+        // Inicializar la propiedad kills si no existe
+        if (killer.kills === undefined) {
+            killer.kills = 0;
+        }
+        
+        // Incrementar el contador de kills
+        killer.kills++;
+        console.log(`[SERVER] Jugador ${killerId} ha conseguido un kill. Total: ${killer.kills}`);
+        
+        // No registrar muertes según requisito
     }
 
     // Función de actualización del servidor
