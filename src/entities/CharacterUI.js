@@ -35,7 +35,7 @@ export class CharacterUI {
         // Verificar que todos los elementos existen
         if (!this.reloadText || !this.directionText || !this.healthBar || 
             !this.healthText || !this.angleText) {
-            console.error('Error: No se encontraron algunos elementos UI en el HTML');
+            console.error('Error: Some UI elements were not found in the HTML');
         }
         
         // Actualizar inmediatamente la información de salud

@@ -8,23 +8,23 @@ export class SkullGameMode {
         this.scoreManager = game.scoreManager;
         
         // Configuración del modo
-        this.NORMAL_MODE_DURATION = 60 * 0.5; // 30 segundos (en segundos) - modo normal
-        this.SKULL_MODE_DURATION = 60 * 2;  // 2 minutos (en segundos) - modo calavera
-        this.isSkullModeActive = false;  // Inicialmente en modo normal
-        this.countdown = this.NORMAL_MODE_DURATION; // Iniciar countdown
+        this.NORMAL_MODE_DURATION = 60 * 0.5; // 30 seconds (in seconds) - normal mode
+        this.SKULL_MODE_DURATION = 60 * 2;  // 2 minutes (in seconds) - skull mode
+        this.isSkullModeActive = false;  // Initially in normal mode
+        this.countdown = this.NORMAL_MODE_DURATION; // Start countdown
         
         // Propiedades de la calavera
         this.skullMesh = null;
-        this.skullRadius = 1; // Radio de detección (unidades)
-        this.skullHeight = 3; // Altura a la que flota (unidades)
+        this.skullRadius = 1; // Detection radius (units)
+        this.skullHeight = 3; // Height at which it floats (units)
         this.skullPosition = new THREE.Vector3();
         this.isSkullCaptured = false;
         
         // Propiedades para la animación de la calavera
         this.skullAnimationTime = 0;
-        this.skullFloatAmplitude = 0.3; // Amplitud de la flotación
-        this.skullFloatSpeed = 2.0;     // Velocidad de la flotación (aumentada)
-        this.skullRotationSpeed = 0.8;  // Velocidad de rotación (aumentada)
+        this.skullFloatAmplitude = 0.3; // Float amplitude
+        this.skullFloatSpeed = 2.0;     // Float speed (increased)
+        this.skullRotationSpeed = 0.8;  // Rotation speed (increased)
         
         // Referencias a los jugadores
         this.characters = null;
@@ -37,34 +37,34 @@ export class SkullGameMode {
     
     // Iniciar el modo de juego
     start() {
-        // Obtener referencia a los jugadores
+        // Get reference to players
         if (this.game.characterManager) {
             this.characters = this.game.characterManager.characters;
         } else {
             console.error("No se pudo obtener referencia a los jugadores");
         }
         
-        // Crear la calavera (pero no mostrarla aún)
+        // Create the skull (but not show it yet)
         this.createSkull();
     }
     
     // Actualizar el modo de juego (llamado cada frame)
     update(deltaTime) {
-        // Actualizar UI
+        // Update UI
         this.updateUI();
         
-        // Actualizar contador
+        // Update counter
         if (deltaTime > 0) {
             this.countdown -= deltaTime;
             
-            // Si el contador llega a cero, cambiar el modo
+            // If counter reaches zero, change mode
             if (this.countdown <= 0) {
-                // Si estábamos en modo normal, activar modo calavera
+                // If we were in normal mode, activate skull mode
                 if (!this.isSkullModeActive) {
                     this.onModeActivated();
                     this.updateSkullVisibility();
                 } 
-                // Si estábamos en modo calavera, volver a modo normal
+                // If we were in skull mode, return to normal mode
                 else {
                     this.onModeDeactivated();
                     this.updateSkullVisibility();
@@ -72,19 +72,19 @@ export class SkullGameMode {
             }
         }
         
-        // Si estamos en modo calavera y la calavera no ha sido capturada
+        // If we are in skull mode and the skull hasn't been captured
         if (this.isSkullModeActive && !this.isSkullCaptured && this.skullMesh) {
-            // Actualizar orientación de la calavera
+            // Update skull orientation
             this.updateSkullOrientation();
             
-            // Actualizar animación de la calavera
+            // Update skull animation
             this.updateSkullAnimation(deltaTime);
         }
     }
     
-    // Crear la calavera (pero no mostrarla aún)
+    // Create the skull (but not show it yet)
     createSkull() {
-        // Crear un canvas para el emoji de la calavera
+        // Create a canvas for the skull emoji
         const canvas = document.createElement('canvas');
         canvas.width = 128;
         canvas.height = 128;
@@ -92,43 +92,43 @@ export class SkullGameMode {
         ctx.fillStyle = 'transparent';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Dibujar un círculo negro de fondo
+        // Draw a black circle background
         ctx.beginPath();
         ctx.arc(canvas.width / 2, canvas.height / 2, 45, 0, Math.PI * 2);
         ctx.fillStyle = 'black';
         ctx.fill();
         
-        // Dibujar el emoji de calavera
+        // Draw the skull emoji
         ctx.font = '100px Arial';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('💀', canvas.width / 2, canvas.height / 2);
         
-        // Crear textura desde el canvas
+        // Create texture from canvas
         const texture = new THREE.CanvasTexture(canvas);
         
-        // Crear material con la textura
+        // Create material with the texture
         const material = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
             side: THREE.DoubleSide
         });
         
-        // Crear geometría (un plano simple pero más grande - 1.5 veces el tamaño anterior)
+        // Create geometry (a simple plane but larger - 1.5 times the size of the previous one)
         const geometry = new THREE.PlaneGeometry(4.5, 4.5);
         
-        // Crear mesh
+        // Create mesh
         this.skullMesh = new THREE.Mesh(geometry, material);
         
-        // No mostrar inicialmente
+        // Not show initially
         this.skullMesh.visible = false;
         
-        // Añadir a la escena
+        // Add to scene
         this.scene.add(this.skullMesh);
     }
     
-    // Actualizar la posición de la calavera (recibida del servidor)
+    // Update skull position (received from server)
     updateSkullPosition(position) {
         if (!this.skullMesh) return;
         
@@ -136,74 +136,74 @@ export class SkullGameMode {
         this.skullMesh.position.copy(this.skullPosition);
     }
     
-    // Actualizar si la calavera es visible o no
+    // Update if the skull is visible or not
     updateSkullVisibility() {
         if (!this.skullMesh) return;
         
-        // La calavera es visible si estamos en modo calavera y no ha sido capturada
+        // The skull is visible if we are in skull mode and not captured
         this.skullMesh.visible = this.isSkullModeActive && !this.isSkullCaptured;
     }
     
-    // Actualizar orientación de la calavera para que mire al jugador local
+    // Update skull orientation to face the local player
     updateSkullOrientation() {
         if (!this.skullMesh || !this.skullMesh.visible) return;
         
-        // Obtener la cámara
+        // Get camera
         const camera = this.game.engine.camera;
         if (!camera) return;
         
-        // Hacer que la calavera mire hacia la cámara (billboarding)
+        // Make the skull look towards the camera (billboarding)
         this.skullMesh.lookAt(camera.position);
     }
     
-    // Método para crear la UI
+    // Method to create UI
     createUI() {
-        // Obtener referencias a los elementos existentes
+        // Get references to existing elements
         this.messageElement = document.getElementById('message-text');
         this.messageContainer = document.getElementById('message-container');
         this.timerElement = document.getElementById('skull-timer');
         this.skullModeContainer = document.getElementById('skull-mode-container');
         
-        // Verificar que todos los elementos existen
+        // Verify that all elements exist
         if (!this.messageElement || !this.messageContainer || !this.timerElement || !this.skullModeContainer) {
-            console.error('Error: No se encontraron algunos elementos UI del modo calavera en el HTML');
+            console.error('Error: Some skull mode UI elements were not found in the HTML');
         }
     }
     
-    // Actualizar UI (timer y mensajes)
+    // Update UI (timer and messages)
     updateUI() {
         if (!this.timerElement) return;
         
-        // Formatear tiempo restante
+        // Format remaining time
         const minutes = Math.floor(this.countdown / 60);
         const seconds = Math.floor(this.countdown % 60);
         const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
         
-        // Mostrar texto según el modo
+        // Show text based on mode
         if (this.isSkullModeActive) {
-            this.timerElement.textContent = `MODO CALAVERA: ${timeString}`;
+            this.timerElement.textContent = `SKULL MODE: ${timeString}`;
             this.skullModeContainer.classList.add('skull-mode-active');
         } else {
-            this.timerElement.textContent = `Próximo modo calavera: ${timeString}`;
+            this.timerElement.textContent = `Next skull mode: ${timeString}`;
             this.skullModeContainer.classList.remove('skull-mode-active');
         }
     }
     
-    // Mostrar mensaje temporal
+    // Show temporary message
     showMessage(message, duration = 5000) {
         if (!this.messageElement || !this.messageContainer) return;
         
         this.messageElement.textContent = message;
         this.messageContainer.style.opacity = '1';
         
-        // Ocultar después de duración
+        // Hide after duration
         clearTimeout(this.messageTimeout);
         this.messageTimeout = setTimeout(() => {
             this.messageContainer.style.opacity = '0';
         }, duration);
     }
     
-    // Limpiar recursos
+    // Clean up resources
     cleanup() {
         if (this.skullMesh && this.skullMesh.parent) {
             this.skullMesh.parent.remove(this.skullMesh);
@@ -211,7 +211,7 @@ export class SkullGameMode {
         
         clearTimeout(this.messageTimeout);
         
-        // Ya no necesitamos eliminar elementos, solo limpiar su contenido
+        // We no longer need to remove elements, just clean up their content
         if (this.messageElement) {
             this.messageElement.textContent = '';
         }
@@ -221,87 +221,87 @@ export class SkullGameMode {
         }
     }
     
-    // Método para sincronizar con el servidor
+    // Method to synchronize with the server
     syncWithServer(data) {
         if (!data) return;
         
-        // Actualizar estado del modo
+        // Update mode status
         if (data.isActive !== undefined) {
             const wasModeActive = this.isSkullModeActive;
             this.isSkullModeActive = data.isActive;
             
-            // Si cambiamos de modo, mostrar mensaje
+            // If we changed mode, show message
             if (wasModeActive !== this.isSkullModeActive) {
                 if (this.isSkullModeActive) {
-                    this.showMessage("¡MODO CALAVERA ACTIVADO! ¡Captura la calavera!");
+                    this.showMessage("SKULL MODE ACTIVATED! Capture the skull!");
                 } else {
-                    this.showMessage("Modo normal restaurado");
+                    this.showMessage("Normal mode restored");
                 }
             }
         }
         
-        // Actualizar countdown
+        // Update countdown
         if (data.countdown !== undefined) {
             this.countdown = data.countdown;
         }
         
-        // Actualizar posición de la calavera si está activa
+        // Update skull position if active
         if (data.data && data.data.skullPosition) {
             this.updateSkullPosition(data.data.skullPosition);
         }
         
-        // Actualizar estado de captura
+        // Update capture status
         if (data.data && data.data.isSkullCaptured !== undefined) {
             this.isSkullCaptured = data.data.isSkullCaptured;
         }
         
-        // Actualizar visibilidad de la calavera
+        // Update skull visibility
         this.updateSkullVisibility();
         
-        // Actualizar UI
+        // Update UI
         this.updateUI();
     }
     
-    // Método para manejar el evento de captura de calavera desde el servidor
+    // Method to handle skull capture event from server
     onSkullCaptured(playerId) {
-        // Si no está en modo calavera o ya fue capturada, ignorar
+        // If not in skull mode or already captured, ignore
         if (!this.isSkullModeActive || this.isSkullCaptured) {
             return;
         }
         
-        // Encontrar el carácter relacionado con este playerId
+        // Find the character related to this playerId
         const character = this.game.findCharacterById(playerId);
         const playerName = character ? character.name : playerId;
         
-        // Actualizar estado
+        // Update status
         this.isSkullCaptured = true;
         this.updateSkullVisibility();
         
-        // Mostrar mensaje de captura
-        this.showMessage(`¡${playerName} ha capturada la calavera!`);
+        // Show capture message
+        this.showMessage(`${playerName} has captured the skull!`);
     }
     
-    // Manejar la activación del modo calavera
+    // Handle skull mode activation
     onModeActivated() {
         this.isSkullModeActive = true;
         this.isSkullCaptured = false;
         this.skullMesh.visible = true;
         this.countdown = this.SKULL_MODE_DURATION;
         
-        // Generar posición aleatoria para la calavera
+        // Generate random position for the skull
         this.generateRandomSkullPosition();
         
-        // Mostrar mensaje de inicio
-        this.showMessage("¡MODO CALAVERA ACTIVADO! ¡Captura la calavera!");
+        // Show start message
+        this.showMessage("SKULL MODE ACTIVATED! Capture the skull!");
         
-        // Reproducir música de modo calavera si existe audioManager
+        // Play skull mode music if exists audioManager
         if (this.game && this.game.audioManager) {
-            // Reproducir por 12 segundos (duración de la pista)
+            // Play for 12 seconds (track duration)
             this.game.audioManager.playTemporaryMusic('calaveramode', 12000);
         }
     }
 
-    // Manejar la desactivación del modo calavera
+    // Handle skull mode deactivation
     onModeDeactivated() {
         this.isSkullModeActive = false;
         this.skullMesh.visible = false;
@@ -309,41 +309,41 @@ export class SkullGameMode {
         this.countdown = this.NORMAL_MODE_DURATION;
     }
 
-    // Generar una posición aleatoria para la calavera
+    // Generate a random position for the skull
     generateRandomSkullPosition() {
         if (!this.skullMesh) return;
         
-        // Generar posición aleatoria dentro de un cierto rango del mapa
-        const mapRadius = 100; // Radio del mapa para colocar la calavera
+        // Generate random position within a certain range of the map
+        const mapRadius = 100; // Map radius to place the skull
         const randomAngle = Math.random() * Math.PI * 2;
-        const randomRadius = Math.random() * mapRadius * 0.7; // 70% del radio del mapa
+        const randomRadius = Math.random() * mapRadius * 0.7; // 70% of the map radius
         
-        // Calcular posición XZ en círculo
+        // Calculate XZ position in circle
         const x = Math.cos(randomAngle) * randomRadius;
         const z = Math.sin(randomAngle) * randomRadius;
         
-        // Establecer altura fija + pequeña variación
+        // Set fixed height + small variation
         const y = this.skullHeight + Math.random() * 0.5;
         
-        // Actualizar posición
+        // Update position
         this.skullPosition.set(x, y, z);
         this.skullMesh.position.copy(this.skullPosition);
     }
 
-    // Método para animar la calavera
+    // Method to animate the skull
     updateSkullAnimation(deltaTime) {
         if (!this.skullMesh || !this.skullMesh.visible) return;
         
-        // Incrementar tiempo de animación
+        // Increment animation time
         this.skullAnimationTime += deltaTime * this.skullFloatSpeed;
         
-        // Calcular movimiento vertical (sinusoidal)
+        // Calculate vertical movement (sinusoidal)
         const verticalOffset = Math.sin(this.skullAnimationTime) * this.skullFloatAmplitude;
         
-        // Aplicar movimiento vertical
+        // Apply vertical movement
         this.skullMesh.position.y = this.skullPosition.y + verticalOffset;
         
-        // Aplicar rotación
+        // Apply rotation
         this.skullMesh.rotation.y += deltaTime * this.skullRotationSpeed;
     }
 } 

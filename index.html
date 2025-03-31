@@ -38,7 +38,7 @@
 
     <!-- UI de Salud -->
     <div id="health-container" class="ui-container health-container">
-        <div id="health-title" class="health-title">Estado del Barco</div>
+        <div id="health-title" class="health-title">Ship Status</div>
         <div id="health-bar-container" class="health-bar-container">
             <div id="health-bar" class="health-bar"></div>
             <div id="health-text" class="health-text">100 / 100</div>
@@ -73,7 +73,7 @@
 
     <!-- UI de Modo Calavera -->
     <div id="skull-mode-container" class="ui-container skull-mode-container">
-        <div id="skull-timer">Próximo modo calavera: 0:00</div>
+        <div id="skull-timer">Next skull mode: 0:00</div>
     </div>
 
     <!-- UI de Mensajes -->
@@ -83,7 +83,7 @@
 
     <!-- UI de Marcadores (Scoreboard) -->
     <div id="scoreboard-container" class="scoreboard-container">
-        <h2 id="scoreboard-title" class="scoreboard-title">Tabla de Puntuaciones</h2>
+        <h2 id="scoreboard-title" class="scoreboard-title">Scoreboard</h2>
         <div id="scores-container" class="scores-container"></div>
     </div>
 
@@ -99,7 +99,7 @@
         try {
             await game.start();
         } catch (error) {
-            console.error('Error al inicializar el juego:', error);
+            console.error('Error initializing game:', error);
             // Aquí podrías mostrar un mensaje de error al usuario
         }
     </script>

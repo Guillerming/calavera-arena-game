@@ -108,7 +108,7 @@ export class Game {
     async startGame() {
         // Asegurarnos de que el terreno está disponible
         if (!this.terrain) {
-            console.error('El terreno no está inicializado');
+            console.error('Terrain is not initialized');
             return;
         }
 
@@ -120,7 +120,7 @@ export class Game {
         // Crear el personaje del jugador
         this.player = this.characterManager.createPlayer(this.playerName);
         if (!this.player) {
-            console.error('No se pudo crear el jugador');
+            console.error('Could not create player');
             return;
         }
 
