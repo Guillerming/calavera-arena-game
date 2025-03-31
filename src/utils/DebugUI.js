@@ -1,24 +1,15 @@
 export class DebugUI {
     constructor() {
-        this.container = this.createDebugContainer();
-    }
-
-    createDebugContainer() {
-        const container = document.createElement('div');
-        container.id = 'debug-container';
-        container.innerHTML = `
-            <div class="debug-value">Posición X: <span id="position-x">0.00</span></div>
-            <div class="debug-value">Posición Z: <span id="position-z">0.00</span></div>
-            <div class="debug-value">Altura Personaje: <span id="character-y">0.00</span></div>
-            <div class="debug-value">Altura Terreno: <span id="terrain-height">0.00</span></div>
-            <div class="debug-value">Diferencia: <span id="height-diff">0.00</span></div>
-            <div class="debug-value">Estado: <span id="debug-status">Iniciando...</span></div>
-        `;
-        document.body.appendChild(container);
-        return container;
+        this.container = document.getElementById('debug-container');
+        
+        if (!this.container) {
+            console.error('No se encontró el contenedor de debug en el HTML');
+        }
     }
 
     update(character) {
+        if (!this.container) return;
+        
         if (!character) {
             document.getElementById('debug-status').textContent = 'No hay personaje';
             return;

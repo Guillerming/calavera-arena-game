@@ -147,44 +147,18 @@ export class SkullGameMode {
         this.skullMesh.lookAt(camera.position);
     }
     
-    // Crear UI para mensajes y timer
+    // Método para crear la UI
     createUI() {
-        // Crear contenedor de mensajes
-        this.messageElement = document.createElement('div');
-        this.messageElement.style.cssText = `
-            position: fixed;
-            top: 100px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 10px 20px;
-            border-radius: 5px;
-            font-family: Arial, sans-serif;
-            font-size: 18px;
-            transition: opacity 0.3s;
-            opacity: 0;
-            pointer-events: none;
-            z-index: 1000;
-        `;
-        document.body.appendChild(this.messageElement);
+        // Obtener referencias a los elementos existentes
+        this.messageElement = document.getElementById('message-text');
+        this.messageContainer = document.getElementById('message-container');
+        this.timerElement = document.getElementById('skull-timer');
+        this.skullModeContainer = document.getElementById('skull-mode-container');
         
-        // Crear timer
-        this.timerElement = document.createElement('div');
-        this.timerElement.style.cssText = `
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0, 0, 0, 0.7);
-            color: white;
-            padding: 5px 10px;
-            border-radius: 5px;
-            font-family: Arial, sans-serif;
-            font-size: 16px;
-            pointer-events: none;
-            z-index: 1000;
-        `;
-        document.body.appendChild(this.timerElement);
+        // Verificar que todos los elementos existen
+        if (!this.messageElement || !this.messageContainer || !this.timerElement || !this.skullModeContainer) {
+            console.error('Error: No se encontraron algunos elementos UI del modo calavera en el HTML');
+        }
     }
     
     // Actualizar UI (timer y mensajes)
@@ -199,24 +173,24 @@ export class SkullGameMode {
         // Mostrar texto según el modo
         if (this.isSkullModeActive) {
             this.timerElement.textContent = `MODO CALAVERA: ${timeString}`;
-            this.timerElement.style.background = 'rgba(255, 0, 0, 0.7)';
+            this.skullModeContainer.classList.add('skull-mode-active');
         } else {
             this.timerElement.textContent = `Próximo modo calavera: ${timeString}`;
-            this.timerElement.style.background = 'rgba(0, 0, 0, 0.7)';
+            this.skullModeContainer.classList.remove('skull-mode-active');
         }
     }
     
     // Mostrar mensaje temporal
     showMessage(message, duration = 5000) {
-        if (!this.messageElement) return;
+        if (!this.messageElement || !this.messageContainer) return;
         
         this.messageElement.textContent = message;
-        this.messageElement.style.opacity = '1';
+        this.messageContainer.style.opacity = '1';
         
         // Ocultar después de duración
         clearTimeout(this.messageTimeout);
         this.messageTimeout = setTimeout(() => {
-            this.messageElement.style.opacity = '0';
+            this.messageContainer.style.opacity = '0';
         }, duration);
     }
     
@@ -226,15 +200,16 @@ export class SkullGameMode {
             this.skullMesh.parent.remove(this.skullMesh);
         }
         
-        if (this.messageElement && this.messageElement.parentNode) {
-            this.messageElement.parentNode.removeChild(this.messageElement);
-        }
-        
-        if (this.timerElement && this.timerElement.parentNode) {
-            this.timerElement.parentNode.removeChild(this.timerElement);
-        }
-        
         clearTimeout(this.messageTimeout);
+        
+        // Ya no necesitamos eliminar elementos, solo limpiar su contenido
+        if (this.messageElement) {
+            this.messageElement.textContent = '';
+        }
+        
+        if (this.messageContainer) {
+            this.messageContainer.style.opacity = '0';
+        }
     }
     
     // Método para sincronizar con el servidor
