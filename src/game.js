@@ -12,6 +12,7 @@ import { LoadingScreen } from './ui/LoadingScreen.js';
 import { Logger } from './utils/Logger.js';
 import { PlayerPlateSystem } from './utils/PlayerPlateSystem.js';
 import { SkullGameMode } from './modes/SkullGameMode.js';
+import { AudioManager } from './utils/AudioManager.js';
 
 export class Game {
     constructor() {
@@ -45,6 +46,10 @@ export class Game {
         // Configurar el CharacterManager
         this.characterManager.setNetworkManager(this.networkManager);
         this.characterManager.setScoreManager(this.scoreManager);
+        this.characterManager.setGame(this);
+        
+        // Sistema de audio
+        this.audioManager = new AudioManager();
         
         this.logger.end('constructor');
         
@@ -128,7 +133,22 @@ export class Game {
         );
         this.characterManager.setScoreboardUI(this.scoreboardUI);
         
-        // Inicializar el modo de juego Calavera
+        // Asegurarse de que el sistema de audio esté inicializado
+        if (!this.audioManager.initialized) {
+            console.log('[Game] Inicializando el sistema de audio...');
+            await this.audioManager.init();
+        }
+        
+        // Detener música de intro y reproducir música del juego con volumen alto
+        console.log('[Game] Reproduciendo música de juego (sailing)...');
+        this.audioManager.playMusic('sailing');
+        
+        // Programar una verificación periódica de la música si no se ha hecho ya
+        if (!this._audioCheckScheduled) {
+            this.scheduleAudioCheck();
+        }
+        
+        // Iniciar el modo de juego Calavera
         this.skullGameMode = new SkullGameMode(this);
 
         // Configurar el jugador
@@ -209,6 +229,9 @@ export class Game {
         // Añadir callback para colisiones de proyectiles
         this.networkManager.onProjectileCollision = (collisionData) => {
             this.characterManager.handleProjectileCollision(collisionData);
+            
+            // Reproducir sonido de impacto
+            this.audioManager.playSound('impact');
         };
 
         // Añadir callback para actualizaciones de salud
@@ -377,6 +400,145 @@ export class Game {
                     }
                 }
             });
+        }
+    }
+
+    async initialize(playerName) {
+        if (this.initialized) return;
+        
+        // Guardar nombre del jugador
+        this.playerName = playerName;
+        this.initialized = true;
+        
+        // Establecer referencia al game en el engine
+        this.engine.setGame(this);
+        
+        // Inicializar sistema de audio de forma asíncrona
+        console.log('[Game] Inicializando sistema de audio...');
+        try {
+            await this.audioManager.init();
+            
+            // Prueba de sonidos para debug
+            this.testAudioSystem();
+            
+            // Reproducir música de intro
+            console.log('[Game] Reproduciendo música de intro (osd)...');
+            this.audioManager.playMusic('osd');
+        } catch (error) {
+            console.error('[Game] Error al inicializar el audio:', error);
+        }
+        
+        // Si el mundo ya está inicializado, iniciar el juego
+        if (this.worldInitialized) {
+            this.startGame();
+        }
+    }
+    
+    // Método para probar todos los sonidos del sistema
+    testAudioSystem() {
+        console.log('[Game] Probando el sistema de audio...');
+        
+        // Intentar reproducir cada sonido una vez para asegurar que están cargados correctamente
+        setTimeout(() => {
+            console.log('[Game] Probando efecto: canon');
+            this.audioManager.playSound('canon');
+        }, 1000);
+        
+        setTimeout(() => {
+            console.log('[Game] Probando efecto: impact');
+            this.audioManager.playSound('impact');
+        }, 2000);
+    }
+
+    // Programar verificación periódica del sistema de audio
+    scheduleAudioCheck() {
+        this._audioCheckScheduled = true;
+        
+        // Primera verificación después de 3 segundos
+        setTimeout(async () => {
+            await this.checkAudioPlayback();
+        }, 3000);
+        
+        // Verificaciones periódicas cada 15 segundos
+        setInterval(async () => {
+            await this.checkAudioPlayback();
+        }, 15000);
+        
+        console.log('[Game] Verificación periódica de audio programada');
+    }
+    
+    // Verificar si el audio está reproduciéndose correctamente
+    async checkAudioPlayback() {
+        if (!this.audioManager) return;
+        
+        console.log('[Game] Verificando reproducción de audio...');
+        
+        // Si el audio no está inicializado, intentar inicializarlo
+        if (!this.audioManager.initialized) {
+            console.warn('[Game] El sistema de audio no está inicializado. Inicializando...');
+            try {
+                await this.audioManager.init();
+            } catch (error) {
+                console.error('[Game] Error al inicializar el audio:', error);
+                return;
+            }
+        }
+        
+        // Verificar reproducción de música
+        if (this.audioManager.currentMusic) {
+            const currentMusic = this.audioManager.music.get(this.audioManager.currentMusic);
+            
+            if (currentMusic) {
+                // Verificar si la música está en pausa o ha terminado
+                if (currentMusic.paused || currentMusic.ended) {
+                    console.warn(`[Game] La música ${this.audioManager.currentMusic} se ha detenido. Reiniciando...`);
+                    
+                    // Volver a reproducir la música actual
+                    this.audioManager.playMusic(this.audioManager.currentMusic);
+                } else {
+                    console.log(`[Game] Música ${this.audioManager.currentMusic} reproduciendo correctamente`);
+                }
+                
+                // Verificar el volumen actual
+                console.log(`[Game] Volumen actual de música: ${currentMusic.volume}`);
+                
+                // Si el volumen es demasiado bajo, aumentarlo
+                if (currentMusic.volume < 0.3) {
+                    console.warn(`[Game] Volumen demasiado bajo. Aumentando...`);
+                    
+                    // Reproducir con mayor volumen
+                    if (this.audioManager.currentMusic === 'sailing') {
+                        currentMusic.volume = 0.72; // 0.6 * 0.8 * 1.5
+                    } else {
+                        currentMusic.volume = 0.48; // 0.6 * 0.8
+                    }
+                }
+            } else {
+                console.warn(`[Game] Música ${this.audioManager.currentMusic} no encontrada en el mapa. Reintentando carga...`);
+                try {
+                    // Volver a cargar la música
+                    if (this.audioManager.currentMusic === 'sailing') {
+                        await this.audioManager.verifyAndLoadMusic('sailing', 'assets/audio/fx/sailing.mp3');
+                        this.audioManager.playMusic('sailing');
+                    } else if (this.audioManager.currentMusic === 'osd') {
+                        await this.audioManager.verifyAndLoadMusic('osd', 'assets/audio/osd/osd.mp3');
+                        this.audioManager.playMusic('osd');
+                    }
+                } catch (error) {
+                    console.error('[Game] Error al recargar la música:', error);
+                }
+            }
+        } else {
+            console.warn('[Game] No hay música reproduciéndose. Iniciando música de fondo...');
+            
+            // Determinar qué música reproducir basado en el estado del juego
+            if (this.player) {
+                // Si el juego ya comenzó, reproducir música del juego
+                this.audioManager.playMusic('sailing');
+            } else {
+                // Si estamos en la pantalla de intro, reproducir música de intro
+                this.audioManager.playMusic('osd');
+            }
         }
     }
 }

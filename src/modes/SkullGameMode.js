@@ -51,6 +51,25 @@ export class SkullGameMode {
         // Actualizar UI
         this.updateUI();
         
+        // Actualizar contador
+        if (deltaTime > 0) {
+            this.countdown -= deltaTime;
+            
+            // Si el contador llega a cero, cambiar el modo
+            if (this.countdown <= 0) {
+                // Si estábamos en modo normal, activar modo calavera
+                if (!this.isSkullModeActive) {
+                    this.onModeActivated();
+                    this.updateSkullVisibility();
+                } 
+                // Si estábamos en modo calavera, volver a modo normal
+                else {
+                    this.onModeDeactivated();
+                    this.updateSkullVisibility();
+                }
+            }
+        }
+        
         // Si estamos en modo calavera y la calavera no ha sido capturada
         if (this.isSkullModeActive && !this.isSkullCaptured && this.skullMesh) {
             // Actualizar orientación de la calavera
@@ -290,5 +309,33 @@ export class SkullGameMode {
         if (this.scoreManager) {
             this.scoreManager.registerSkull(playerId);
         }
+    }
+    
+    // Manejar la activación del modo calavera
+    onModeActivated() {
+        this.isSkullModeActive = true;
+        this.isSkullCaptured = false;
+        this.skullMesh.visible = true;
+        this.countdown = CONFIG.SKULL_MODE_DURATION;
+        
+        // Generar posición aleatoria para la calavera
+        this.generateRandomSkullPosition();
+        
+        // Mostrar mensaje de inicio
+        this.showMessage("¡MODO CALAVERA ACTIVADO! ¡Captura la calavera!");
+        
+        // Reproducir música de modo calavera si existe audioManager
+        if (this.game && this.game.audioManager) {
+            // Reproducir por 12 segundos (duración de la pista)
+            this.game.audioManager.playTemporaryMusic('calaveramode', 12000);
+        }
+    }
+
+    // Manejar la desactivación del modo calavera
+    onModeDeactivated() {
+        this.isSkullModeActive = false;
+        this.skullMesh.visible = false;
+        this.isSkullCaptured = false;
+        this.countdown = CONFIG.NORMAL_MODE_DURATION;
     }
 } 

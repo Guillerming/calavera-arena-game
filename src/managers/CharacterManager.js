@@ -11,6 +11,7 @@ export class CharacterManager {
         this.networkManager = null;
         this.scoreManager = null; // Nuevo ScoreManager
         this.scoreboardUI = null; // UI del scoreboard
+        this.game = null; // Nueva referencia al juego
     }
 
     setScene(scene) {
@@ -41,6 +42,10 @@ export class CharacterManager {
         this.scoreboardUI = scoreboardUI;
     }
 
+    setGame(game) {
+        this.game = game;
+    }
+
     createCharacter(id = null) {
         if (!this.scene) {
             console.error("No se ha establecido la escena en CharacterManager");
@@ -49,6 +54,11 @@ export class CharacterManager {
 
         const character = new Character(this.scene);
         if (!character) return null;
+        
+        // Pasar la referencia al juego si está disponible
+        if (this.game) {
+            character.game = this.game;
+        }
 
         // Si se proporciona un ID, usarlo; si no, generar uno
         const characterId = id || Math.random().toString(36).substring(7);

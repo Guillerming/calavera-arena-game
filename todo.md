@@ -37,3 +37,24 @@
 - fx
     - salpicaduras de agua
     - material del barco no reflectante
+
+
+
+
+- DEPLOY:
+    - añadir casilla participación en jam
+    - calavera spawnea en tierra muy a menudo
+    - pantalla de atajos de teclado
+        - shift para score board
+        - WASD movimiento
+        - click para disparar
+        - M para detener la música
+    - eliminar elementos de UI
+        - velocidad
+        - indicador de angulo arriba a la derecha
+    - eliminar logs de la consola
+    - comprobar eliminación de proyectiles (Revisar logs)
+    - agrandar área de impacto de los barcos (más fácil que se les de)
+    - ampliar el círculo de la calavera
+        - añadir animación a la calavera
+        

@@ -148,7 +148,28 @@ export class CharacterCannon {
             const muzzlePosition = position.clone();
             this.character.createMuzzleFlash(muzzlePosition, cameraDirection);
             
-            const projectileId = Math.random().toString(36).substring(7);
+            // Reproducir sonido del cañón
+            // Primero intentar con la referencia directa al juego
+            if (this.character.game && this.character.game.audioManager) {
+                console.log('[CharacterCannon] Reproduciendo sonido de cañón (via character.game)');
+                this.character.game.audioManager.playSound('canon');
+            }
+            // Luego intentar con la referencia a la escena
+            else if (this.character.scene && this.character.scene.game && this.character.scene.game.audioManager) {
+                console.log('[CharacterCannon] Reproduciendo sonido de cañón (via scene.game)');
+                this.character.scene.game.audioManager.playSound('canon');
+            } 
+            // Finalmente intentar acceder al game global
+            else if (window.game && window.game.audioManager) {
+                console.log('[CharacterCannon] Reproduciendo sonido de cañón (via window.game)');
+                window.game.audioManager.playSound('canon');
+            }
+            else {
+                console.warn('[CharacterCannon] No se puede reproducir sonido - Referencias no disponibles');
+            }
+            
+            // Crear proyectil en el cliente
+            const projectileId = Math.random().toString(36).substring(2, 15);
             this.character.projectilesManager.createProjectile(position, cameraDirection, projectileId);
         }
     }

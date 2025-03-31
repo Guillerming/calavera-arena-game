@@ -49,4 +49,14 @@ export class Engine {
     render() {
         this.renderer.render(this.scene, this.camera);
     }
+
+    // Configurar la referencia al juego para que los componentes puedan acceder a él
+    setGame(game) {
+        this.game = game;
+        
+        // Añadir referencia al juego en la escena para que sea accesible desde los componentes
+        if (this.scene) {
+            this.scene.game = game;
+        }
+    }
 } 
