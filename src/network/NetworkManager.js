@@ -74,10 +74,10 @@ export class NetworkManager {
     connect() {
         // Conectar al servidor WebSocket
         try {
-            // Usar location.hostname para que funcione tanto en desarrollo como en producción
-            // En desarrollo, será localhost, en producción, el nombre del servidor
+            // Usar el mismo host y puerto que la página para el WebSocket
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.hostname}:8050`;
+            const host = window.location.host; // Incluye hostname:port
+            const wsUrl = `${protocol}//${host}`;
             
             console.log(`[NetworkManager] Conectando a ${wsUrl}`);
             this.ws = new WebSocket(wsUrl);

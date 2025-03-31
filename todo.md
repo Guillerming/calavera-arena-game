@@ -22,10 +22,10 @@
 
 - multijugador
     - asignar colores automáticamente
-    - con tab se ve la lista de jugadores y los puntos
+    X con tab se ve la lista de jugadores y los puntos
     - chat de voz?
     - barcos llevan algún distintivo de color
-    - barcos muestran nombre y vida del jugador
+    X barcos muestran nombre y vida del jugador
     X al entrar en una partida/morir, spawnear en algun lugar random (q no sea sobre otro jugador ni sobre agua)
 
 - efectos de sonido
