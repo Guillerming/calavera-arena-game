@@ -233,7 +233,12 @@ export class Game {
             this.characterManager.handleProjectileUpdate(projectileData);
         };
 
-        this.networkManager.onProjectileRemove = (projectileData) => {
+        this.networkManager.onProjectileRemove = (projectileId, playerId) => {
+            // Construir el objeto projectileData con el formato esperado por handleProjectileRemove
+            const projectileData = {
+                projectileId: projectileId,
+                playerId: playerId
+            };
             this.characterManager.handleProjectileRemove(projectileData);
         };
 
