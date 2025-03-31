@@ -48,8 +48,10 @@ export class SkullGameMode {
         
         // Colores de efecto calavera
         this.skullBackgroundColor = new THREE.Color(0x141408);  // Color amarillo oscuro
-        this.skullFogColor = new THREE.Color(0x222214);  // Niebla amarilla oscura
-        this.skullFogDensity = 0.04;
+        this.skullFogColor = new THREE.Color(0x332211);  // Niebla amarilla más densa y visible
+        this.skullFogDensity = 0;
+        this.skullFogNear = 20;  // Distancia donde comienza la niebla (más cerca)
+        this.skullFogFar = 80;   // Distancia donde la niebla es completamente opaca (más cerca)
         this.skullLightColor = new THREE.Color(0xCCCC99);  // Color amarillo claro
         
         this.initializeVisualEffects();
@@ -106,6 +108,9 @@ export class SkullGameMode {
         
         // Create the skull (but not show it yet)
         this.createSkull();
+        
+        // Asegurarnos de que los materiales de agua usen correctamente la niebla
+        this.updateWaterMaterialFog();
     }
     
     // Actualizar el modo de juego (llamado cada frame)
@@ -169,6 +174,9 @@ export class SkullGameMode {
         if (this.transitionProgress >= 1) {
             this.transitionProgress = 1;
             this.isTransitioning = false;
+            
+            // Si terminamos la transición, asegurarnos de que el agua use la niebla correctamente
+            this.updateWaterMaterialFog();
         }
         
         // Calcular valor de interpolación (dependiendo de la dirección)
@@ -186,28 +194,46 @@ export class SkullGameMode {
         if (this.transitionDirection > 0) {
             // Transición a modo calavera - crear niebla gradualmente
             if (!this.scene.fog && t > 0.1) {
-                // Crear niebla con baja densidad cuando la transición alcanza 10%
-                this.fog = new THREE.FogExp2(this.skullFogColor, 0.001);
+                // Crear niebla con distancias iniciales más amplias
+                this.fog = new THREE.Fog(
+                    this.skullFogColor, 
+                    this.skullFogNear + (1-t) * 100, // Comenzar desde más lejos
+                    this.skullFogFar + (1-t) * 200   // Terminar más lejos
+                );
                 this.scene.fog = this.fog;
+                
+                // Asegurarnos de que los materiales de agua usen correctamente la niebla
+                this.updateWaterMaterialFog();
             }
             
-            // Aumentar densidad gradualmente
+            // Ajustar gradualmente las distancias de la niebla
             if (this.scene.fog) {
-                this.scene.fog.density = this.skullFogDensity * t;
-                
-                // Interpolar color de la niebla
-                if (this.scene.fog.color) {
-                    this.scene.fog.color.copy(this.skullFogColor);
+                if (this.scene.fog instanceof THREE.Fog) {
+                    // Acercar gradualmente la niebla hacia el jugador
+                    this.scene.fog.near = this.skullFogNear + (1-t) * 100;
+                    this.scene.fog.far = this.skullFogFar + (1-t) * 200;
+                    
+                    // Interpolar color de la niebla
+                    if (this.scene.fog.color) {
+                        this.scene.fog.color.copy(this.skullFogColor);
+                    }
                 }
             }
         } else {
-            // Transición a modo normal - reducir niebla gradualmente
+            // Transición a modo normal - alejar niebla gradualmente
             if (this.scene.fog) {
-                this.scene.fog.density = this.skullFogDensity * t;
-                
-                // Si la niebla es casi invisible, eliminarla
-                if (t < 0.1) {
-                    this.scene.fog = null;
+                if (this.scene.fog instanceof THREE.Fog) {
+                    // Alejar gradualmente la niebla del jugador
+                    this.scene.fog.near = this.skullFogNear + t * 100;
+                    this.scene.fog.far = this.skullFogFar + t * 200;
+                    
+                    // Si la niebla está muy lejos, eliminarla
+                    if (t < 0.1) {
+                        this.scene.fog = null;
+                        
+                        // Asegurarnos de que los materiales de agua actualicen su estado
+                        this.updateWaterMaterialFog();
+                    }
                 }
             }
         }
@@ -530,6 +556,27 @@ export class SkullGameMode {
         this.skullMesh.rotation.y += deltaTime * this.skullRotationSpeed;
     }
     
+    // Actualizar propiedades de los materiales de agua para que funcionen con la niebla
+    updateWaterMaterialFog() {
+        if (!this.scene) return;
+        
+        this.scene.traverse(object => {
+            // Buscar objetos de agua y asegurarse de que usen la niebla correctamente
+            if (object.userData && object.userData.isWater) {
+                if (object.material) {
+                    // Forzar que los materiales de agua respeten la niebla
+                    object.material.fog = true;
+                    
+                    // Si es un material con shader personalizado, asegurarnos de que use la niebla
+                    if (object.material.defines) {
+                        object.material.defines.USE_FOG = true;
+                        object.material.needsUpdate = true;
+                    }
+                }
+            }
+        });
+    }
+    
     // Aplicar efectos visuales del modo calavera con transición
     applySkullModeVisuals(immediate = false) {
         if (immediate) {
@@ -544,18 +591,21 @@ export class SkullGameMode {
             // 2. Oscurecer el escenario cambiando el color de fondo
             scene.background = this.skullBackgroundColor.clone();
             
-            // 3. Añadir niebla sutil (ahora más densa)
+            // 3. Añadir niebla
             if (!this.fog) {
-                this.fog = new THREE.FogExp2(this.skullFogColor, this.skullFogDensity);
+                this.fog = new THREE.Fog(this.skullFogColor, this.skullFogNear, this.skullFogFar);
                 scene.fog = this.fog;
+                
+                // Asegurarnos de que los materiales de agua usen correctamente la niebla
+                this.updateWaterMaterialFog();
             }
             
-            // 4. Aplicar tono rojizo con el filtro CSS
+            // 4. Aplicar tono amarillento con el filtro CSS
             if (this.skullModeColorFilter) {
                 this.skullModeColorFilter.style.opacity = '1';
             }
             
-            // 5. Cambiar la luz ambiental para darle un tono rojizo
+            // 5. Cambiar la luz ambiental para darle un tono amarillento
             this.ambientLights.forEach(light => {
                 light.color.copy(this.skullLightColor);
             });
