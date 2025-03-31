@@ -302,6 +302,17 @@ export class NetworkManager {
                     }
                     break;
                 
+                // SERVIDOR -> CLIENTE: Recibir marcadores actualizados
+                case 'scoreSync':
+                    console.log(`[NetworkManager] Recibida sincronización de marcadores desde servidor`);
+                    
+                    // Sincronizar marcadores si tenemos un ScoreManager configurado
+                    if (this.scoreManager && data.scores && Array.isArray(data.scores)) {
+                        this.scoreManager.syncScores(data.scores);
+                        console.log(`[NetworkManager] Marcadores sincronizados: ${data.scores.length} jugadores`);
+                    }
+                    break;
+                
                 default:
             }
         };
@@ -500,6 +511,21 @@ export class NetworkManager {
         
         const message = {
             type: 'requestPlayerNames'
+        };
+        
+        this.ws.send(JSON.stringify(message));
+    }
+    
+    // CLIENTE -> SERVIDOR: Solicitar sincronización de marcadores
+    requestScoreSync() {
+        if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
+            return;
+        }
+        
+        console.log(`[NetworkManager] Solicitando sincronización de marcadores al servidor`);
+        
+        const message = {
+            type: 'requestScoreSync'
         };
         
         this.ws.send(JSON.stringify(message));

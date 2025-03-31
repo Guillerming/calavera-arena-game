@@ -105,10 +105,6 @@ export function initializeWebSocketServer(server, wss) {
             try {
                 const data = JSON.parse(message);
                 
-                if (data.type !== 'update') {
-                    console.log(`[SERVER] Recibido mensaje de tipo: ${data.type}`);
-                }
-                
                 // Obtener ID del jugador desde el WebSocket
                 const playerId = ws.playerId;
                 
@@ -161,7 +157,6 @@ export function initializeWebSocketServer(server, wss) {
                                 data.position.z <= CONFIG.MAP_LIMITS.maxZ;
                             
                             if (!isPositionValid) {
-                                console.log(`[SERVER] Posición inválida para jugador ${playerId}: [${data.position.x.toFixed(2)}, ${data.position.z.toFixed(2)}]`);
                                 // No actualizar posición y no propagar
                                 return;
                             }
@@ -195,7 +190,6 @@ export function initializeWebSocketServer(server, wss) {
                         
                         // Verificar que el proyectil está dentro de los límites del mapa
                         const projectilePos = data.projectile.position;
-                        console.log(`[SERVER] Jugador en posición [${player.position.x.toFixed(2)}, ${player.position.z.toFixed(2)}] dispara desde [${projectilePos.x.toFixed(2)}, ${projectilePos.z.toFixed(2)}]`);
                         
                         // Calcular distancia entre jugador y punto de disparo
                         const dx = player.position.x - projectilePos.x;
@@ -204,7 +198,6 @@ export function initializeWebSocketServer(server, wss) {
                         
                         // Si hay una distancia muy grande entre jugador y proyectil, hay un problema
                         if (distancia > 5) {
-                            console.log(`[SERVER] ALERTA: Gran distancia (${distancia.toFixed(2)}) entre jugador y punto de disparo`);
                         }
                         
                         // Verificar si la posición inicial está dentro de los límites
@@ -395,9 +388,6 @@ export function initializeWebSocketServer(server, wss) {
         // Actualizar estado del jugador
         player.health = newHealth;
         player.isAlive = !isDead;
-        
-        console.log(`[SERVER] Jugador ${playerId} recibe daño: ${damage}. Nueva salud: ${newHealth}, muerto: ${isDead}`);
-        
         // Crear mensaje de actualización
         const healthUpdate = {
             type: 'healthUpdate',
@@ -561,7 +551,6 @@ export function initializeWebSocketServer(server, wss) {
                 
                 // Si la distancia es menor que el radio de colisión
                 if (distanceSquared < CONFIG.COLLISION_RADIUS * CONFIG.COLLISION_RADIUS) {
-                    console.log(`[SERVER] Colisión detectada: proyectil ${projectileId} impactó a jugador ${playerId}`);
                     
                     // Aplicar daño al jugador
                     applyDamageToPlayer(playerId, CONFIG.PROJECTILE_DAMAGE, projectile.playerId);
@@ -761,10 +750,6 @@ export function initializeWebSocketServer(server, wss) {
 
     // Enviar estado del modo calavera a todos los clientes
     function broadcastSkullModeStatus() {
-        // Log para depuración
-        const minutes = Math.floor(skullGameState.countdown / 60);
-        const seconds = Math.floor(skullGameState.countdown % 60);
-        console.log(`[SERVER] Enviando actualización de modo calavera: ${skullGameState.isSkullModeActive ? 'ACTIVO' : 'NORMAL'}, tiempo: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`);
         
         broadcastToAll({
             type: 'gameModeStatus',

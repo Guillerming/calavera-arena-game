@@ -19,7 +19,7 @@ export class ScoreManager {
         if (!this.scores.has(playerId)) {
             this.scores.set(playerId, {
                 id: playerId,
-                name: playerName || playerId,
+                name: playerName || "Jugador",
                 kills: 0,
                 deaths: 0
             });
@@ -30,8 +30,10 @@ export class ScoreManager {
                 this.skullScores.set(playerId, 0);
             }
         } else if (playerName && this.scores.get(playerId).name !== playerName) {
-            // Actualizar nombre si ha cambiado
-            this.scores.get(playerId).name = playerName;
+            // Actualizar nombre si ha cambiado y es válido
+            if (playerName !== playerId) {
+                this.scores.get(playerId).name = playerName;
+            }
         }
     }
     
@@ -52,6 +54,9 @@ export class ScoreManager {
         // Incrementar kills del asesino SOLAMENTE
         const killerScore = this.scores.get(killerId);
         killerScore.kills++;
+        
+        // Añadir log para depuración
+        console.log(`[ScoreManager] Registrado kill: ${killerId} mató a ${victimId}, kills actuales: ${killerScore.kills}`);
         
         // NO incrementamos muertes de la víctima según el requisito
     }
@@ -75,7 +80,10 @@ export class ScoreManager {
             return;
         }
         
-        this.initPlayer(playerId, name);
+        // Solo actualizamos si el nombre es diferente del ID
+        if (name !== playerId) {
+            this.initPlayer(playerId, name);
+        }
     }
     
     // Obtener las puntuaciones ordenadas (mayor número de kills primero)
@@ -98,7 +106,9 @@ export class ScoreManager {
     
     // Añadir un jugador por su ID del servidor
     addPlayerById(playerId, playerName) {
-        this.initPlayer(playerId, playerName);
+        // Solo usar playerName si es diferente del ID
+        const nameToUse = playerName && playerName !== playerId ? playerName : "Jugador";
+        this.initPlayer(playerId, nameToUse);
     }
     
     // Eliminar jugador (cuando se desconecta)
@@ -163,5 +173,44 @@ export class ScoreManager {
         
         // Ordenar por número de calaveras (descendente)
         return result.sort((a, b) => b.skulls - a.skulls);
+    }
+    
+    // Sincronizar las kills (utilizado para asegurar consistencia entre clientes)
+    syncPlayerKills(playerId, kills) {
+        if (!playerId) {
+            return;
+        }
+        
+        this.initPlayer(playerId);
+        
+        // Actualizar directamente el número de kills
+        const playerScore = this.scores.get(playerId);
+        if (playerScore) {
+            playerScore.kills = kills;
+            console.log(`[ScoreManager] Sincronizado kills para ${playerId}: ${kills}`);
+        }
+    }
+    
+    // Forzar actualización desde datos del servidor
+    syncScores(serverScores) {
+        if (!serverScores || !Array.isArray(serverScores)) {
+            return;
+        }
+        
+        console.log(`[ScoreManager] Sincronizando puntuaciones desde servidor: ${serverScores.length} jugadores`);
+        
+        // Actualizar puntuaciones desde el servidor
+        serverScores.forEach(playerData => {
+            if (playerData.id) {
+                this.initPlayer(playerData.id, playerData.name);
+                const playerScore = this.scores.get(playerData.id);
+                if (playerScore) {
+                    playerScore.kills = playerData.kills || 0;
+                    if (playerData.name && playerData.name !== playerData.id) {
+                        playerScore.name = playerData.name;
+                    }
+                }
+            }
+        });
     }
 } 
