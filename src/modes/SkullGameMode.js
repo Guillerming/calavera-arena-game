@@ -189,6 +189,12 @@ export class SkullGameMode {
             this.timerElement.textContent = `Próximo modo calavera: ${timeString}`;
             this.timerElement.style.background = 'rgba(0, 0, 0, 0.7)';
         }
+        
+        // Log detallado para depuración (solo cada segundo para no saturar la consola)
+        if (Math.floor(this.lastLoggedTime || 0) !== Math.floor(this.countdown)) {
+            console.log(`[SkullGameMode] Contador actual: ${this.countdown.toFixed(1)}s - Modo calavera activo: ${this.isSkullModeActive}`);
+            this.lastLoggedTime = this.countdown;
+        }
     }
     
     // Mostrar mensaje temporal

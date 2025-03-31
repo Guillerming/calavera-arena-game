@@ -36,7 +36,8 @@ const skullGameState = {
     lastUpdateTime: Date.now(),    // Tiempo de la última actualización
     skullPosition: { x: 0, y: 3, z: 0 }, // Posición de la calavera
     isSkullCaptured: false,        // Indica si la calavera ya fue capturada
-    skullCapturingPlayer: null     // Jugador que está capturando la calavera
+    skullCapturingPlayer: null,     // Jugador que está capturando la calavera
+    timeSinceLastBroadcast: 0      // Tiempo desde la última transmisión a clientes
 };
 
 // Manejar nuevas conexiones
@@ -564,6 +565,9 @@ function updateSkullGameMode(deltaTime) {
     // Actualizar countdown
     skullGameState.countdown -= deltaTime;
     
+    // Variable para controlar si debemos enviar una actualización
+    let shouldBroadcast = false;
+    
     // Comprobar cambio de modo
     if (skullGameState.countdown <= 0) {
         if (skullGameState.isSkullModeActive) {
@@ -574,7 +578,20 @@ function updateSkullGameMode(deltaTime) {
             startSkullMode();
         }
         
-        // Enviar actualización a todos los clientes
+        shouldBroadcast = true;
+    }
+    
+    // Actualizar el intervalo de broadcast
+    skullGameState.timeSinceLastBroadcast = (skullGameState.timeSinceLastBroadcast || 0) + deltaTime;
+    
+    // Enviar actualizaciones cada segundo para mantener sincronizados los contadores
+    if (skullGameState.timeSinceLastBroadcast >= 1) {
+        shouldBroadcast = true;
+        skullGameState.timeSinceLastBroadcast = 0;
+    }
+    
+    // Enviar actualización a todos los clientes si es necesario
+    if (shouldBroadcast) {
         broadcastSkullModeStatus();
     }
     
@@ -664,6 +681,11 @@ function handleSkullCapture(playerId) {
 
 // Enviar estado del modo calavera a todos los clientes
 function broadcastSkullModeStatus() {
+    // Log para depuración
+    const minutes = Math.floor(skullGameState.countdown / 60);
+    const seconds = Math.floor(skullGameState.countdown % 60);
+    console.log(`[SERVER] Enviando actualización de modo calavera: ${skullGameState.isSkullModeActive ? 'ACTIVO' : 'NORMAL'}, tiempo: ${minutes}:${seconds < 10 ? '0' : ''}${seconds}`);
+    
     broadcastToAll({
         type: 'gameModeStatus',
         mode: 'skull',
