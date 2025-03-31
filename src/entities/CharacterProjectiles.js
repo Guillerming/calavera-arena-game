@@ -68,13 +68,28 @@ export class CharacterProjectiles {
             }
             
             // Comprobar si el proyectil ha salido de los límites del mapa
-            const maxRange = this.character.maxRange || 200;
-            const distanceSquared = 
-                projectile.position.x * projectile.position.x + 
-                projectile.position.z * projectile.position.z;
+            let isOutOfBounds = false;
             
-            if (distanceSquared > maxRange * maxRange) {
+            // Usar los límites del mapa definidos en el personaje
+            if (this.character.mapLimits) {
+                isOutOfBounds = 
+                    projectile.position.x < this.character.mapLimits.minX ||
+                    projectile.position.x > this.character.mapLimits.maxX ||
+                    projectile.position.z < this.character.mapLimits.minZ ||
+                    projectile.position.z > this.character.mapLimits.maxZ;
+            } else {
+                // Si no hay límites definidos, usar la distancia al centro como fallback
+                const maxRange = this.character.maxRange || 200;
+                const distanceSquared = 
+                    projectile.position.x * projectile.position.x + 
+                    projectile.position.z * projectile.position.z;
+                
+                isOutOfBounds = distanceSquared > maxRange * maxRange;
+            }
+            
+            if (isOutOfBounds) {
                 removeProjectile = true;
+                console.log(`Proyectil fuera de límites: [${projectile.position.x.toFixed(2)}, ${projectile.position.z.toFixed(2)}]`);
             }
             
             // Comprobar colisión con otros jugadores

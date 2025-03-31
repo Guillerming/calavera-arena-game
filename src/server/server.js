@@ -14,7 +14,13 @@ const CONFIG = {
     PLAYER_START_HEALTH: 100,  // Salud inicial del jugador
     RESPAWN_TIME: 3000,        // Tiempo de respawn en ms
     MAX_PROJECTILE_RANGE: 200, // Distancia máxima que puede recorrer un proyectil
-    COLLISION_RADIUS: 1.5      // Radio de colisión de los jugadores
+    COLLISION_RADIUS: 1.5,     // Radio de colisión de los jugadores
+    MAP_LIMITS: {              // Límites del mapa (mismo que en el cliente)
+        minX: -195,
+        maxX: 195,
+        minZ: -195,
+        maxZ: 195
+    }
 };
 
 // Manejar nuevas conexiones
@@ -101,6 +107,19 @@ wss.on('connection', (ws) => {
                     // Actualizar posición y rotación del jugador
                     // Solo si el jugador está vivo
                     if (player.isAlive) {
+                        // Verificar que la posición está dentro de los límites del mapa
+                        const isPositionValid = 
+                            data.position.x >= CONFIG.MAP_LIMITS.minX && 
+                            data.position.x <= CONFIG.MAP_LIMITS.maxX &&
+                            data.position.z >= CONFIG.MAP_LIMITS.minZ && 
+                            data.position.z <= CONFIG.MAP_LIMITS.maxZ;
+                        
+                        if (!isPositionValid) {
+                            console.log(`[SERVER] Posición inválida para jugador ${playerId}: [${data.position.x.toFixed(2)}, ${data.position.z.toFixed(2)}]`);
+                            // No actualizar posición y no propagar
+                            return;
+                        }
+                        
                         player.position = data.position;
                         player.rotation = data.rotation;
                         
@@ -118,6 +137,32 @@ wss.on('connection', (ws) => {
                     // Solo permitir disparos si el jugador está vivo
                     if (!player.isAlive) {
                         console.log(`[SERVER] Jugador muerto intentó disparar: ${playerId}`);
+                        return;
+                    }
+                    
+                    // Verificar que el proyectil está dentro de los límites del mapa
+                    const projectilePos = data.projectile.position;
+                    console.log(`[SERVER] Jugador en posición [${player.position.x.toFixed(2)}, ${player.position.z.toFixed(2)}] dispara desde [${projectilePos.x.toFixed(2)}, ${projectilePos.z.toFixed(2)}]`);
+                    
+                    // Calcular distancia entre jugador y punto de disparo
+                    const dx = player.position.x - projectilePos.x;
+                    const dz = player.position.z - projectilePos.z;
+                    const distancia = Math.sqrt(dx*dx + dz*dz);
+                    
+                    // Si hay una distancia muy grande entre jugador y proyectil, hay un problema
+                    if (distancia > 5) {
+                        console.log(`[SERVER] ALERTA: Gran distancia (${distancia.toFixed(2)}) entre jugador y punto de disparo`);
+                    }
+                    
+                    // Verificar si la posición inicial está dentro de los límites
+                    const isWithinLimits = 
+                        projectilePos.x >= CONFIG.MAP_LIMITS.minX && 
+                        projectilePos.x <= CONFIG.MAP_LIMITS.maxX &&
+                        projectilePos.z >= CONFIG.MAP_LIMITS.minZ && 
+                        projectilePos.z <= CONFIG.MAP_LIMITS.maxZ;
+                    
+                    if (!isWithinLimits) {
+                        console.log(`[SERVER] Proyectil rechazado: posición inicial fuera de límites [${projectilePos.x.toFixed(2)}, ${projectilePos.z.toFixed(2)}]`);
                         return;
                     }
                     
@@ -442,12 +487,15 @@ function updateProjectiles() {
             continue;
         }
         
-        // Comprobar si ha salido del rango
-        const distanceSquared = 
-            projectile.position.x * projectile.position.x + 
-            projectile.position.z * projectile.position.z;
+        // Comprobar si ha salido de los límites del mapa
+        const isOutOfBounds = 
+            projectile.position.x < CONFIG.MAP_LIMITS.minX ||
+            projectile.position.x > CONFIG.MAP_LIMITS.maxX ||
+            projectile.position.z < CONFIG.MAP_LIMITS.minZ ||
+            projectile.position.z > CONFIG.MAP_LIMITS.maxZ;
             
-        if (distanceSquared > CONFIG.MAX_PROJECTILE_RANGE * CONFIG.MAX_PROJECTILE_RANGE) {
+        if (isOutOfBounds) {
+            console.log(`[SERVER] Proyectil ${projectileId} fuera de los límites del mapa: [${projectile.position.x.toFixed(2)}, ${projectile.position.z.toFixed(2)}]`);
             projectiles.delete(projectileId);
             
             // Notificar a todos los clientes
