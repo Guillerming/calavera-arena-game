@@ -351,9 +351,6 @@ export class Game {
             return;
         }
         
-        // Actualizar la posición del personaje
-        this.player.update(boundedDeltaTime, this.inputManager);
-        
         // Enviar actualizaciones de posición por red solo para el jugador local
         if (this.networkManager) {
             this.networkManager.sendUpdate(
