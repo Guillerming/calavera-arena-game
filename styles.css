@@ -49,6 +49,10 @@ h1 {
     text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
 }
 
+.loading-screen h1 {
+    font-family: 'Henny Penny', cursive;
+}
+
 /* Estilos para los atajos de teclado */
 .loading-shortcuts {
     font-size: 11px;
