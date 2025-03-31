@@ -27,8 +27,6 @@ export class SkullGameMode {
         this.messageElement = null;
         this.timerElement = null;
         this.createUI();
-        
-        console.log("Modo de juego Calavera inicializado");
     }
     
     // Iniciar el modo de juego
@@ -42,8 +40,6 @@ export class SkullGameMode {
         
         // Crear la calavera (pero no mostrarla aún)
         this.createSkull();
-        
-        console.log("Modo de juego Calavera iniciado - esperando sincronización con el servidor");
     }
     
     // Actualizar el modo de juego (llamado cada frame)
@@ -208,12 +204,6 @@ export class SkullGameMode {
             this.timerElement.textContent = `Próximo modo calavera: ${timeString}`;
             this.timerElement.style.background = 'rgba(0, 0, 0, 0.7)';
         }
-        
-        // Log detallado para depuración (solo cada segundo para no saturar la consola)
-        if (Math.floor(this.lastLoggedTime || 0) !== Math.floor(this.countdown)) {
-            console.log(`[SkullGameMode] Contador actual: ${this.countdown.toFixed(1)}s - Modo calavera activo: ${this.isSkullModeActive}`);
-            this.lastLoggedTime = this.countdown;
-        }
     }
     
     // Mostrar mensaje temporal
@@ -250,8 +240,6 @@ export class SkullGameMode {
     // Método para sincronizar con el servidor
     syncWithServer(data) {
         if (!data) return;
-        
-        console.log("[SkullGameMode] Recibiendo actualización del servidor:", data);
         
         // Actualizar estado del modo
         if (data.isActive !== undefined) {
@@ -303,8 +291,6 @@ export class SkullGameMode {
         // Mostrar mensaje de captura
         this.showMessage(`¡${playerName} ha capturada la calavera!`);
         
-        console.log(`[SkullGameMode] Calavera capturada por ${playerName}`);
-        
         // Registrar la captura en el scoreManager si existe
         if (this.scoreManager) {
             this.scoreManager.registerSkull(playerId);
@@ -316,7 +302,7 @@ export class SkullGameMode {
         this.isSkullModeActive = true;
         this.isSkullCaptured = false;
         this.skullMesh.visible = true;
-        this.countdown = CONFIG.SKULL_MODE_DURATION;
+        this.countdown = this.SKULL_MODE_DURATION;
         
         // Generar posición aleatoria para la calavera
         this.generateRandomSkullPosition();
@@ -336,6 +322,27 @@ export class SkullGameMode {
         this.isSkullModeActive = false;
         this.skullMesh.visible = false;
         this.isSkullCaptured = false;
-        this.countdown = CONFIG.NORMAL_MODE_DURATION;
+        this.countdown = this.NORMAL_MODE_DURATION;
+    }
+
+    // Generar una posición aleatoria para la calavera
+    generateRandomSkullPosition() {
+        if (!this.skullMesh) return;
+        
+        // Generar posición aleatoria dentro de un cierto rango del mapa
+        const mapRadius = 100; // Radio del mapa para colocar la calavera
+        const randomAngle = Math.random() * Math.PI * 2;
+        const randomRadius = Math.random() * mapRadius * 0.7; // 70% del radio del mapa
+        
+        // Calcular posición XZ en círculo
+        const x = Math.cos(randomAngle) * randomRadius;
+        const z = Math.sin(randomAngle) * randomRadius;
+        
+        // Establecer altura fija + pequeña variación
+        const y = this.skullHeight + Math.random() * 0.5;
+        
+        // Actualizar posición
+        this.skullPosition.set(x, y, z);
+        this.skullMesh.position.copy(this.skullPosition);
     }
 } 

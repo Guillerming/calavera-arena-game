@@ -212,11 +212,11 @@ export class AudioManager {
     playMusic(id) {
         if (!this.enabled) {
             console.log(`[AudioManager] Audio deshabilitado, no se reproduce música: ${id}`);
-            return;
+            return Promise.reject(new Error('Audio deshabilitado'));
         }
         if (!this.music.has(id)) {
             console.warn(`[AudioManager] Música no encontrada: ${id}`);
-            return;
+            return Promise.reject(new Error(`Música no encontrada: ${id}`));
         }
 
         console.log(`[AudioManager] Reproduciendo música: ${id}`);
@@ -249,15 +249,27 @@ export class AudioManager {
             console.log(`[AudioManager] Música ${id} reproduciendo correctamente con volumen ${music.volume}`);
         });
         
-        // Intentar reproducir
+        // Intentar reproducir y devolver la promesa para manejar errores
         const playPromise = music.play();
+        
+        // Actualizar la referencia a la música actual
+        this.currentMusic = id;
+        
+        // Si el navegador soporta promesas para play(), devolver la promesa
         if (playPromise !== undefined) {
-            playPromise.catch(error => {
+            return playPromise.catch(error => {
                 console.error(`[AudioManager] Error en reproducción de música ${id}:`, error);
+                
+                // Los navegadores requieren interacción del usuario para reproducir automáticamente
+                console.log(`[AudioManager] Intentando reproducir ${id} después de evento de usuario...`);
+                
+                // Devolver el error para manejo adicional
+                throw error;
             });
         }
         
-        this.currentMusic = id;
+        // Si el navegador no soporta promesas para play()
+        return Promise.resolve();
     }
 
     // Reproducir una pista temporal mientras se baja el volumen de la música actual

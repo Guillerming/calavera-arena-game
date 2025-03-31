@@ -57,4 +57,6 @@
     - agrandar área de impacto de los barcos (más fácil que se les de)
     - ampliar el círculo de la calavera
         - añadir animación a la calavera
-        
+    - impactos contra el agua
+    - marcador no muestra bien los kills para todos los jugadores, tampoco el nombre
+        - eliminar columna death
