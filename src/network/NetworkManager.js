@@ -220,8 +220,20 @@ export class NetworkManager {
                 
                 // SERVIDOR -> CLIENTE: Actualización de salud de un jugador
                 case 'healthUpdate':
+                    // Guardar los datos de salud en la estructura general de jugadores
+                    const playerId = data.playerId;
+                    const playerToUpdate = this.players.get(playerId);
+                    
+                    if (playerToUpdate) {
+                        // Actualizar la salud en el objeto del jugador
+                        playerToUpdate.health = data.health;
+                        playerToUpdate.isAlive = data.isAlive;
+                        
+                        console.log(`[NetworkManager] Actualizando salud de jugador ${playerId}: ${data.health} (vivo: ${data.isAlive})`);
+                    }
+                
                     // Si la actualización es para el jugador local
-                    if (data.playerId === this.playerId) {
+                    if (playerId === this.playerId) {
                         // Crear objeto con los datos recibidos
                         const localPlayer = {
                             id: this.playerId,
@@ -237,6 +249,17 @@ export class NetworkManager {
                         // Notificar la actualización
                         if (this.onHealthUpdate) {
                             this.onHealthUpdate(localPlayer);
+                        }
+                    } else {
+                        // Si es para un jugador remoto, también notificar la actualización
+                        if (this.onHealthUpdate && playerToUpdate) {
+                            this.onHealthUpdate({
+                                id: playerId,
+                                health: data.health,
+                                isAlive: data.isAlive,
+                                position: playerToUpdate.position, 
+                                killedBy: data.killedBy
+                            });
                         }
                     }
                     break;

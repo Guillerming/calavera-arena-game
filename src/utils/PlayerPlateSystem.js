@@ -7,6 +7,8 @@ export class PlayerPlateSystem {
         this.playerPlates = new Map(); // Map<playerId, nameSprite>
         this.plateHeight = 5; // Altura del nombre sobre el jugador
         this.playerNames = new Map(); // Map<playerId, nombre>
+        this.playerHealth = new Map(); // Map<playerId, salud>
+        this.maxHealth = 100; // Salud máxima de un jugador
     }
     
     setCamera(camera) {
@@ -14,7 +16,7 @@ export class PlayerPlateSystem {
     }
     
     // Actualizar o crear un punto para un jugador
-    updatePlayerPlate(playerId, playerPosition, isAlive, playerName) {
+    updatePlayerPlate(playerId, playerPosition, isAlive, playerName, health) {
         // Si el jugador no está vivo, eliminamos su nombre
         if (!isAlive) {
             this.removePlayerPlate(playerId);
@@ -37,6 +39,26 @@ export class PlayerPlateSystem {
                     return;
                 }
             }
+        }
+        
+        // Almacenar la salud del jugador si se proporciona
+        if (health !== undefined) {
+            const oldHealth = this.playerHealth.get(playerId);
+            if (oldHealth !== health) {
+                console.log(`[PlayerPlateSystem] Actualizando salud: ${playerId} -> ${health} (antes: ${oldHealth})`);
+                this.playerHealth.set(playerId, health);
+                
+                // Si ya existe un sprite y la salud cambió, recrearlo
+                if (this.playerPlates.has(playerId)) {
+                    const oldSprite = this.playerPlates.get(playerId);
+                    this.scene.remove(oldSprite);
+                    this.playerPlates.delete(playerId);
+                    this.createPlayerPlate(playerId, playerPosition);
+                    return;
+                }
+            }
+        } else {
+            console.log(`[PlayerPlateSystem] Advertencia: No se proporcionó salud para el jugador ${playerId}`);
         }
         
         // Si no existe el sprite para este jugador, lo creamos
@@ -66,11 +88,17 @@ export class PlayerPlateSystem {
             return null;
         }
         
-        // Crear un canvas para el texto
+        // Obtener la salud del jugador, predeterminado a máxima si no se conoce
+        const health = this.playerHealth.get(playerId) || this.maxHealth;
+        
+        // Crear un canvas para el texto y la barra de vida
         const canvas = document.createElement('canvas');
         const context = canvas.getContext('2d');
         canvas.width = 256;
-        canvas.height = 64;
+        canvas.height = 100; // Aumentado para incluir la barra de vida
+        
+        // Fondo transparente
+        context.clearRect(0, 0, canvas.width, canvas.height);
         
         // Establecer el estilo del texto
         context.font = 'Bold 48px Arial';
@@ -81,10 +109,39 @@ export class PlayerPlateSystem {
         // Añadir un borde negro para legibilidad
         context.strokeStyle = 'black';
         context.lineWidth = 6;
-        context.strokeText(playerName, canvas.width/2, canvas.height/2);
+        context.strokeText(playerName, canvas.width/2, 32); // Ajustado posición del texto
         
         // Dibujar el texto
-        context.fillText(playerName, canvas.width/2, canvas.height/2);
+        context.fillText(playerName, canvas.width/2, 32); // Ajustado posición del texto
+        
+        // Dibujar la barra de vida
+        const barWidth = 200;
+        const barHeight = 20;
+        const barX = (canvas.width - barWidth) / 2;
+        const barY = 70; // Posición debajo del nombre
+        
+        // Dibujar fondo de la barra (borde negro)
+        context.fillStyle = 'black';
+        context.fillRect(barX - 2, barY - 2, barWidth + 4, barHeight + 4);
+        
+        // Dibujar fondo de la barra (gris)
+        context.fillStyle = '#444444';
+        context.fillRect(barX, barY, barWidth, barHeight);
+        
+        // Calcular ancho de la barra en función de la salud
+        const healthBarWidth = (health / this.maxHealth) * barWidth;
+        
+        // Elegir color según nivel de salud
+        if (health > 70) {
+            context.fillStyle = '#00FF00'; // Verde para salud alta
+        } else if (health > 30) {
+            context.fillStyle = '#FFFF00'; // Amarillo para salud media
+        } else {
+            context.fillStyle = '#FF0000'; // Rojo para salud baja
+        }
+        
+        // Dibujar barra de vida
+        context.fillRect(barX, barY, healthBarWidth, barHeight);
         
         // Crear textura a partir del canvas
         const texture = new THREE.CanvasTexture(canvas);
@@ -97,7 +154,7 @@ export class PlayerPlateSystem {
         
         // Crear el sprite
         const nameSprite = new THREE.Sprite(spriteMaterial);
-        nameSprite.scale.set(5, 1.25, 1);
+        nameSprite.scale.set(5, 2, 1); // Escala ajustada para incluir la barra de vida
         
         // Posicionar el sprite
         nameSprite.position.set(
@@ -127,6 +184,7 @@ export class PlayerPlateSystem {
         // Eliminar del mapa
         this.playerPlates.delete(playerId);
         this.playerNames.delete(playerId);
+        this.playerHealth.delete(playerId);
     }
     
     // Actualizar todos los nombres

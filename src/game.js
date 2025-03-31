@@ -162,7 +162,8 @@ export class Game {
                         playerData.id,
                         playerData.position,
                         true, // Asumimos que está vivo si recibimos actualizaciones
-                        playerData.name // Pasar el nombre del jugador
+                        playerData.name, // Pasar el nombre del jugador
+                        playerData.health // Pasar la salud del jugador
                     );
                 }
             }
@@ -182,7 +183,8 @@ export class Game {
                         playerData.id,
                         playerData.position,
                         true, // El jugador está vivo al unirse
-                        playerData.name // Pasar el nombre del jugador
+                        playerData.name, // Pasar el nombre del jugador
+                        playerData.health // Pasar la salud del jugador
                     );
                 }
             }
@@ -211,6 +213,9 @@ export class Game {
 
         // Añadir callback para actualizaciones de salud
         this.networkManager.onHealthUpdate = (playerData) => {
+            // Log para depuración
+            console.log(`[Game] Recibida actualización de salud: Jugador ${playerData.id}, Salud: ${playerData.health}, Vivo: ${playerData.isAlive}`);
+            
             this.characterManager.handleHealthUpdate(playerData);
             
             // Actualizar el playerPlate según el estado de vida del jugador
@@ -219,11 +224,17 @@ export class Game {
                 if (playerData.id !== this.networkManager.playerId) {
                     const character = this.characterManager.getCharacter(playerData.id);
                     if (character) {
+                        // Actualizar la salud del character para mantener sincronizada la información
+                        if (playerData.health !== undefined) {
+                            character.health = playerData.health;
+                        }
+                        
                         this.playerPlateSystem.updatePlayerPlate(
                             playerData.id,
                             character.position,
                             playerData.isAlive,
-                            character.name // Usar el nombre del personaje
+                            character.name, // Usar el nombre del personaje
+                            playerData.health // Pasar la salud del jugador
                         );
                     }
                 }
@@ -320,7 +331,8 @@ export class Game {
                     characterId,
                     character.position,
                     character.isAlive,
-                    playerName // Usar el nombre actualizado
+                    playerName, // Usar el nombre actualizado
+                    character.health // Pasar la salud del personaje
                 );
             }
         }
@@ -359,7 +371,8 @@ export class Game {
                             player.id,
                             character.position,
                             true,
-                            player.name
+                            player.name,
+                            player.health || character.health
                         );
                     }
                 }

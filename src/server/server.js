@@ -412,7 +412,7 @@ function applyDamageToPlayer(playerId, damage, sourcePlayerId) {
         scheduleRespawn(playerId);
     }
     
-    // Enviar actualización a todos los clientes
+    // Enviar actualización a TODOS los clientes para que todos vean las barras de vida
     broadcastToAll(healthUpdate);
 }
 

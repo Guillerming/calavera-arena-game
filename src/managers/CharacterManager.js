@@ -324,40 +324,26 @@ export class CharacterManager {
         }
     }
 
-    // Manejar actualizaciones de salud
+    // Manejar actualización de salud de un jugador
     handleHealthUpdate(playerData) {
-        console.log(`[DEBUG] Procesando actualización de salud del SERVIDOR para: ${playerData.id}`);
+        const character = this.getCharacter(playerData.id);
         
-        // Verificar si es el jugador local
-        const isLocalPlayer = this.playerCharacter && this.playerCharacter.name === playerData.id;
-        
-        // Si es el jugador local
-        if (isLocalPlayer) {
-            console.log(`[DEBUG] Aplicando actualización del servidor para jugador local: ${playerData.id}`);
+        if (character) {
+            console.log(`[CharacterManager] Actualizando salud de ${playerData.id}: ${playerData.health}`);
             
-            // Usar el nuevo método para actualizar desde el servidor
-            this.playerCharacter.updateStateFromServer(
+            // Actualizar estado del personaje
+            character.updateStateFromServer(
                 playerData.health,
                 playerData.isAlive,
                 playerData.position
             );
             
-            return;
-        }
-        
-        // Si llega aquí, es un jugador remoto
-        const player = this.characters.get(playerData.id);
-        if (player) {
-            console.log(`[DEBUG] Aplicando actualización del servidor para jugador remoto: ${playerData.id}`);
-            
-            // Usar el nuevo método para actualizar desde el servidor
-            player.updateStateFromServer(
-                playerData.health,
-                playerData.isAlive,
-                playerData.position
-            );
+            // Mostrar efecto de daño si es necesario
+            if (playerData.damageType) {
+                character.showDamageEffect(playerData.damageType);
+            }
         } else {
-            console.warn(`[DEBUG] No se encontró el jugador remoto ${playerData.id} para actualizar su estado`);
+            console.warn(`[CharacterManager] No se encontró el personaje con ID ${playerData.id} para actualizar salud`);
         }
     }
 

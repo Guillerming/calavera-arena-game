@@ -298,45 +298,45 @@ export class Character extends THREE.Object3D {
     
     // Método para actualizar el estado desde el servidor
     updateStateFromServer(health, isAlive, position = null) {
-        console.log(`[DEBUG] Actualizando estado desde servidor: ${this.name}, salud=${health}, vivo=${isAlive}`);
+        // Crear logger para esta función
+        const logPrefix = `[Character ${this.name || 'desconocido'}] updateStateFromServer:`;
+        console.log(`${logPrefix} health=${health}, isAlive=${isAlive}, position=${position ? JSON.stringify(position) : 'null'}`);
         
-        // Verificar si el estado de vida cambió
-        const wasAlive = this.isAlive;
-        
-        // Actualizar valores
-        this.health = health;
-        this.isAlive = isAlive;
-        
-        // Si murió
-        if (wasAlive && !isAlive) {
-            console.log(`[DEBUG] ${this.name} ha muerto según el servidor`);
-            this.onDeath();
-        } 
-        // Si revivió
-        else if (!wasAlive && isAlive) {
-            console.log(`[DEBUG] ${this.name} ha respawneado según el servidor`);
+        // Actualizar salud si es diferente
+        if (health !== undefined && health !== this.health) {
+            const oldHealth = this.health;
+            this.health = health;
+            console.log(`${logPrefix} Salud actualizada: ${oldHealth} -> ${health}`);
             
-            // Actualizar posición si se proporcionó
-            if (position) {
-                this.position.set(position.x, position.y, position.z);
-            }
-            
-            // Hacer visible el barco y reactivar colisiones
-            if (this.boat) {
-                this.boat.visible = true;
-            }
-            
-            if (this.colliderMesh) {
-                this.colliderMesh.visible = true;
+            // Si es el jugador local, actualizar la UI de salud
+            if (this.isLocalPlayer) {
+                this.updateHealthUI();
             }
         }
-        // Si solo cambió la salud
-        else if (this.isAlive && health < 100) {
-            this.showDamageEffect('projectile');
+        
+        // Actualizar estado de vida
+        if (isAlive !== undefined && isAlive !== this.isAlive) {
+            const wasAlive = this.isAlive;
+            this.isAlive = isAlive;
+            
+            // Si acaba de morir
+            if (wasAlive && !isAlive) {
+                console.log(`${logPrefix} El jugador ha muerto`);
+                this.onDeath();
+            }
+            
+            // Si acaba de revivir
+            if (!wasAlive && isAlive) {
+                console.log(`${logPrefix} El jugador ha revivido`);
+            }
         }
         
-        // Actualizar UI
-        this.updateHealthUI();
+        // Actualizar posición si se proporciona
+        if (position && !this.isLocalPlayer) {
+            this.position.set(position.x, position.y, position.z);
+        }
+        
+        return this;
     }
     
     // Método para daño por colisión
