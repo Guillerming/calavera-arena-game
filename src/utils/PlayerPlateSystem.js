@@ -4,15 +4,9 @@ export class PlayerPlateSystem {
     constructor(scene) {
         this.scene = scene;
         this.camera = null;
-        this.playerPlates = new Map(); // Map<playerId, playerPlate>
-        this.plateHeight = 10; // Altura del punto sobre el jugador
-        
-        // Configuramos el material y la geometría que compartirán todos los puntos
-        this.plateGeometry = new THREE.CircleGeometry(0.5, 16);
-        this.plateMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0x000000,
-            side: THREE.DoubleSide // Visible desde ambos lados
-        });
+        this.playerPlates = new Map(); // Map<playerId, nameSprite>
+        this.plateHeight = 5; // Altura del nombre sobre el jugador
+        this.playerNames = new Map(); // Map<playerId, nombre>
     }
     
     setCamera(camera) {
@@ -20,90 +14,109 @@ export class PlayerPlateSystem {
     }
     
     // Actualizar o crear un punto para un jugador
-    updatePlayerPlate(playerId, playerPosition, isAlive) {
-        // Si el jugador no está vivo, eliminamos su punto si existe
+    updatePlayerPlate(playerId, playerPosition, isAlive, playerName) {
+        // Si el jugador no está vivo, eliminamos su nombre
         if (!isAlive) {
             this.removePlayerPlate(playerId);
             return;
         }
         
-        // Si no existe el punto para este jugador, lo creamos
+        // Almacenar el nombre del jugador si se proporciona
+        if (playerName) {
+            this.playerNames.set(playerId, playerName);
+        }
+        
+        // Si no existe el sprite para este jugador, lo creamos
         if (!this.playerPlates.has(playerId)) {
             this.createPlayerPlate(playerId, playerPosition);
         } else {
             // Si ya existe, actualizamos su posición
-            const plate = this.playerPlates.get(playerId);
-            plate.position.set(
+            const nameSprite = this.playerPlates.get(playerId);
+            
+            // Actualizamos la posición del sprite con el nombre
+            nameSprite.position.set(
                 playerPosition.x,
                 playerPosition.y + this.plateHeight,
                 playerPosition.z
             );
         }
-        
-        // Orientar el punto hacia la cámara
-        this.updatePlateLookAt(playerId);
     }
     
-    // Crear un nuevo punto para un jugador
+    // Crear un nuevo nombre para un jugador
     createPlayerPlate(playerId, playerPosition) {
-        const plate = new THREE.Mesh(this.plateGeometry, this.plateMaterial);
+        // Crear el sprite con el nombre del jugador
+        const playerName = this.playerNames.get(playerId) || playerId;
         
-        // Posicionar el punto sobre el jugador
-        plate.position.set(
+        // Crear un canvas para el texto
+        const canvas = document.createElement('canvas');
+        const context = canvas.getContext('2d');
+        canvas.width = 256;
+        canvas.height = 64;
+        
+        // Establecer el estilo del texto
+        context.font = 'Bold 48px Arial';
+        context.fillStyle = 'white';
+        context.textAlign = 'center';
+        context.textBaseline = 'middle';
+        
+        // Añadir un borde negro para legibilidad
+        context.strokeStyle = 'black';
+        context.lineWidth = 6;
+        context.strokeText(playerName, canvas.width/2, canvas.height/2);
+        
+        // Dibujar el texto
+        context.fillText(playerName, canvas.width/2, canvas.height/2);
+        
+        // Crear textura a partir del canvas
+        const texture = new THREE.CanvasTexture(canvas);
+        
+        // Crear material con la textura
+        const spriteMaterial = new THREE.SpriteMaterial({
+            map: texture,
+            transparent: true
+        });
+        
+        // Crear el sprite
+        const nameSprite = new THREE.Sprite(spriteMaterial);
+        nameSprite.scale.set(5, 1.25, 1);
+        
+        // Posicionar el sprite
+        nameSprite.position.set(
             playerPosition.x,
             playerPosition.y + this.plateHeight,
             playerPosition.z
         );
         
         // Añadir a la escena
-        this.scene.add(plate);
+        this.scene.add(nameSprite);
         
         // Guardar referencia en el mapa
-        this.playerPlates.set(playerId, plate);
+        this.playerPlates.set(playerId, nameSprite);
         
-        return plate;
+        return nameSprite;
     }
     
-    // Actualizar la orientación de un punto hacia la cámara
-    updatePlateLookAt(playerId) {
-        if (!this.playerPlates.has(playerId) || !this.camera) return;
-        
-        const plate = this.playerPlates.get(playerId);
-        
-        // Restaurar la rotación para empezar desde cero
-        plate.rotation.set(0, 0, 0);
-        
-        // Hacer que el punto mire hacia la cámara
-        plate.lookAt(this.camera.position);
-        
-        // Rotar 90 grados en el eje X para que el disco sea perpendicular a la dirección de la cámara
-        plate.rotation.x += Math.PI / 2;
-    }
-    
-    // Eliminar el punto de un jugador
+    // Eliminar el nombre de un jugador
     removePlayerPlate(playerId) {
         if (!this.playerPlates.has(playerId)) return;
         
-        const plate = this.playerPlates.get(playerId);
+        const nameSprite = this.playerPlates.get(playerId);
         
         // Eliminar de la escena
-        this.scene.remove(plate);
+        this.scene.remove(nameSprite);
         
         // Eliminar del mapa
         this.playerPlates.delete(playerId);
+        this.playerNames.delete(playerId);
     }
     
-    // Actualizar todos los puntos
+    // Actualizar todos los nombres
     updateAllPlates() {
-        if (!this.camera) return;
-        
-        // Actualizar la orientación de todos los puntos
-        for (const playerId of this.playerPlates.keys()) {
-            this.updatePlateLookAt(playerId);
-        }
+        // Los sprites ya tienen un comportamiento de billboarding incorporado
+        // por lo que no es necesario ajustar la orientación
     }
     
-    // Limpiar todos los puntos
+    // Limpiar todos los nombres
     clearAllPlates() {
         for (const playerId of this.playerPlates.keys()) {
             this.removePlayerPlate(playerId);

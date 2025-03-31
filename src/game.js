@@ -153,7 +153,8 @@ export class Game {
                     this.playerPlateSystem.updatePlayerPlate(
                         playerData.id,
                         playerData.position,
-                        true // Asumimos que está vivo si recibimos actualizaciones
+                        true, // Asumimos que está vivo si recibimos actualizaciones
+                        playerData.name // Pasar el nombre del jugador
                     );
                 }
             }
@@ -172,7 +173,8 @@ export class Game {
                     this.playerPlateSystem.updatePlayerPlate(
                         playerData.id,
                         playerData.position,
-                        true // El jugador está vivo al unirse
+                        true, // El jugador está vivo al unirse
+                        playerData.name // Pasar el nombre del jugador
                     );
                 }
             }
@@ -212,7 +214,8 @@ export class Game {
                         this.playerPlateSystem.updatePlayerPlate(
                             playerData.id,
                             character.position,
-                            playerData.isAlive
+                            playerData.isAlive,
+                            character.name // Usar el nombre del personaje
                         );
                     }
                 }
@@ -292,7 +295,8 @@ export class Game {
                 this.playerPlateSystem.updatePlayerPlate(
                     characterId,
                     character.position,
-                    character.isAlive
+                    character.isAlive,
+                    character.name // Pasar el nombre del personaje
                 );
             }
         }
