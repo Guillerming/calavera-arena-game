@@ -435,35 +435,63 @@ function scheduleRespawn(playerId) {
             
             console.log(`[SERVER] Jugador ${playerId} respawneado`);
             
-            // Notificar a todos los clientes
+            // Notificar a todos los clientes, marcando explícitamente que es un respawn
             broadcastToAll({
                 type: 'healthUpdate',
                 playerId: playerId,
                 health: CONFIG.PLAYER_START_HEALTH,
                 isAlive: true,
-                position: respawnPosition
+                position: respawnPosition,
+                isRespawn: true // Marcar explícitamente que es un respawn
             });
         }
     }, CONFIG.RESPAWN_TIME);
 }
 
-// Manejar solicitud de actualización de salud
+// Manejar solicitud de actualización de salud desde cliente
 function handleHealthUpdateRequest(data) {
-    // El servidor es la autoridad sobre la salud de los jugadores
-    // No permitimos que los clientes actualicen directamente la salud
-    console.log(`[SERVER] Solicitud de actualización de salud recibida de ${data.playerId} (ignorada)`);
-    
-    // En su lugar, enviamos el estado actual según el servidor
-    const player = getPlayerByNameOrId(data.playerId);
-    if (player) {
-        broadcastToAll({
-            type: 'healthUpdate',
-            playerId: player.id,
-            health: player.health,
-            isAlive: player.isAlive,
-            position: player.position
-        });
+    // Verificar que los datos son válidos
+    if (!data || !data.playerId) {
+        console.error('[SERVER] Datos de actualización de salud incompletos:', data);
+        return;
     }
+    
+    // Obtener el jugador
+    const player = players.get(data.playerId);
+    if (!player) {
+        console.error(`[SERVER] Jugador no encontrado para actualización de salud: ${data.playerId}`);
+        return;
+    }
+    
+    // Actualizar salud y estado
+    player.health = data.health;
+    player.isAlive = data.isAlive;
+    
+    // Si se proporciona una posición, actualizarla
+    if (data.position) {
+        player.position = data.position;
+    }
+    
+    // Construir el mensaje de respuesta
+    const message = {
+        type: 'healthUpdate',
+        playerId: data.playerId,
+        health: data.health,
+        isAlive: data.isAlive
+    };
+    
+    // Preservar datos adicionales relevantes
+    if (data.killedBy) message.killedBy = data.killedBy;
+    if (data.position) message.position = data.position;
+    
+    // Preservar el flag isRespawn si está presente
+    if (data.isRespawn) {
+        message.isRespawn = true;
+        console.log(`[SERVER] Propagando señal de respawn para jugador ${data.playerId}`);
+    }
+    
+    // Enviar la actualización a todos
+    broadcastToAll(message);
 }
 
 // Enviar mensaje a todos los clientes excepto al remitente

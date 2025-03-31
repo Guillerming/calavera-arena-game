@@ -457,7 +457,12 @@ export class NetworkManager {
             message.killedBy = killedBy;
         }
         
+        // Marcar explícitamente cuando es un respawn para asegurar que todos los clientes
+        // restauren la visibilidad del barco
         if (health === 100 && isAlive === true) {
+            message.isRespawn = true;
+            console.log(`[NetworkManager] Enviando señal de respawn para ${idToSend}`);
+            
             // Solo incluir posición en caso de respawn
             const player = Array.from(this.players.values()).find(p => p.id === this.playerId);
             if (player && player.position) {

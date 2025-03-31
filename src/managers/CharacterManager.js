@@ -329,7 +329,23 @@ export class CharacterManager {
         const character = this.getCharacter(playerData.id);
         
         if (character) {
-            console.log(`[CharacterManager] Actualizando salud de ${playerData.id}: ${playerData.health}`);
+            console.log(`[CharacterManager] Actualizando salud de ${playerData.id}: ${playerData.health}, vivo: ${playerData.isAlive}, respawn: ${playerData.isRespawn || false}`);
+            
+            // Si es un respawn, asegurar que el barco sea visible
+            if (playerData.isRespawn) {
+                console.log(`[CharacterManager] Procesando respawn para ${playerData.id}`);
+                
+                // Asegurar que el barco sea visible
+                if (character.boat) {
+                    character.boat.visible = true;
+                    console.log(`[CharacterManager] Restaurando visibilidad del barco para ${playerData.id}`);
+                }
+                
+                // Reactivar colisiones
+                if (character.colliderMesh) {
+                    character.colliderMesh.visible = true;
+                }
+            }
             
             // Actualizar estado del personaje
             character.updateStateFromServer(

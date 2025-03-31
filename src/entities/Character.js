@@ -328,6 +328,16 @@ export class Character extends THREE.Object3D {
             // Si acaba de revivir
             if (!wasAlive && isAlive) {
                 console.log(`${logPrefix} El jugador ha revivido`);
+                
+                // Restaurar visibilidad del barco y colisiones
+                if (this.boat) {
+                    this.boat.visible = true;
+                    console.log(`${logPrefix} Restaurando visibilidad del modelo del barco`);
+                }
+                
+                if (this.colliderMesh) {
+                    this.colliderMesh.visible = true;
+                }
             }
         }
         
@@ -377,10 +387,22 @@ export class Character extends THREE.Object3D {
     
     // Método para hacer respawn del barco
     respawn() {
+        console.log(`[Character ${this.name}] Iniciando respawn...`);
         
         // Restaurar salud completa
         this.health = 100;
         this.isAlive = true;
+        
+        // Hacer visible nuevamente el barco para todos los clientes
+        if (this.boat) {
+            this.boat.visible = true;
+            console.log(`[Character ${this.name}] Restaurando visibilidad del barco (local)`);
+        }
+        
+        // Reactivar colisiones
+        if (this.colliderMesh) {
+            this.colliderMesh.visible = true;
+        }
         
         // Colocar el barco en una posición segura (solo para jugador local)
         if (this.isLocalPlayer) {
@@ -405,21 +427,12 @@ export class Character extends THREE.Object3D {
             }
         }
         
-        // Hacer visible nuevamente el barco
-        if (this.boat) {
-            this.boat.visible = true;
-        }
-        
-        // Reactivar colisiones
-        if (this.colliderMesh) {
-            this.colliderMesh.visible = true;
-        }
-        
         // Actualizar UI de salud
         this.updateHealthUI();
         
         // Enviar actualización de salud y posición a través de la red (solo jugador local)
         if (this.isLocalPlayer && this.networkManager) {
+            console.log(`[Character ${this.name}] Enviando actualización de respawn al servidor`);
             this.networkManager.sendHealthUpdate(this.health, this.isAlive);
         }
     }
