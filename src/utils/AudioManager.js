@@ -65,6 +65,7 @@ export class AudioManager {
             // Cargar efectos de sonido
             await this.verifyAndLoadSound('canon', 'assets/audio/fx/canon.mp3');
             await this.verifyAndLoadSound('impact', 'assets/audio/fx/impact.mp3');
+            await this.verifyAndLoadSound('splash', 'assets/audio/fx/splash.mp3');
     
             this.initialized = true;
             

@@ -58,5 +58,7 @@
     - ampliar el círculo de la calavera
         - añadir animación a la calavera
     - impactos contra el agua
-    - marcador no muestra bien los kills para todos los jugadores, tampoco el nombre
-        - eliminar columna death
+    X marcador no muestra bien los kills para todos los jugadores, tampoco el nombre
+        X eliminar columna death
+    - añadir portal al vibeverse
+    - 

@@ -241,8 +241,14 @@ export class Game {
         this.networkManager.onProjectileCollision = (collisionData) => {
             this.characterManager.handleProjectileCollision(collisionData);
             
-            // Reproducir sonido de impacto
-            this.audioManager.playSound('impact');
+            // Reproducir sonido según el tipo de colisión
+            if (collisionData.collisionType === 'water') {
+                // Reproducir sonido de splash para impactos en agua
+                this.audioManager.playSound('splash');
+            } else {
+                // Reproducir sonido de impacto para otros tipos de colisión
+                this.audioManager.playSound('impact');
+            }
         };
 
         // Añadir callback para actualizaciones de salud

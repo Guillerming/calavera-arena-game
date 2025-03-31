@@ -35,9 +35,44 @@ export class CharacterProjectiles {
             // Inicializar flag para eliminar el proyectil
             let removeProjectile = false;
             
+            // Comprobar colisión con el agua - Nueva funcionalidad
+            const waterLevel = 0.05; // Nivel del agua, debe coincidir con el nivel en Water.js
+            
+            // Si el proyectil estaba por encima del agua en el frame anterior y ahora está por debajo
+            if (projectile.position.y <= waterLevel && 
+                (projectile.previousY === undefined || projectile.previousY > waterLevel)) {
+                
+                // Crear efecto de splash en el punto de impacto
+                const splashPosition = new THREE.Vector3(
+                    projectile.position.x,
+                    waterLevel,
+                    projectile.position.z
+                );
+                
+                // Crear efecto de splash
+                if (this.character.createSplashEffect) {
+                    this.character.createSplashEffect(splashPosition);
+                }
+                
+                // Informar al servidor de la colisión con agua
+                if (this.character.networkManager) {
+                    this.character.networkManager.sendProjectileCollision({
+                        projectileId: projectile.id,
+                        position: splashPosition,
+                        collisionType: 'water'
+                    });
+                }
+                
+                // Eliminar el proyectil
+                removeProjectile = true;
+            }
+            
+            // Guardar la posición Y anterior para detectar cuando cruza el nivel del agua
+            projectile.previousY = projectile.position.y;
+            
             // Comprobar colisión con el terreno
             // Solo comprobar colisiones si el terreno está disponible y es el jugador local
-            if (this.character.terrain && this.character.isLocalPlayer) {
+            if (!removeProjectile && this.character.terrain && this.character.isLocalPlayer) {
                 const terrainHeight = this.character.terrain.getHeightAt(projectile.position.x, projectile.position.z);
                 
                 // Si el proyectil está por debajo del terreno, ha colisionado
