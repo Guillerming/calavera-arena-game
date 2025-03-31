@@ -171,7 +171,12 @@ export class Character extends THREE.Object3D {
     }
 
     createCannonIndicators() {
-        this.ui.createCannonIndicators();
+        // Ya no necesitamos crear indicadores, solo actualizar estado UI
+        if (this.ui) {
+            // Solo actualizar si existe la UI
+            const angleToCamera = this.getAngleToCameraDirection();
+            this.updateCannonIndicators(angleToCamera);
+        }
     }
 
     updateCannonIndicators(angleToCamera) {

@@ -4,18 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calavera Arena</title>
-    <style>
-        body {
-            margin: 0;
-            overflow: hidden;
-            background-color: #000;
-        }
-        canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-        }
-    </style>
+    <link rel="stylesheet" href="styles.css">
     <script type="importmap">
         {
             "imports": {
@@ -26,13 +15,44 @@
     </script>
 </head>
 <body>
-    <a target="_blank" href="https://jam.pieter.com" style="font-family: 'system-ui', sans-serif; position: fixed; bottom: -1px; right: -1px; padding: 7px; font-size: 14px; font-weight: bold; background: #fff; color: #000; text-decoration: none; z-index: 10; border-top-left-radius: 12px; z-index: 10000; border: 1px solid #fff;">🕹️ Vibe Jam 2025</a>
+    <!-- UI de Salud -->
+    <div id="health-container" class="ui-container health-container">
+        <div id="health-title" class="health-title">Estado del Barco</div>
+        <div id="health-bar-container" class="health-bar-container">
+            <div id="health-bar" class="health-bar"></div>
+            <div id="health-text" class="health-text">100 / 100</div>
+        </div>
+    </div>
+
+    <!-- UI de Cañón -->
+    <div id="cannon-container" class="ui-container cannon-container">
+        <div id="reload-indicator" class="cannon-indicator">
+            <div class="icon">🔄</div>
+            <span id="reload-text" class="indicator-text">Cannon ready</span>
+        </div>
+        <div id="direction-indicator" class="cannon-indicator">
+            <div class="icon">🎯</div>
+            <span id="direction-text" class="indicator-text">Valid direction</span>
+        </div>
+        <div id="angle-indicator" class="cannon-indicator">
+            <div class="icon">📐</div>
+            <span id="angle-text" class="indicator-text">Cannon angle: 5.0°</span>
+        </div>
+    </div>
+
+    <!-- UI de Ángulo de Cámara -->
+    <div id="camera-angle-indicator" class="ui-container camera-angle-container">
+        Ángulo cámara: 0.0° (rango: -25° a 0°)
+    </div>
+
+    <a target="_blank" href="https://jam.pieter.com" class="jam-link">🕹️ Vibe Jam 2025</a>
+    
     <script type="module">
         import { Game } from './src/game.js';
-        
+
         // Crear instancia del juego
         const game = new Game();
-        
+
         // Inicializar el juego de forma asíncrona
         try {
             await game.start();
