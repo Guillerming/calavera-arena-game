@@ -505,13 +505,13 @@ export class Character extends THREE.Object3D {
     _applyWoodMaterial(material) {
         // Reducir el brillo/reflectividad
         if (material.metalness !== undefined) {
-            material.metalness = 0.1;  // Casi nada metálico
+            material.metalness = 0.05;  // Aún menos metálico
         }
         if (material.roughness !== undefined) {
-            material.roughness = 0.8;  // Bastante rugoso (como la madera)
+            material.roughness = 0.85;  // Más rugoso
         }
         if (material.shininess !== undefined) {
-            material.shininess = 5;    // Poco brillo
+            material.shininess = 3;    // Menos brillo
         }
         
         // Ajustar el color ligeramente para que parezca más madera
@@ -519,9 +519,9 @@ export class Character extends THREE.Object3D {
             // Dar un tono más cálido a los colores existentes
             const currentColor = material.color.getHSL({});
             material.color.setHSL(
-                0.08,  // Tono marrón-rojizo
-                0.5,   // Saturación media
-                currentColor.l * 0.9  // Mantener luminosidad similar pero ligeramente más oscura
+                0.07,  // Tono marrón-rojizo ligeramente más cálido
+                0.75,   // Mayor saturación
+                currentColor.l * 0.75  // Más oscuro
             );
         }
         
