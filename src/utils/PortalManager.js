@@ -118,8 +118,8 @@ export class PortalManager {
         
         // Texto por defecto según el tipo de portal
         const defaultLabelText = portal.userData.type === 'entrance' 
-            ? 'Volver al juego anterior' 
-            : 'Portal a Vibeverse';
+            ? 'Return to previous game' 
+            : 'Vibeverse Portal';
         
         // Obtener texto de la etiqueta
         const labelText = options.labelText || defaultLabelText;
@@ -131,13 +131,13 @@ export class PortalManager {
             if (!context) return portal;
             
             canvas.width = 512;
-            canvas.height = 64;
+            canvas.height = 128;  // Aumentar altura para texto más grande
             
             // Color según el tipo de portal
             const labelColor = options.labelColor || (color === 0xff0000 ? '#ff0000' : '#00ff00');
             
             context.fillStyle = labelColor;
-            context.font = 'bold 32px Arial';
+            context.font = 'bold 48px Arial';  // Aumentar tamaño de fuente
             context.textAlign = 'center';
             context.fillText(labelText, canvas.width / 2, canvas.height / 2);
             
@@ -148,11 +148,11 @@ export class PortalManager {
                 side: THREE.DoubleSide,
             });
             
-            const labelGeometry = new THREE.PlaneGeometry(radius * 2, radius * 0.25);
+            const labelGeometry = new THREE.PlaneGeometry(radius * 2.5, radius * 0.4);  // Hacer la etiqueta más grande
             const label = new THREE.Mesh(labelGeometry, labelMaterial);
             
             // Posicionar la etiqueta encima del portal
-            label.position.y = radius * 1.1;
+            label.position.y = radius * 1.2;
             label.rotation.x = -Math.PI / 6; // Inclinar para mejor visibilidad
             
             portal.add(label);
@@ -169,17 +169,22 @@ export class PortalManager {
     createStartPortal(refUrl) {
         // Posicionar en una esquina del mapa
         const x = -150;  // Esquina negativa del mapa
-        const y = 6;     // Altura sobre el nivel del agua
+        const y = 3;     // Altura reducida sobre el nivel del agua
         const z = -150;  // Esquina negativa del mapa
         
         // Crear el portal con opciones personalizadas
         const portal = this.createPortalMesh(6, 0xff0000, {
-            labelText: 'Volver al juego anterior',
+            labelText: 'Return to previous game',
             labelColor: '#ff5555',
         });
         
         // Posicionar el portal
         portal.position.set(x, y, z);
+        
+        // Rotar el portal para que mire hacia el centro del mapa
+        // Calcular ángulo para mirar hacia el centro (0,0,0)
+        const angleToCenter = Math.atan2(-z, -x); // Dirección hacia el centro
+        portal.rotation.y = angleToCenter;
         
         // Añadir al mundo
         this.scene.add(portal);
@@ -200,17 +205,22 @@ export class PortalManager {
     createExitPortal() {
         // Posicionar en otra esquina del mapa
         const x = 150;   // Esquina positiva del mapa
-        const y = 6;     // Altura sobre el nivel del agua
+        const y = 3;     // Altura reducida sobre el nivel del agua
         const z = 150;   // Esquina positiva del mapa
         
         // Crear el portal con opciones personalizadas
         const portal = this.createPortalMesh(6, 0x00ff00, {
-            labelText: 'Portal a Vibeverse',
+            labelText: 'Vibeverse Portal',
             labelColor: '#55ff55',
         });
         
         // Posicionar el portal
         portal.position.set(x, y, z);
+        
+        // Rotar el portal para que mire hacia el centro del mapa
+        // Calcular ángulo para mirar hacia el centro (0,0,0)
+        const angleToCenter = Math.atan2(-z, -x); // Dirección hacia el centro
+        portal.rotation.y = angleToCenter;
         
         // Añadir al mundo
         this.scene.add(portal);
