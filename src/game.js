@@ -13,6 +13,7 @@ import { Logger } from './utils/Logger.js';
 import { PlayerPlateSystem } from './utils/PlayerPlateSystem.js';
 import { SkullGameMode } from './modes/SkullGameMode.js';
 import { AudioManager } from './utils/AudioManager.js';
+import { PortalManager } from './utils/PortalManager.js';
 
 export class Game {
     constructor() {
@@ -98,6 +99,9 @@ export class Game {
         directionalLight.castShadow = true;
         this.engine.scene.add(directionalLight);
         
+        // Inicializar sistema de portales
+        this.portalManager = new PortalManager(this);
+        
         this.logger.end('setupWorld');
     }
 
@@ -157,6 +161,11 @@ export class Game {
         
         // Iniciar el modo de juego Calavera
         this.skullGameMode = new SkullGameMode(this);
+        
+        // Inicializar portales después de que el jugador esté listo
+        if (this.portalManager) {
+            this.portalManager.init();
+        }
 
         // Configurar el jugador
         this.player.setNetworkManager(this.networkManager);
@@ -297,6 +306,7 @@ export class Game {
         this.skullGameMode.start();
 
         // Iniciar el bucle del juego
+        this.lastTime = performance.now(); // Inicializar tiempo para el primer frame
         this.gameLoop();
     }
 
@@ -312,81 +322,64 @@ export class Game {
     }
 
     gameLoop() {
-        requestAnimationFrame(() => this.gameLoop());
+        // Obtener tiempo delta para animaciones suaves
+        const currentTime = performance.now();
+        const deltaTime = (currentTime - this.lastTime) / 1000; // en segundos
+        this.lastTime = currentTime;
         
-        // Calcular delta time
-        const now = performance.now();
-        if (!this.lastTime) this.lastTime = now;
-        const deltaTime = (now - this.lastTime) / 1000; // Convertir a segundos
-        this.lastTime = now;
-        
-        // Actualizar el motor con inputManager
-        this.engine.update(deltaTime, this.inputManager);
-        
-        // Actualizar inputManager
-        this.inputManager.update();
-        
-        // Actualizar los personajes
-        this.characterManager.updateAll(deltaTime);
+        // Limitar deltaTime para evitar saltos grandes cuando la pestaña está inactiva
+        const boundedDeltaTime = Math.min(deltaTime, 0.1);
         
         // Actualizar el agua
-        this.water.update(deltaTime);
-        
-        // Obtener el personaje del jugador
-        const player = this.characterManager.getPlayerCharacter();
-        
-        // Actualizar el debugUI con el personaje del jugador
-        if (player) {
-            this.debugUI.update(player);
-        }
-        
-        // Enviar actualizaciones al servidor
-        if (player && this.networkManager.connected) {
-            this.networkManager.sendUpdate(player.position, player.rotation);
+        if (this.water) {
+            this.water.update(boundedDeltaTime);
         }
         
         // Actualizar el sistema de playerPlates
         if (this.playerPlateSystem) {
             this.playerPlateSystem.updateAllPlates();
-            
-            // Actualizar el playerPlate para cada personaje en la escena excepto el jugador local
-            for (const [characterId, character] of this.characterManager.characters.entries()) {
-                // No crear un punto sobre el jugador local
-                if (character.isLocalPlayer) continue;
-                
-                // Obtener el nombre del jugador desde networkManager si está disponible
-                let playerName = character.name;
-                const networkPlayer = this.networkManager.players.get(characterId);
-                if (networkPlayer && networkPlayer.name && networkPlayer.name !== characterId) {
-                    playerName = networkPlayer.name;
-                    // Actualizar el nombre del personaje si es necesario
-                    if (character.name !== playerName) {
-                        character.name = playerName;
-                    }
-                }
-                
-                this.playerPlateSystem.updatePlayerPlate(
-                    characterId,
-                    character.position,
-                    character.isAlive,
-                    playerName, // Usar el nombre actualizado
-                    character.health // Pasar la salud del personaje
-                );
-            }
         }
         
-        // Actualizar el ScoreboardUI para detectar la tecla Shift
-        if (this.scoreboardUI) {
-            this.scoreboardUI.update();
+        // Si no hay jugador, no continuar con las actualizaciones dependientes
+        if (!this.player) {
+            requestAnimationFrame(this.gameLoop.bind(this));
+            return;
+        }
+        
+        // Actualizar la posición del personaje
+        this.player.update(boundedDeltaTime, this.inputManager);
+        
+        // Enviar actualizaciones de posición por red solo para el jugador local
+        if (this.networkManager) {
+            this.networkManager.sendUpdate(
+                this.player.position,
+                { y: this.player.rotation.y }
+            );
+        }
+        
+        // Actualizar el gestor de personajes
+        if (this.characterManager) {
+            this.characterManager.update(boundedDeltaTime);
         }
         
         // Actualizar el modo de juego Calavera
         if (this.skullGameMode) {
-            this.skullGameMode.update(deltaTime);
+            this.skullGameMode.update(boundedDeltaTime);
         }
         
-        // Renderizar la escena
+        // Actualizar los portales
+        if (this.portalManager) {
+            this.portalManager.update(boundedDeltaTime);
+        }
+        
+        // Actualizar el motor gráfico (incluye actualización de cámara)
+        this.engine.update(boundedDeltaTime, this.inputManager);
+        
+        // Renderizar escena
         this.engine.render();
+        
+        // Continuar el bucle
+        requestAnimationFrame(this.gameLoop.bind(this));
     }
 
     // Solicitar nombres actualizados de todos los jugadores
