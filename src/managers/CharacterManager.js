@@ -360,6 +360,11 @@ export class CharacterManager {
             if (playerData.damageType) {
                 character.showDamageEffect(playerData.damageType);
             }
+            
+            // Asegurar que el collider esté oculto si el personaje está muerto
+            if (!playerData.isAlive && character.colliderMesh) {
+                character.colliderMesh.material.visible = false;
+            }
         } else {
             console.warn(`[CharacterManager] No se encontró el personaje con ID ${playerData.id} para actualizar salud`);
         }

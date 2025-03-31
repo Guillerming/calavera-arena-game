@@ -350,7 +350,8 @@ export class Character extends THREE.Object3D {
                 }
                 
                 if (this.colliderMesh) {
-                    this.colliderMesh.material.visible = true;
+                    // Usar la propiedad showColliderBox para determinar si el collider debe ser visible
+                    this.colliderMesh.material.visible = this.showColliderBox;
                 }
             }
         }
@@ -413,7 +414,7 @@ export class Character extends THREE.Object3D {
         
         // Reactivar colisiones
         if (this.colliderMesh) {
-            this.colliderMesh.material.visible = true;
+            this.colliderMesh.material.visible = this.showColliderBox;
         }
         
         // Colocar el barco en una posición segura (solo para jugador local)
