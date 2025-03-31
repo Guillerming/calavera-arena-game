@@ -17,27 +17,6 @@ canvas {
     display: block;
 }
 
-/* Debug Container */
-.debug-container {
-    position: fixed;
-    top: 10px;
-    left: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
-    color: white;
-    padding: 10px;
-    border-radius: 5px;
-    font-size: 14px;
-    z-index: 1000;
-}
-
-.debug-value {
-    margin: 5px 0;
-}
-
-.debug-value span {
-    color: #00ff00;
-}
-
 /* UI Containers */
 .ui-container {
     position: fixed;
@@ -116,13 +95,6 @@ canvas {
     flex-grow: 1;
 }
 
-/* Camera Angle Indicator */
-.camera-angle-container {
-    top: 20px;
-    right: 20px;
-    text-align: right;
-}
-
 /* Jam Link */
 .jam-link {
     position: fixed;
@@ -163,19 +135,6 @@ canvas {
 
 .angle-high {
     color: #ff9900;
-}
-
-/* Estilos para ángulos de cámara */
-.camera-angle-in-range {
-    color: #00ffff;
-}
-
-.camera-angle-above {
-    color: #ff00ff;
-}
-
-.camera-angle-below {
-    color: #ff5555;
 }
 
 /* Estilos para niveles de salud */
@@ -329,53 +288,4 @@ canvas {
     text-align: center;
     color: #999;
     padding: 10px;
-}
-
-/* Terrain Editor */
-.terrain-editor {
-    position: fixed;
-    bottom: 10px;
-    left: 10px;
-    background: rgba(0, 0, 0, 0.7);
-    padding: 10px;
-    border-radius: 5px;
-    color: white;
-    z-index: 1000;
-    display: none;
-}
-
-.editor-control {
-    margin-bottom: 10px;
-}
-
-.editor-control label {
-    display: block;
-    margin-bottom: 5px;
-}
-
-.editor-control input[type="range"] {
-    width: 100%;
-}
-
-.editor-buttons {
-    display: flex;
-    gap: 10px;
-}
-
-.editor-buttons button {
-    flex: 1;
-    padding: 5px 10px;
-    background-color: #444;
-    color: white;
-    border: none;
-    border-radius: 3px;
-    cursor: pointer;
-}
-
-.editor-buttons button:hover {
-    background-color: #666;
-}
-
-.terrain-editor.active {
-    display: block;
 } 

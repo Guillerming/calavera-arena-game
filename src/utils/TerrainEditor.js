@@ -10,87 +10,28 @@ export class TerrainEditor {
         this.raycaster = new THREE.Raycaster();
         this.mouse = new THREE.Vector2();
         
-        // Inicializar UI
-        this.initializeUI();
+        // No inicializamos UI ya que eliminamos el editor de terreno
     }
 
     initializeUI() {
-        // Obtener referencia al contenedor del editor
-        this.container = document.getElementById('terrain-editor');
-        
-        if (!this.container) {
-            console.error('No se encontró el contenedor del editor de terreno en el HTML');
-            return;
-        }
-        
-        // Configurar escuchadores de eventos
-        this.setupListeners();
+        // No hay UI para inicializar
+        return;
     }
 
     setupListeners() {
-        const editButton = document.getElementById('edit-mode');
-        if (!editButton) {
-            console.error('No se encontró el botón de modo edición');
-            return;
-        }
-        
-        editButton.addEventListener('click', () => {
-            this.isEditing = !this.isEditing;
-            editButton.textContent = this.isEditing ? 'Salir Edición' : 'Modo Edición';
-            this.container.classList.toggle('active', this.isEditing);
-        });
-
-        const brushSizeSlider = document.getElementById('brush-size-slider');
-        if (brushSizeSlider) {
-            brushSizeSlider.addEventListener('input', (e) => {
-                this.brushSize = parseInt(e.target.value);
-                const brushSizeDisplay = document.getElementById('brush-size');
-                if (brushSizeDisplay) {
-                    brushSizeDisplay.textContent = this.brushSize;
-                }
-            });
-        }
-
-        const brushStrengthSlider = document.getElementById('brush-strength-slider');
-        if (brushStrengthSlider) {
-            brushStrengthSlider.addEventListener('input', (e) => {
-                this.brushStrength = parseFloat(e.target.value);
-                const brushStrengthDisplay = document.getElementById('brush-strength');
-                if (brushStrengthDisplay) {
-                    brushStrengthDisplay.textContent = this.brushStrength;
-                }
-            });
-        }
-
-        const saveButton = document.getElementById('save-terrain');
-        if (saveButton) {
-            saveButton.addEventListener('click', () => {
-                this.saveTerrain();
-            });
-        }
-
-        // Mouse events para edición
-        document.addEventListener('mousemove', (e) => this.onMouseMove(e));
-        document.addEventListener('mousedown', () => this.isMouseDown = true);
-        document.addEventListener('mouseup', () => this.isMouseDown = false);
+        // No configuramos listeners para elementos que ya no existen
+        return;
     }
 
     onMouseMove(event) {
-        if (!this.isEditing || !this.isMouseDown) return;
-
-        this.mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-        this.mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
-
-        // Usar la cámara del engine
-        this.raycaster.setFromCamera(this.mouse, this.engine.camera);
-        const intersects = this.raycaster.intersectObject(this.terrain.mesh);
-
-        if (intersects.length > 0) {
-            this.modifyTerrain(intersects[0].point);
-        }
+        // No procesamos eventos ya que la UI fue eliminada
+        return;
     }
 
     modifyTerrain(point) {
+        // Mantenemos la lógica de modificación de terreno por si se quiere llamar directamente
+        if (!this.terrain || !this.terrain.mesh) return;
+        
         // Acceder a la geometría a través del mesh del terreno
         const geometry = this.terrain.mesh.geometry;
         const vertices = geometry.attributes.position.array;
@@ -114,6 +55,9 @@ export class TerrainEditor {
     }
 
     saveTerrain() {
+        // La funcionalidad de guardar terreno se mantiene, pero no se expone en la UI
+        if (!this.terrain || !this.terrain.mesh) return;
+        
         const geometry = this.terrain.mesh.geometry;
         const vertices = geometry.attributes.position.array;
         const heightData = [];

@@ -12,7 +12,6 @@ export class CharacterUI {
         this.healthText = null;
         this.cannonIndicator = null;
         this.angleText = null;
-        this.cameraAngleIndicator = null;
         
         // Inicializar UI si no se ha hecho ya
         if (!CharacterUI.uiInitialized) {
@@ -32,11 +31,10 @@ export class CharacterUI {
         this.healthBar = document.getElementById('health-bar');
         this.healthText = document.getElementById('health-text');
         this.angleText = document.getElementById('angle-text');
-        this.cameraAngleIndicator = document.getElementById('camera-angle-indicator');
         
         // Verificar que todos los elementos existen
         if (!this.reloadText || !this.directionText || !this.healthBar || 
-            !this.healthText || !this.angleText || !this.cameraAngleIndicator) {
+            !this.healthText || !this.angleText) {
             console.error('Error: No se encontraron algunos elementos UI en el HTML');
         }
         
@@ -99,27 +97,6 @@ export class CharacterUI {
                 this.angleText.classList.add('angle-medium'); // Amarillo para ángulos medios
             } else {
                 this.angleText.classList.add('angle-high'); // Naranja para ángulos altos (disparos cercanos)
-            }
-        }
-        
-        // Actualizar el indicador del ángulo de la cámara
-        if (this.cameraAngleIndicator && this.character.cameraController) {
-            const cameraAngleDegrees = (this.character.cameraController.rotationX * 180 / Math.PI).toFixed(1);
-            const minCameraAngle = -25; // Nivel del mar (-25°)
-            const inflectionPoint = 0;   // Punto de inflexión (0°)
-            this.cameraAngleIndicator.textContent = `Ángulo cámara: ${cameraAngleDegrees}° (rango: ${minCameraAngle}° a ${inflectionPoint}°)`;
-            
-            // Eliminar las clases existentes
-            this.cameraAngleIndicator.classList.remove('camera-angle-in-range', 'camera-angle-above', 'camera-angle-below');
-            
-            // Colorear según si está dentro o fuera del rango de interpolación
-            if (this.character.cameraController.rotationX >= -25 * Math.PI / 180 && 
-                this.character.cameraController.rotationX <= 0) {
-                this.cameraAngleIndicator.classList.add('camera-angle-in-range');
-            } else if (this.character.cameraController.rotationX > 0) {
-                this.cameraAngleIndicator.classList.add('camera-angle-above');
-            } else {
-                this.cameraAngleIndicator.classList.add('camera-angle-below');
             }
         }
     }

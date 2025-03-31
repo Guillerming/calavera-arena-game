@@ -49,16 +49,17 @@
         - WASD movimiento
         - click para disparar
         - M para detener la música
-    - eliminar elementos de UI
-        - velocidad
-        - indicador de angulo arriba a la derecha
+    X eliminar elementos de UI
+        X velocidad
+        X indicador de angulo arriba a la derecha
     X eliminar logs de la consola
     X comprobar eliminación de proyectiles (Revisar logs)
-    - agrandar área de impacto de los barcos (más fácil que se les de)
+    X agrandar área de impacto de los barcos (más fácil que se les de)
     - ampliar el círculo de la calavera
         - añadir animación a la calavera
-    - impactos contra el agua
+    X impactos contra el agua
     X marcador no muestra bien los kills para todos los jugadores, tampoco el nombre
         X eliminar columna death
     - añadir portal al vibeverse
     - cada vez que cojo una calavera suma +2
+    - el mesh de collisiones reaparece dsp de morir
