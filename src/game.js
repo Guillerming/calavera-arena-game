@@ -162,7 +162,15 @@ export class Game {
         
         // Asegurarse de que el sistema de audio esté inicializado
         if (!this.audioManager.initialized) {
-            await this.audioManager.init();
+            // Primero, asegurarse de que tenemos un AudioListener válido
+            if (!this.audioListener && this.engine && this.engine.camera) {
+                this.audioListener = new THREE.AudioListener();
+                this.engine.camera.add(this.audioListener);
+                console.log('[Game] Creado nuevo AudioListener para la inicialización');
+            }
+            
+            // Inicializar el AudioManager con el listener
+            await this.audioManager.init(this.audioListener);
         }
         
         // La música de intro (osd.mp3) ya debería estar sonando desde initialize()
@@ -502,11 +510,6 @@ export class Game {
                     if (this.engine && this.engine.camera && this.audioListener) {
                         console.log('[Game] Intentando añadir AudioListener a la cámara (reintento)');
                         this.engine.camera.add(this.audioListener);
-                        
-                        // Actualizar el listener en el AudioManager
-                        if (this.audioManager) {
-                            this.audioManager.setListener(this.audioListener);
-                        }
                     }
                 }, 1000);
             }
@@ -515,9 +518,6 @@ export class Game {
             if (!this.audioManager.initialized) {
                 await this.audioManager.init(this.audioListener);
                 console.log('[Game] AudioManager inicializado con éxito');
-            } else {
-                // Si ya está inicializado, asegurar que tiene el listener correcto
-                this.audioManager.setListener(this.audioListener);
             }
             
             // Iniciar el sistema de "arr" aleatorio
@@ -545,7 +545,6 @@ export class Game {
         if (!this.engine.camera.children.includes(this.audioListener)) {
             console.log('[Game] Reconectando AudioListener a la cámara');
             this.engine.camera.add(this.audioListener);
-            this.audioManager.setListener(this.audioListener);
             needsUpdate = true;
         }
         
@@ -584,13 +583,10 @@ export class Game {
                     console.log('[Game] Reconectando AudioListener a la cámara');
                     this.engine.camera.add(this.audioListener);
                     
-                    // Actualizar el listener en el AudioManager
-                    if (this.audioManager) {
-                        this.audioManager.setListener(this.audioListener);
-                    }
-                    
                     // Forzar actualización de la matriz mundial
                     this.audioListener.updateMatrixWorld(true);
+                    
+                    console.log('[Game Debug] AudioListener recreado y conectado');
                 }
             }
         }, 5000);
@@ -642,7 +638,13 @@ export class Game {
         if (!this.audioManager.initialized) {
             console.warn('[Game] El sistema de audio no está inicializado. Inicializando...');
             try {
-                await this.audioManager.init();
+                // Asegurarnos de que tenemos un AudioListener válido
+                if (!this.audioListener && this.engine && this.engine.camera) {
+                    this.audioListener = new THREE.AudioListener();
+                    this.engine.camera.add(this.audioListener);
+                }
+                
+                await this.audioManager.init(this.audioListener);
             } catch (error) {
                 console.error('[Game] Error al inicializar el audio:', error);
                 return;
@@ -651,56 +653,26 @@ export class Game {
         
         // Verificar reproducción de música
         if (this.audioManager.currentMusic) {
-            const currentMusic = this.audioManager.music.get(this.audioManager.currentMusic);
+            // Con el nuevo sistema, comprobamos la instancia de música actual
+            const musicInstance = this.audioManager.musicInstances.get(this.audioManager.currentMusic);
             
-            if (currentMusic) {
-                // Verificar si la música está en pausa o ha terminado
-                if (currentMusic.paused || currentMusic.ended) {
+            if (musicInstance) {
+                // Verificar si la música está sonando
+                if (!musicInstance.isPlaying) {
                     console.warn(`[Game] La música ${this.audioManager.currentMusic} se ha detenido. Reiniciando...`);
                     
                     // Volver a reproducir la música actual
                     this.audioManager.playMusic(this.audioManager.currentMusic);
-                } else {
-                }
-                
-                // Verificar el volumen actual
-                
-                // Si el volumen es demasiado bajo, aumentarlo
-                if (currentMusic.volume < 0.3) {
-                    console.warn(`[Game] Volumen demasiado bajo. Aumentando...`);
-                    
-                    // Reproducir con mayor volumen
-                    if (this.audioManager.currentMusic === 'sailing') {
-                        currentMusic.volume = 0.72; // 0.6 * 0.8 * 1.5
-                    } else {
-                        currentMusic.volume = 0.48; // 0.6 * 0.8
-                    }
                 }
             } else {
-                console.warn(`[Game] Música ${this.audioManager.currentMusic} no encontrada en el mapa. Reintentando carga...`);
-                try {
-                    // Volver a cargar la música
-                    if (this.audioManager.currentMusic === 'sailing') {
-                        await this.audioManager.verifyAndLoadMusic('sailing', 'assets/audio/fx/sailing.mp3');
-                        this.audioManager.playMusic('sailing');
-                    } else if (this.audioManager.currentMusic === 'osd') {
-                        await this.audioManager.verifyAndLoadMusic('osd', 'assets/audio/osd/osd.mp3');
-                        this.audioManager.playMusic('osd');
-                    }
-                } catch (error) {
-                    console.error('[Game] Error al recargar la música:', error);
-                }
+                console.warn(`[Game] No se encuentra la instancia de música ${this.audioManager.currentMusic}`);
             }
         } else {
             console.warn('[Game] No hay música reproduciéndose. Iniciando música de fondo...');
             
-            // Determinar qué música reproducir basado en el estado del juego
-            if (this.player) {
-                // Si el juego ya comenzó, reproducir música del juego (sailing)
+            // Intentar iniciar la música de fondo
+            if (this.audioManager.initialized) {
                 this.audioManager.playMusic('sailing');
-            } else {
-                // Si estamos en la pantalla de intro, reproducir música de intro
-                this.audioManager.playMusic('osd');
             }
         }
     }
