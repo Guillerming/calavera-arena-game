@@ -780,25 +780,36 @@ export class AudioManager {
                 status: '' // Para información adicional
             };
             
-            // Precargar música esencial
-            console.log('[AudioManager] Precargando música...');
-            this.preloadProgress.total++;
-            this.preloadProgress.status = 'Loading music: sailing.mp3';
-            await this.loadMusicBuffer('sailing', 'assets/audio/fx/sailing.mp3');
-            this.preloadProgress.completed++;
+            // Ordenar los sonidos para cargar primero los hit, luego otros efectos y sailing al final
+            // 1. Primero los hit
+            const hitSounds = ['hit01', 'hit02'];
+            this.preloadProgress.total += hitSounds.length;
             
-            // Precargar efectos esenciales
-            console.log('[AudioManager] Precargando efectos de sonido básicos...');
-            // Solo cargamos los que sabemos que son necesarios
-            const basicSounds = ['canon', 'impact', 'splash', 'hit01', 'hit02'];
-            this.preloadProgress.total += basicSounds.length;
-            
-            for (const sound of basicSounds) {
+            for (const sound of hitSounds) {
                 this.preloadProgress.status = `Loading sound: ${sound}.mp3`;
                 await this.loadSoundBuffer(sound, `assets/audio/fx/${sound}.mp3`)
                     .catch(err => console.warn(`[AudioManager] No se pudo precargar ${sound}:`, err));
                 this.preloadProgress.completed++;
             }
+            
+            // 2. Luego otros efectos esenciales
+            console.log('[AudioManager] Precargando efectos de sonido básicos...');
+            const otherSounds = ['canon', 'impact', 'splash'];
+            this.preloadProgress.total += otherSounds.length;
+            
+            for (const sound of otherSounds) {
+                this.preloadProgress.status = `Loading sound: ${sound}.mp3`;
+                await this.loadSoundBuffer(sound, `assets/audio/fx/${sound}.mp3`)
+                    .catch(err => console.warn(`[AudioManager] No se pudo precargar ${sound}:`, err));
+                this.preloadProgress.completed++;
+            }
+            
+            // 3. Finalmente cargar la música sailing
+            console.log('[AudioManager] Precargando música...');
+            this.preloadProgress.total++;
+            this.preloadProgress.status = 'Loading music: sailing.mp3';
+            await this.loadMusicBuffer('sailing', 'assets/audio/fx/sailing.mp3');
+            this.preloadProgress.completed++;
             
             this.preloaded = true;
             this.preloadProgress.status = 'All audio files loaded';
