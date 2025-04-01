@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { CameraController } from './CameraController.js';
+import { VolumetricFog } from '../world/Fog.js';
 
 export class Engine {
     constructor() {
@@ -7,6 +8,7 @@ export class Engine {
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.cameraController = new CameraController(this.camera);
+        this.fog = null;
         
         this.init();
     }
@@ -24,8 +26,50 @@ export class Engine {
         this.camera.position.set(0, 20, 40); // Posición más elevada y alejada
         this.camera.lookAt(0, 0, 0);
         
+        // Inicializar niebla volumétrica
+        this.initFog();
+        
         // Manejo de redimensionamiento
         window.addEventListener('resize', () => this.onWindowResize());
+    }
+    
+    // Método para inicializar la niebla volumétrica
+    async initFog() {
+        try {
+            // Configuración personalizada para la niebla
+            const fogOptions = {
+                fogColor: new THREE.Color(0xcccccc),
+                fogDensity: 0.015,
+                noiseScale: 0.08,
+                noiseSpeed: 0.04,
+                fogStart: 20,
+                fogEnd: 100,
+                staticColor: false,
+                numLayers: 50,         // Muchas más capas iniciales
+                maxLayers: 300         // Permitir cientos de capas simultáneas
+            };
+            
+            // Crear la niebla volumétrica
+            this.fog = new VolumetricFog(this.scene, this.camera, fogOptions);
+            console.log('[Engine] Niebla volumétrica inicializada correctamente');
+        } catch (error) {
+            console.error('[Engine] Error al inicializar la niebla volumétrica:', error);
+            // Crear una niebla simple como fallback
+            this.scene.fog = new THREE.FogExp2(0xcccccc, 0.01);
+        }
+    }
+    
+    // Método para controlar la niebla
+    setFogDensity(density) {
+        if (this.fog) {
+            this.fog.setDensity(density);
+        }
+    }
+    
+    setFogColor(color) {
+        if (this.fog) {
+            this.fog.setColor(color);
+        }
     }
 
     onWindowResize() {
@@ -44,6 +88,11 @@ export class Engine {
 
     update(deltaTime = 0.016, inputManager = null) {
         this.cameraController.update(deltaTime, inputManager);
+        
+        // Actualizar la niebla volumétrica
+        if (this.fog) {
+            this.fog.update(deltaTime);
+        }
     }
     
     render() {

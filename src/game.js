@@ -14,6 +14,7 @@ import { PlayerPlateSystem } from './utils/PlayerPlateSystem.js';
 import { SkullGameMode } from './modes/SkullGameMode.js';
 import { AudioManager } from './utils/AudioManager.js';
 import { PortalManager } from './utils/PortalManager.js';
+import { FogControls } from './ui/FogControls.js';
 
 export class Game {
     constructor() {
@@ -99,10 +100,70 @@ export class Game {
         directionalLight.castShadow = true;
         this.engine.scene.add(directionalLight);
         
+        // Inicializar la niebla volumétrica
+        this.initializeVolumetricFog();
+        
         // Inicializar sistema de portales
         this.portalManager = new PortalManager(this);
         
         this.logger.end('setupWorld');
+    }
+
+    // Inicializar la niebla volumétrica con configuraciones específicas para el juego
+    initializeVolumetricFog() {
+        // Configurar opciones de niebla adaptadas al estilo del juego
+        const fogOptions = {
+            fogColor: new THREE.Color(0xadc3db), // Color azulado para ambiente marino
+            fogDensity: 0.01,                    // Densidad inicial más ligera
+            noiseScale: 0.06,                    // Escala de ruido para que la niebla sea más suave
+            noiseSpeed: 0.03,                    // Velocidad de animación
+            fogStart: 30,                        // Distancia donde comienza la niebla
+            fogEnd: 150                          // Distancia donde termina la niebla
+        };
+        
+        // La niebla ya se inicializa en el motor, solo necesitamos configurarla
+        if (this.engine && this.engine.fog) {
+            this.engine.setFogColor(fogOptions.fogColor);
+            this.engine.setFogDensity(fogOptions.fogDensity);
+            
+            // Inicializar los controles de niebla (ocultos por defecto)
+            this.fogControls = new FogControls(this);
+            
+            // Mostrar mensaje temporal sobre controles
+            this.showFogControlsMessage();
+        } else {
+            console.warn('[Game] No se pudo inicializar la niebla volumétrica - motor no disponible');
+        }
+    }
+    
+    // Mostrar mensaje temporal sobre los controles de niebla
+    showFogControlsMessage() {
+        const message = document.createElement('div');
+        message.style.position = 'absolute';
+        message.style.top = '20px';
+        message.style.left = '50%';
+        message.style.transform = 'translateX(-50%)';
+        message.style.background = 'rgba(0, 0, 0, 0.7)';
+        message.style.color = 'white';
+        message.style.padding = '10px 20px';
+        message.style.borderRadius = '5px';
+        message.style.fontFamily = 'Arial, sans-serif';
+        message.style.fontSize = '16px';
+        message.style.zIndex = '1001';
+        message.style.textAlign = 'center';
+        message.style.pointerEvents = 'none';
+        message.textContent = 'Pulsa Ctrl+F para controlar la niebla volumétrica';
+        
+        document.body.appendChild(message);
+        
+        // Desvanecer y eliminar después de 5 segundos
+        setTimeout(() => {
+            message.style.transition = 'opacity 1s ease-out';
+            message.style.opacity = '0';
+            setTimeout(() => {
+                document.body.removeChild(message);
+            }, 1000);
+        }, 5000);
     }
 
     async startGame() {
@@ -405,6 +466,9 @@ export class Game {
         
         // Actualizar el motor gráfico (incluye actualización de cámara)
         this.engine.update(boundedDeltaTime, this.inputManager);
+        
+        // Actualizar efectos ambientales como la niebla
+        this.updateEnvironmentalEffects(boundedDeltaTime);
         
         // Renderizar escena
         this.engine.render();
@@ -919,5 +983,85 @@ export class Game {
             await this.checkAudioPlayback();
         }, 15000);
         
+    }
+
+    // Actualizar efectos ambientales como la niebla
+    updateEnvironmentalEffects(deltaTime) {
+        // Si no hay motor o no está configurada la niebla, salir
+        if (!this.engine || !this.engine.fog) return;
+        
+        // Ajustes de niebla según el modo de juego
+        if (this.skullGameMode && this.skullGameMode.isSkullActive) {
+            // Durante el modo calavera, hacer la niebla más densa y oscura
+            const targetColor = new THREE.Color(0x3a4e58); // Color oscuro para modo calavera
+            const targetDensity = 0.025; // Aumentar densidad
+            
+            // Interpolación suave para el color y densidad
+            this._interpolateFogProperties(targetColor, targetDensity, deltaTime);
+        } else {
+            // Condiciones normales
+            // Obtener la hora del día simulada (0.0 a 1.0)
+            const time = (performance.now() % 300000) / 300000; // Ciclo de 5 minutos
+            
+            // Simular ciclo día/noche con cambios sutiles en la niebla
+            const dayNightCycle = Math.sin(time * Math.PI * 2);
+            
+            // Durante el "amanecer" y "atardecer", hacer la niebla más visible
+            if (dayNightCycle > 0.7) { // Amanecer
+                const targetColor = new THREE.Color(0xd7a883); // Color amanecer/atardecer
+                const targetDensity = 0.015;
+                this._interpolateFogProperties(targetColor, targetDensity, deltaTime);
+            } else if (dayNightCycle < -0.7) { // Atardecer
+                const targetColor = new THREE.Color(0x7e6b94); // Color atardecer/noche
+                const targetDensity = 0.02;
+                this._interpolateFogProperties(targetColor, targetDensity, deltaTime);
+            } else { // Día normal
+                const targetColor = new THREE.Color(0xadc3db); // Color diurno normal
+                const targetDensity = 0.01;
+                this._interpolateFogProperties(targetColor, targetDensity, deltaTime);
+            }
+        }
+    }
+    
+    // Método auxiliar para interpolar suavemente entre colores y densidades de niebla
+    _interpolateFogProperties(targetColor, targetDensity, deltaTime) {
+        // Solo interpolamos si tenemos un motor con niebla
+        if (!this.engine || !this.engine.fog) return;
+        
+        // Velocidad de interpolación (ajustar según necesidades)
+        const interpolationSpeed = 0.5 * deltaTime;
+        
+        // Interpolar color - asegurarnos de que tenemos acceso a los valores correctos
+        const currentColor = this.engine.fog.options.fogColor;
+        if (currentColor) {
+            currentColor.r += (targetColor.r - currentColor.r) * interpolationSpeed;
+            currentColor.g += (targetColor.g - currentColor.g) * interpolationSpeed;
+            currentColor.b += (targetColor.b - currentColor.b) * interpolationSpeed;
+            
+            // Aplicar el nuevo color
+            this.engine.setFogColor(currentColor);
+        }
+        
+        // Interpolar densidad - asegurarnos de que tenemos acceso al valor correcto
+        const currentDensity = this.engine.fog.options.fogDensity;
+        if (typeof currentDensity === 'number') {
+            const newDensity = currentDensity + (targetDensity - currentDensity) * interpolationSpeed;
+            
+            // Aplicar la nueva densidad
+            this.engine.setFogDensity(newDensity);
+            
+            // Actualizar controles si están visibles
+            if (this.fogControls && this.fogControls.visible) {
+                // Actualizar los valores en la interfaz
+                const hexColor = '#' + currentColor.getHexString();
+                if (this.fogControls.fogSettings.color !== hexColor) {
+                    this.fogControls.fogSettings.color = hexColor;
+                }
+                
+                if (this.fogControls.fogSettings.density !== newDensity) {
+                    this.fogControls.fogSettings.density = newDensity;
+                }
+            }
+        }
     }
 }
