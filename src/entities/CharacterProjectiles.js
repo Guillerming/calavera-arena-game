@@ -6,6 +6,10 @@ export class CharacterProjectiles {
     }
 
     updateProjectiles(deltaTime) {
+        // Añadir log para ver cuántos proyectiles tiene cada personaje
+        if (this.character.projectiles.length > 0) {
+        }
+        
         // Actualizar cada proyectil
         for (let i = this.character.projectiles.length - 1; i >= 0; i--) {
             const projectile = this.character.projectiles[i];
@@ -460,5 +464,50 @@ export class CharacterProjectiles {
         }
         
         return false;
+    }
+
+    fireProjectile() {
+        if (!this.canFire) {
+            return false;
+        }
+        
+        // Marcar que no puede disparar durante el cooldown
+        this.canFire = false;
+        
+        // Iniciar temporizador de cooldown
+        setTimeout(() => {
+            this.canFire = true;
+        }, this.fireRateMs);
+        
+        // Obtener posición y dirección de disparo
+        const fireDirection = new THREE.Vector3(0, 0, -1).applyQuaternion(this.character.quaternion);
+        
+        // Calcular la posición inicial del proyectil (desplazado delante de la nave)
+        const initialPosition = new THREE.Vector3();
+        initialPosition.copy(this.character.position);
+        initialPosition.add(fireDirection.clone().multiplyScalar(2)); // Desplazar 2 unidades hacia adelante
+        
+        // Ajustar altura para disparar desde el cañón y no desde el centro de la nave
+        initialPosition.y += 0.5;
+        
+        // Calcular velocidad del proyectil en la dirección de disparo
+        const velocity = fireDirection.clone().multiplyScalar(25); // 20 unidades por segundo
+        const projectileId = this.generateUniqueId();
+        
+        // Si estamos conectados, enviar evento de disparo por red
+        if (this.character.networkManager) {
+            const projectileData = {
+                id: projectileId,
+                playerId: this.character.id,
+                initialPosition,
+                velocity,
+                rotationSpeed: Math.random() * 0.1 // Rotación aleatoria para efecto visual
+            };
+            
+            // Console log para debuggear qué contiene cada proyectil
+            
+            // Enviar al servidor
+            this.character.networkManager.sendProjectile(projectileData);
+        }
     }
 } 

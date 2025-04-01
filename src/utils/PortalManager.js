@@ -329,7 +329,6 @@ export class PortalManager {
         const paramString = newParams.toString();
         
         // Redirigir al juego anterior
-        console.log(`[PortalManager] Redirigiendo a: ${url}`);
         window.location.href = url + (paramString ? '?' + paramString : '');
     }
     
@@ -370,7 +369,6 @@ export class PortalManager {
         const nextPage = 'https://portal.pieter.com' + (paramString ? '?' + paramString : '');
         
         // Redirigir a Vibeverse
-        console.log(`[PortalManager] Redirigiendo a: ${nextPage}`);
         window.location.href = nextPage;
     }
     

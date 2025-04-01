@@ -56,7 +56,6 @@ export class ScoreManager {
         killerScore.kills++;
         
         // Añadir log para depuración
-        console.log(`[ScoreManager] Registrado kill: ${killerId} mató a ${victimId}, kills actuales: ${killerScore.kills}`);
         
         // NO incrementamos muertes de la víctima según el requisito
     }
@@ -187,7 +186,6 @@ export class ScoreManager {
         const playerScore = this.scores.get(playerId);
         if (playerScore) {
             playerScore.kills = kills;
-            console.log(`[ScoreManager] Sincronizado kills para ${playerId}: ${kills}`);
         }
     }
     
@@ -197,7 +195,6 @@ export class ScoreManager {
             return;
         }
         
-        console.log(`[ScoreManager] Sincronizando puntuaciones desde servidor: ${serverScores.length} jugadores`);
         
         // Actualizar puntuaciones desde el servidor
         serverScores.forEach(playerData => {

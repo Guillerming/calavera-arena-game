@@ -27,7 +27,6 @@ export class PlayerPlateSystem {
         if (playerName) {
             const oldName = this.playerNames.get(playerId);
             if (oldName !== playerName) {
-                console.log(`[PlayerPlateSystem] Actualizando nombre: ${playerId} -> "${playerName}"`);
                 this.playerNames.set(playerId, playerName);
                 
                 // Si ya existe un sprite pero el nombre cambió, recrearlo
@@ -45,7 +44,6 @@ export class PlayerPlateSystem {
         if (health !== undefined) {
             const oldHealth = this.playerHealth.get(playerId);
             if (oldHealth !== health) {
-                console.log(`[PlayerPlateSystem] Actualizando salud: ${playerId} -> ${health} (antes: ${oldHealth})`);
                 this.playerHealth.set(playerId, health);
                 
                 // Si ya existe un sprite y la salud cambió, recrearlo
@@ -58,7 +56,6 @@ export class PlayerPlateSystem {
                 }
             }
         } else {
-            console.log(`[PlayerPlateSystem] Advertencia: No se proporcionó salud para el jugador ${playerId}`);
         }
         
         // Si no existe el sprite para este jugador, lo creamos

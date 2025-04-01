@@ -8,23 +8,23 @@ export class SkullGameMode {
         this.scoreManager = game.scoreManager;
         
         // Configuración del modo
-        this.NORMAL_MODE_DURATION = 60 * 0.5; // 30 segundos (en segundos) - modo normal
-        this.SKULL_MODE_DURATION = 60 * 2;  // 2 minutos (en segundos) - modo calavera
-        this.isSkullModeActive = false;  // Inicialmente en modo normal
-        this.countdown = this.NORMAL_MODE_DURATION; // Iniciar countdown
+        this.NORMAL_MODE_DURATION = 60 * 0.5; // 30 seconds (in seconds) - normal mode
+        this.SKULL_MODE_DURATION = 60 * 2;  // 2 minutes (in seconds) - skull mode
+        this.isSkullModeActive = false;  // Initially in normal mode
+        this.countdown = this.NORMAL_MODE_DURATION; // Start countdown
         
         // Propiedades de la calavera
         this.skullMesh = null;
-        this.skullRadius = 1; // Radio de detección (unidades)
-        this.skullHeight = 3; // Altura a la que flota (unidades)
+        this.skullRadius = 1; // Detection radius (units)
+        this.skullHeight = 3; // Height at which it floats (units)
         this.skullPosition = new THREE.Vector3();
         this.isSkullCaptured = false;
         
         // Propiedades para la animación de la calavera
         this.skullAnimationTime = 0;
-        this.skullFloatAmplitude = 0.3; // Amplitud de la flotación
-        this.skullFloatSpeed = 2.0;     // Velocidad de la flotación (aumentada)
-        this.skullRotationSpeed = 0.8;  // Velocidad de rotación (aumentada)
+        this.skullFloatAmplitude = 0.3; // Float amplitude
+        this.skullFloatSpeed = 2.0;     // Float speed (increased)
+        this.skullRotationSpeed = 0.8;  // Rotation speed (increased)
         
         // Referencias a los jugadores
         this.characters = null;
@@ -33,58 +33,229 @@ export class SkullGameMode {
         this.messageElement = null;
         this.timerElement = null;
         this.createUI();
+        
+        // Efectos visuales para el modo calavera
+        this.originalFogColor = null;
+        this.originalBackgroundColor = null;
+        this.originalLightColor = null;
+        this.fog = null;
+        this.skullModeColorFilter = null;
+        this.visualTransitionDuration = 1.5; // duración de la transición en segundos
+        this.isTransitioning = false;
+        this.transitionStartTime = 0;
+        this.transitionProgress = 0;
+        this.transitionDirection = 1; // 1: normal->calavera, -1: calavera->normal
+        
+        // Colores de efecto calavera
+        this.skullBackgroundColor = new THREE.Color(0x141408);  // Color amarillo oscuro
+        this.skullFogColor = new THREE.Color(0x332211);  // Niebla amarilla más densa y visible
+        this.skullFogDensity = 0;
+        this.skullFogNear = 20;  // Distancia donde comienza la niebla (más cerca)
+        this.skullFogFar = 80;   // Distancia donde la niebla es completamente opaca (más cerca)
+        this.skullLightColor = new THREE.Color(0xCCCC99);  // Color amarillo claro
+        
+        this.initializeVisualEffects();
+    }
+    
+    // Inicializar efectos visuales
+    initializeVisualEffects() {
+        // Guardar colores originales de la escena
+        this.originalBackgroundColor = this.scene.background ? this.scene.background.clone() : new THREE.Color(0x87ceeb);
+        
+        // Guardar referencia a las luces ambientales y sus colores originales
+        this.ambientLights = [];
+        this.scene.traverse((object) => {
+            if (object instanceof THREE.AmbientLight) {
+                this.ambientLights.push(object);
+                if (!this.originalLightColor) {
+                    this.originalLightColor = object.color.clone();
+                }
+            }
+        });
+        
+        // Crear filtro de color rojizo (se aplicará cuando se active el modo)
+        this.createColorFilter();
+    }
+    
+    // Crear filtro de color rojizo para overlay
+    createColorFilter() {
+        // Crear un div para el filtro de color
+        const filterDiv = document.createElement('div');
+        filterDiv.id = 'skull-mode-filter';
+        filterDiv.style.position = 'fixed';
+        filterDiv.style.top = '0';
+        filterDiv.style.left = '0';
+        filterDiv.style.width = '100vw';
+        filterDiv.style.height = '100vh';
+        filterDiv.style.backgroundColor = 'rgba(255, 255, 0, 0.04)';  // Amarillo en lugar de rojo
+        filterDiv.style.pointerEvents = 'none';
+        filterDiv.style.opacity = '0';
+        filterDiv.style.transition = 'opacity 1.5s ease-in-out';
+        filterDiv.style.zIndex = '1000';
+        document.body.appendChild(filterDiv);
+        
+        this.skullModeColorFilter = filterDiv;
     }
     
     // Iniciar el modo de juego
     start() {
-        // Obtener referencia a los jugadores
+        // Get reference to players
         if (this.game.characterManager) {
             this.characters = this.game.characterManager.characters;
         } else {
             console.error("No se pudo obtener referencia a los jugadores");
         }
         
-        // Crear la calavera (pero no mostrarla aún)
+        // Create the skull (but not show it yet)
         this.createSkull();
+        
+        // Asegurarnos de que los materiales de agua usen correctamente la niebla
+        this.updateWaterMaterialFog();
     }
     
     // Actualizar el modo de juego (llamado cada frame)
     update(deltaTime) {
-        // Actualizar UI
+        // Update UI
         this.updateUI();
         
-        // Actualizar contador
+        // Update counter
         if (deltaTime > 0) {
             this.countdown -= deltaTime;
             
-            // Si el contador llega a cero, cambiar el modo
+            // If counter reaches zero, change mode
             if (this.countdown <= 0) {
-                // Si estábamos en modo normal, activar modo calavera
+                // If we were in normal mode, activate skull mode
                 if (!this.isSkullModeActive) {
                     this.onModeActivated();
                     this.updateSkullVisibility();
                 } 
-                // Si estábamos en modo calavera, volver a modo normal
+                // If we were in skull mode, return to normal mode
                 else {
                     this.onModeDeactivated();
                     this.updateSkullVisibility();
+                    
+                    // Verificación adicional para asegurar que se revierten los efectos visuales
+                    if (this.scene && this.scene.fog && !this.isTransitioning) {
+                        this.scene.fog = null;
+                    }
+                    if (this.skullModeColorFilter && !this.isTransitioning) {
+                        this.skullModeColorFilter.style.opacity = '0';
+                    }
                 }
             }
         }
         
-        // Si estamos en modo calavera y la calavera no ha sido capturada
+        // Actualizar transición visual si está en curso
+        if (this.isTransitioning) {
+            this.updateVisualTransition(deltaTime);
+        }
+        
+        // If we are in skull mode and the skull hasn't been captured
         if (this.isSkullModeActive && !this.isSkullCaptured && this.skullMesh) {
-            // Actualizar orientación de la calavera
+            // Update skull orientation
             this.updateSkullOrientation();
             
-            // Actualizar animación de la calavera
+            // Update skull animation
             this.updateSkullAnimation(deltaTime);
+        } else if (!this.isSkullModeActive && this.scene && this.scene.fog && !this.isTransitioning) {
+            // Verificación adicional: si no estamos en modo calavera pero aún hay niebla, eliminarla
+            this.scene.fog = null;
         }
     }
     
-    // Crear la calavera (pero no mostrarla aún)
+    // Actualizar la transición visual (interpolación suave)
+    updateVisualTransition(deltaTime) {
+        if (!this.isTransitioning) return;
+        
+        // Actualizar progreso
+        this.transitionProgress += deltaTime / this.visualTransitionDuration;
+        
+        // Limitar progreso entre 0 y 1
+        if (this.transitionProgress >= 1) {
+            this.transitionProgress = 1;
+            this.isTransitioning = false;
+            
+            // Si terminamos la transición, asegurarnos de que el agua use la niebla correctamente
+            this.updateWaterMaterialFog();
+        }
+        
+        // Calcular valor de interpolación (dependiendo de la dirección)
+        let t = this.transitionDirection > 0 ? this.transitionProgress : 1 - this.transitionProgress;
+        
+        // Función de suavizado (ease-in-out)
+        t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+        
+        // Interpolar color de fondo
+        if (this.originalBackgroundColor && this.scene.background) {
+            this.scene.background.copy(this.originalBackgroundColor).lerp(this.skullBackgroundColor, t);
+        }
+        
+        // Interpolar niebla
+        if (this.transitionDirection > 0) {
+            // Transición a modo calavera - crear niebla gradualmente
+            if (!this.scene.fog && t > 0.1) {
+                // Crear niebla con distancias iniciales más amplias
+                this.fog = new THREE.Fog(
+                    this.skullFogColor, 
+                    this.skullFogNear + (1-t) * 100, // Comenzar desde más lejos
+                    this.skullFogFar + (1-t) * 200   // Terminar más lejos
+                );
+                this.scene.fog = this.fog;
+                
+                // Asegurarnos de que los materiales de agua usen correctamente la niebla
+                this.updateWaterMaterialFog();
+            }
+            
+            // Ajustar gradualmente las distancias de la niebla
+            if (this.scene.fog) {
+                if (this.scene.fog instanceof THREE.Fog) {
+                    // Acercar gradualmente la niebla hacia el jugador
+                    this.scene.fog.near = this.skullFogNear + (1-t) * 100;
+                    this.scene.fog.far = this.skullFogFar + (1-t) * 200;
+                    
+                    // Interpolar color de la niebla
+                    if (this.scene.fog.color) {
+                        this.scene.fog.color.copy(this.skullFogColor);
+                    }
+                }
+            }
+        } else {
+            // Transición a modo normal - alejar niebla gradualmente
+            if (this.scene.fog) {
+                if (this.scene.fog instanceof THREE.Fog) {
+                    // Alejar gradualmente la niebla del jugador
+                    this.scene.fog.near = this.skullFogNear + t * 100;
+                    this.scene.fog.far = this.skullFogFar + t * 200;
+                    
+                    // Si la niebla está muy lejos, eliminarla
+                    if (t < 0.1) {
+                        this.scene.fog = null;
+                        
+                        // Asegurarnos de que los materiales de agua actualicen su estado
+                        this.updateWaterMaterialFog();
+                    }
+                }
+            }
+        }
+        
+        // Interpolar color de luces
+        if (this.originalLightColor && this.ambientLights.length > 0) {
+            // Interpolar cada luz ambiental
+            this.ambientLights.forEach(light => {
+                if (this.transitionDirection > 0) {
+                    // Normal -> Calavera
+                    light.color.copy(this.originalLightColor).lerp(this.skullLightColor, t);
+                } else {
+                    // Calavera -> Normal
+                    light.color.copy(this.skullLightColor).lerp(this.originalLightColor, t);
+                }
+            });
+        }
+    }
+    
+    // Create the skull (but not show it yet)
     createSkull() {
-        // Crear un canvas para el emoji de la calavera
+        // Create a canvas for the skull emoji
         const canvas = document.createElement('canvas');
         canvas.width = 128;
         canvas.height = 128;
@@ -92,43 +263,43 @@ export class SkullGameMode {
         ctx.fillStyle = 'transparent';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         
-        // Dibujar un círculo negro de fondo
+        // Draw a black circle background
         ctx.beginPath();
         ctx.arc(canvas.width / 2, canvas.height / 2, 45, 0, Math.PI * 2);
         ctx.fillStyle = 'black';
         ctx.fill();
         
-        // Dibujar el emoji de calavera
+        // Draw the skull emoji
         ctx.font = '100px Arial';
         ctx.fillStyle = 'white';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText('💀', canvas.width / 2, canvas.height / 2);
         
-        // Crear textura desde el canvas
+        // Create texture from canvas
         const texture = new THREE.CanvasTexture(canvas);
         
-        // Crear material con la textura
+        // Create material with the texture
         const material = new THREE.MeshBasicMaterial({
             map: texture,
             transparent: true,
             side: THREE.DoubleSide
         });
         
-        // Crear geometría (un plano simple pero más grande - 1.5 veces el tamaño anterior)
+        // Create geometry (a simple plane but larger - 1.5 times the size of the previous one)
         const geometry = new THREE.PlaneGeometry(4.5, 4.5);
         
-        // Crear mesh
+        // Create mesh
         this.skullMesh = new THREE.Mesh(geometry, material);
         
-        // No mostrar inicialmente
+        // Not show initially
         this.skullMesh.visible = false;
         
-        // Añadir a la escena
+        // Add to scene
         this.scene.add(this.skullMesh);
     }
     
-    // Actualizar la posición de la calavera (recibida del servidor)
+    // Update skull position (received from server)
     updateSkullPosition(position) {
         if (!this.skullMesh) return;
         
@@ -136,74 +307,74 @@ export class SkullGameMode {
         this.skullMesh.position.copy(this.skullPosition);
     }
     
-    // Actualizar si la calavera es visible o no
+    // Update if the skull is visible or not
     updateSkullVisibility() {
         if (!this.skullMesh) return;
         
-        // La calavera es visible si estamos en modo calavera y no ha sido capturada
+        // The skull is visible if we are in skull mode and not captured
         this.skullMesh.visible = this.isSkullModeActive && !this.isSkullCaptured;
     }
     
-    // Actualizar orientación de la calavera para que mire al jugador local
+    // Update skull orientation to face the local player
     updateSkullOrientation() {
         if (!this.skullMesh || !this.skullMesh.visible) return;
         
-        // Obtener la cámara
+        // Get camera
         const camera = this.game.engine.camera;
         if (!camera) return;
         
-        // Hacer que la calavera mire hacia la cámara (billboarding)
+        // Make the skull look towards the camera (billboarding)
         this.skullMesh.lookAt(camera.position);
     }
     
-    // Método para crear la UI
+    // Method to create UI
     createUI() {
-        // Obtener referencias a los elementos existentes
+        // Get references to existing elements
         this.messageElement = document.getElementById('message-text');
         this.messageContainer = document.getElementById('message-container');
         this.timerElement = document.getElementById('skull-timer');
         this.skullModeContainer = document.getElementById('skull-mode-container');
         
-        // Verificar que todos los elementos existen
+        // Verify that all elements exist
         if (!this.messageElement || !this.messageContainer || !this.timerElement || !this.skullModeContainer) {
-            console.error('Error: No se encontraron algunos elementos UI del modo calavera en el HTML');
+            console.error('Error: Some skull mode UI elements were not found in the HTML');
         }
     }
     
-    // Actualizar UI (timer y mensajes)
+    // Update UI (timer and messages)
     updateUI() {
         if (!this.timerElement) return;
         
-        // Formatear tiempo restante
+        // Format remaining time
         const minutes = Math.floor(this.countdown / 60);
         const seconds = Math.floor(this.countdown % 60);
         const timeString = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
         
-        // Mostrar texto según el modo
+        // Show text based on mode
         if (this.isSkullModeActive) {
-            this.timerElement.textContent = `MODO CALAVERA: ${timeString}`;
+            this.timerElement.textContent = `CALAVERA MODE: ${timeString}`;
             this.skullModeContainer.classList.add('skull-mode-active');
         } else {
-            this.timerElement.textContent = `Próximo modo calavera: ${timeString}`;
+            this.timerElement.textContent = `Next Calavera mode: ${timeString}`;
             this.skullModeContainer.classList.remove('skull-mode-active');
         }
     }
     
-    // Mostrar mensaje temporal
+    // Show temporary message
     showMessage(message, duration = 5000) {
         if (!this.messageElement || !this.messageContainer) return;
         
         this.messageElement.textContent = message;
         this.messageContainer.style.opacity = '1';
         
-        // Ocultar después de duración
+        // Hide after duration
         clearTimeout(this.messageTimeout);
         this.messageTimeout = setTimeout(() => {
             this.messageContainer.style.opacity = '0';
         }, duration);
     }
     
-    // Limpiar recursos
+    // Clean up resources
     cleanup() {
         if (this.skullMesh && this.skullMesh.parent) {
             this.skullMesh.parent.remove(this.skullMesh);
@@ -211,7 +382,7 @@ export class SkullGameMode {
         
         clearTimeout(this.messageTimeout);
         
-        // Ya no necesitamos eliminar elementos, solo limpiar su contenido
+        // We no longer need to remove elements, just clean up their content
         if (this.messageElement) {
             this.messageElement.textContent = '';
         }
@@ -219,87 +390,114 @@ export class SkullGameMode {
         if (this.messageContainer) {
             this.messageContainer.style.opacity = '0';
         }
+        
+        // Detener cualquier transición en curso
+        this.isTransitioning = false;
+        
+        // Asegurarnos de que los efectos visuales se eliminen completamente
+        this.isSkullModeActive = false;
+        this.restoreNormalVisuals(true); // forzar restauración inmediata
+        
+        // Eliminar filtro de color
+        if (this.skullModeColorFilter && this.skullModeColorFilter.parentNode) {
+            this.skullModeColorFilter.parentNode.removeChild(this.skullModeColorFilter);
+        }
+        
+        // Asegurarse de que no quede niebla residual
+        if (this.scene) {
+            this.scene.fog = null;
+        }
     }
     
-    // Método para sincronizar con el servidor
+    // Method to synchronize with the server
     syncWithServer(data) {
         if (!data) return;
         
-        // Actualizar estado del modo
+        // Update mode status
         if (data.isActive !== undefined) {
             const wasModeActive = this.isSkullModeActive;
             this.isSkullModeActive = data.isActive;
             
-            // Si cambiamos de modo, mostrar mensaje
+            // If we changed mode, show message
             if (wasModeActive !== this.isSkullModeActive) {
                 if (this.isSkullModeActive) {
-                    this.showMessage("¡MODO CALAVERA ACTIVADO! ¡Captura la calavera!");
+                    this.showMessage("CALAVERA MODE ACTIVATED! Capture the skull!");
+                    // Aplicar efectos visuales cuando el modo se activa por sincronización
+                    this.applySkullModeVisuals();
                 } else {
-                    this.showMessage("Modo normal restaurado");
+                    this.showMessage("Normal mode restored");
+                    // Restaurar visuales normales cuando el modo se desactiva por sincronización
+                    this.restoreNormalVisuals();
                 }
             }
         }
         
-        // Actualizar countdown
+        // Update countdown
         if (data.countdown !== undefined) {
             this.countdown = data.countdown;
         }
         
-        // Actualizar posición de la calavera si está activa
+        // Update skull position if active
         if (data.data && data.data.skullPosition) {
             this.updateSkullPosition(data.data.skullPosition);
         }
         
-        // Actualizar estado de captura
+        // Update capture status
         if (data.data && data.data.isSkullCaptured !== undefined) {
+            const wasCaptured = this.isSkullCaptured;
             this.isSkullCaptured = data.data.isSkullCaptured;
+            
+            // Si la calavera fue capturada, asegurarse de que se reviertan los efectos visuales
+            // en caso de que el modo vaya a terminar pronto
+            if (!wasCaptured && this.isSkullCaptured) {
+                // No revertimos aún, pero estamos listos para hacerlo cuando el servidor
+                // indique que el modo ha terminado
+            }
         }
         
-        // Actualizar visibilidad de la calavera
+        // Update skull visibility
         this.updateSkullVisibility();
         
-        // Actualizar UI
+        // Update UI
         this.updateUI();
     }
     
-    // Método para manejar el evento de captura de calavera desde el servidor
+    // Method to handle skull capture event from server
     onSkullCaptured(playerId) {
-        // Si no está en modo calavera o ya fue capturada, ignorar
+        // If not in skull mode or already captured, ignore
         if (!this.isSkullModeActive || this.isSkullCaptured) {
             return;
         }
         
-        // Encontrar el carácter relacionado con este playerId
+        // Find the character related to this playerId
         const character = this.game.findCharacterById(playerId);
         const playerName = character ? character.name : playerId;
         
-        // Actualizar estado
+        // Update status
         this.isSkullCaptured = true;
         this.updateSkullVisibility();
         
-        // Mostrar mensaje de captura
-        this.showMessage(`¡${playerName} ha capturada la calavera!`);
+        // Show capture message
+        this.showMessage(`${playerName} has captured the skull!`);
     }
     
-    // Manejar la activación del modo calavera
+    // Method called when the skull mode is activated
     onModeActivated() {
         this.isSkullModeActive = true;
         this.countdown = this.SKULL_MODE_DURATION;
         
-        // Hacer visible la calavera
-        if (this.skullMesh) {
-            this.skullMesh.visible = true;
-        }
-        
-        // Generar posición aleatoria para la calavera
+        // Generate random position for the skull
         this.generateRandomSkullPosition();
         
-        // Mostrar mensaje de inicio
-        this.showMessage("¡MODO CALAVERA ACTIVADO! ¡Captura la calavera!");
+        // Apply visual effects with transition
+        this.applySkullModeVisuals();
         
-        // Reproducir música de modo calavera si existe audioManager
+        // Show start message
+        this.showMessage("CALAVERA MODE ACTIVATED! Capture the skull!");
+        
+        // Play skull mode music if exists audioManager
         if (this.game && this.game.audioManager) {
-            // Reproducir por 12 segundos (duración de la pista)
+            // Play for 12 seconds (track duration)
             this.game.audioManager.playTemporaryMusic('calaveramode', 12000);
             
             // Iniciar sistema de sonidos de fantasma aleatorios durante el modo calavera
@@ -412,7 +610,7 @@ export class SkullGameMode {
         }
     }
 
-    // Manejar la desactivación del modo calavera
+    // Method called when the skull mode is deactivated
     onModeDeactivated() {
         this.isSkullModeActive = false;
         this.skullMesh.visible = false;
@@ -421,43 +619,142 @@ export class SkullGameMode {
         
         // Detener el sistema de audio aleatorio de calavera
         this._stopCalaveraAudio();
+        // Restore normal visuals with transition
+        this.restoreNormalVisuals();
+        
+        // Show message
+        this.showMessage("Normal mode restored");
     }
 
-    // Generar una posición aleatoria para la calavera
+    // Generate a random position for the skull
     generateRandomSkullPosition() {
         if (!this.skullMesh) return;
         
-        // Generar posición aleatoria dentro de un cierto rango del mapa
-        const mapRadius = 100; // Radio del mapa para colocar la calavera
+        // Generate random position within a certain range of the map
+        const mapRadius = 100; // Map radius to place the skull
         const randomAngle = Math.random() * Math.PI * 2;
-        const randomRadius = Math.random() * mapRadius * 0.7; // 70% del radio del mapa
+        const randomRadius = Math.random() * mapRadius * 0.7; // 70% of the map radius
         
-        // Calcular posición XZ en círculo
+        // Calculate XZ position in circle
         const x = Math.cos(randomAngle) * randomRadius;
         const z = Math.sin(randomAngle) * randomRadius;
         
-        // Establecer altura fija + pequeña variación
+        // Set fixed height + small variation
         const y = this.skullHeight + Math.random() * 0.5;
         
-        // Actualizar posición
+        // Update position
         this.skullPosition.set(x, y, z);
         this.skullMesh.position.copy(this.skullPosition);
     }
 
-    // Método para animar la calavera
+    // Update skull animation
     updateSkullAnimation(deltaTime) {
         if (!this.skullMesh || !this.skullMesh.visible) return;
         
-        // Incrementar tiempo de animación
+        // Increment animation time
         this.skullAnimationTime += deltaTime * this.skullFloatSpeed;
         
-        // Calcular movimiento vertical (sinusoidal)
+        // Calculate vertical movement (sinusoidal)
         const verticalOffset = Math.sin(this.skullAnimationTime) * this.skullFloatAmplitude;
         
-        // Aplicar movimiento vertical
+        // Apply vertical movement
         this.skullMesh.position.y = this.skullPosition.y + verticalOffset;
         
-        // Aplicar rotación
+        // Apply rotation
         this.skullMesh.rotation.y += deltaTime * this.skullRotationSpeed;
+    }
+    
+    // Actualizar propiedades de los materiales de agua para que funcionen con la niebla
+    updateWaterMaterialFog() {
+        if (!this.scene) return;
+        
+        this.scene.traverse(object => {
+            // Buscar objetos de agua y asegurarse de que usen la niebla correctamente
+            if (object.userData && object.userData.isWater) {
+                if (object.material) {
+                    // Forzar que los materiales de agua respeten la niebla
+                    object.material.fog = true;
+                    
+                    // Si es un material con shader personalizado, asegurarnos de que use la niebla
+                    if (object.material.defines) {
+                        object.material.defines.USE_FOG = true;
+                        object.material.needsUpdate = true;
+                    }
+                }
+            }
+        });
+    }
+    
+    // Aplicar efectos visuales del modo calavera con transición
+    applySkullModeVisuals(immediate = false) {
+        if (immediate) {
+            // Aplicación inmediata sin transición
+            const scene = this.scene;
+            
+            // 1. Guardar el color de fondo original si no se ha guardado aún
+            if (!this.originalBackgroundColor && scene.background) {
+                this.originalBackgroundColor = scene.background.clone();
+            }
+            
+            // 2. Oscurecer el escenario cambiando el color de fondo
+            scene.background = this.skullBackgroundColor.clone();
+            
+            // 3. Añadir niebla
+            if (!this.fog) {
+                this.fog = new THREE.Fog(this.skullFogColor, this.skullFogNear, this.skullFogFar);
+                scene.fog = this.fog;
+                
+                // Asegurarnos de que los materiales de agua usen correctamente la niebla
+                this.updateWaterMaterialFog();
+            }
+            
+            // 4. Aplicar tono amarillento con el filtro CSS
+            if (this.skullModeColorFilter) {
+                this.skullModeColorFilter.style.opacity = '1';
+            }
+            
+            // 5. Cambiar la luz ambiental para darle un tono amarillento
+            this.ambientLights.forEach(light => {
+                light.color.copy(this.skullLightColor);
+            });
+        } else {
+            // Iniciar transición suave
+            this.isTransitioning = true;
+            this.transitionProgress = 0;
+            this.transitionDirection = 1; // Dirección: normal -> calavera
+        }
+    }
+    
+    // Restaurar visuales normales con transición
+    restoreNormalVisuals(immediate = false) {
+        if (immediate) {
+            // Restauración inmediata sin transición
+            const scene = this.scene;
+            
+            // 1. Restaurar color de fondo
+            if (this.originalBackgroundColor) {
+                scene.background = this.originalBackgroundColor.clone();
+            }
+            
+            // 2. Quitar niebla
+            scene.fog = null;
+            
+            // 3. Quitar filtro rojizo
+            if (this.skullModeColorFilter) {
+                this.skullModeColorFilter.style.opacity = '0';
+            }
+            
+            // 4. Restaurar luz ambiental original
+            if (this.originalLightColor) {
+                this.ambientLights.forEach(light => {
+                    light.color.copy(this.originalLightColor);
+                });
+            }
+        } else {
+            // Iniciar transición suave
+            this.isTransitioning = true;
+            this.transitionProgress = 0;
+            this.transitionDirection = -1; // Dirección: calavera -> normal
+        }
     }
 } 

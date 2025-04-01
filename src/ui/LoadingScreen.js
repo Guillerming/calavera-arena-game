@@ -6,7 +6,7 @@ export class LoadingScreen {
         this.element = document.getElementById('loading-screen');
         
         if (!this.element) {
-            console.error('Error: No se encontró el elemento loading-screen en el HTML');
+            console.error('Error: The loading-screen element was not found in the HTML');
             return;
         }
         
@@ -23,7 +23,7 @@ export class LoadingScreen {
                 }
             });
         } else {
-            console.error('Error: No se encontró el formulario de jugador en el HTML');
+            console.error('Error: The player form was not found in the HTML');
         }
 
         // Cargar nombre guardado si existe

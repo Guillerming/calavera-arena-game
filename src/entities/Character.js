@@ -84,6 +84,21 @@ export class Character extends THREE.Object3D {
             this.boat.rotation.y = Math.PI;
             this.boat.position.y = -0.8;
             
+            // Modificar los materiales para que parezcan más de madera
+            this.boat.traverse((child) => {
+                if (child.isMesh && child.material) {
+                    // Si el material es un array, procesar cada material
+                    if (Array.isArray(child.material)) {
+                        child.material.forEach(mat => {
+                            this._applyWoodMaterial(mat);
+                        });
+                    } else {
+                        // Si es un solo material
+                        this._applyWoodMaterial(child.material);
+                    }
+                }
+            });
+            
             this.add(this.boat);
             
             // Crear una caja como colisionador en lugar de un cilindro
@@ -486,4 +501,31 @@ export class Character extends THREE.Object3D {
         }
     }
 
+    // Método auxiliar para aplicar propiedades de madera al material
+    _applyWoodMaterial(material) {
+        // Reducir el brillo/reflectividad
+        if (material.metalness !== undefined) {
+            material.metalness = 0.05;  // Aún menos metálico
+        }
+        if (material.roughness !== undefined) {
+            material.roughness = 0.85;  // Más rugoso
+        }
+        if (material.shininess !== undefined) {
+            material.shininess = 3;    // Menos brillo
+        }
+        
+        // Ajustar el color ligeramente para que parezca más madera
+        if (material.color) {
+            // Dar un tono más cálido a los colores existentes
+            const currentColor = material.color.getHSL({});
+            material.color.setHSL(
+                0.07,  // Tono marrón-rojizo ligeramente más cálido
+                0.75,   // Mayor saturación
+                currentColor.l * 0.75  // Más oscuro
+            );
+        }
+        
+        // Actualizar el material
+        material.needsUpdate = true;
+    }
 }

@@ -146,7 +146,7 @@ export class CharacterManager {
     }
 
     updateAll(deltaTime) {
-        for (const character of this.characters.values()) {
+        for (const [id, character] of this.characters.entries()) {
             // Pasar el inputManager solo al personaje del jugador
             if (character === this.playerCharacter && this.inputManager) {
                 character.update(deltaTime, this.inputManager);
@@ -251,6 +251,7 @@ export class CharacterManager {
             console.error('Datos de proyectil incompletos:', projectileData);
             return;
         }
+
 
         // Ignorar los proyectiles del jugador local (ya los manejamos localmente)
         if (projectileData.playerId === this.playerCharacter?.name) {
@@ -450,6 +451,9 @@ export class CharacterManager {
     }
 
     update(deltaTime) {
+        // Actualizar todos los personajes y sus proyectiles
+        this.updateAll(deltaTime);
+        
         // Asegurar que el ScoreboardUI se actualiza con la información más reciente
         if (this.scoreboardUI) {
             // Verificar que inputManager está disponible

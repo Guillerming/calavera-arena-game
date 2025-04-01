@@ -293,6 +293,10 @@ export class AudioManager {
         if (!eventConfig) {
             console.warn(`[AudioManager] Evento de sonido desconocido: ${eventName}`);
             return null;
+    // Reproducir un efecto de sonido
+    playSound(id, volume = null, loop = false, position = null) {
+        if (!this.enabled) {
+            return;
         }
         
         // Validar posición si se proporciona
@@ -337,6 +341,30 @@ export class AudioManager {
                 { x: validPosition.x, y: validPosition.y, z: validPosition.z } : 
                 'null',
             jugador: sourcePlayer || 'local'
+        });
+
+        const sound = this.sounds.get(id);
+        
+        // Clonar el sonido para permitir múltiples reproducciones simultáneas
+        const soundClone = sound.cloneNode();
+        
+        // Usar volumen personalizado si se proporciona, de lo contrario usar el predeterminado
+        if (volume !== null) {
+            soundClone.volume = volume * this.masterVolume;
+        } else {
+            soundClone.volume = this.sfxVolume * this.masterVolume;
+        }
+        
+        // Configurar si el sonido debe repetirse
+        soundClone.loop = loop;
+        
+        // Log para depuración de sonidos posicionales
+        if (position) {
+        }
+        
+        // Añadir manejador de errores en la reproducción
+        soundClone.addEventListener('error', (e) => {
+            console.error(`[AudioManager] Error al reproducir sonido ${id}:`, e);
         });
         
         // TEMPORAL: Aumentar el rango para depuración hasta que se solucione el problema

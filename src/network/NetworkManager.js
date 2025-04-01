@@ -10,6 +10,7 @@ export class NetworkManager {
         this.onPlayerJoin = null;
         this.onPlayerLeave = null;
         this.onProjectileUpdate = null;
+        this.onProjectileFired = null;
         this.onProjectileRemove = null;
         this.onProjectileCollision = null;
         this.onHealthUpdate = null;
@@ -187,6 +188,12 @@ export class NetworkManager {
                 case 'newProjectile':
                     this.projectiles.set(data.projectile.id, data.projectile);
                     
+                    // Primero notificar como evento de disparo
+                    if (this.onProjectileFired) {
+                        this.onProjectileFired(data.projectile);
+                    }
+                    
+                    // Luego actualizar con el handler normal para compatibilidad
                     if (this.onProjectileUpdate) {
                         this.onProjectileUpdate(data.projectile);
                     }
@@ -304,12 +311,10 @@ export class NetworkManager {
                 
                 // SERVIDOR -> CLIENTE: Recibir marcadores actualizados
                 case 'scoreSync':
-                    console.log(`[NetworkManager] Recibida sincronización de marcadores desde servidor`);
                     
                     // Sincronizar marcadores si tenemos un ScoreManager configurado
                     if (this.scoreManager && data.scores && Array.isArray(data.scores)) {
                         this.scoreManager.syncScores(data.scores);
-                        console.log(`[NetworkManager] Marcadores sincronizados: ${data.scores.length} jugadores`);
                     }
                     break;
                 
@@ -477,11 +482,12 @@ export class NetworkManager {
     }
 
     // Establecer callbacks para eventos
-    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileRemove, onProjectileCollision, onHealthUpdate, onKill }) {
+    setCallbacks({ onPlayerUpdate, onPlayerJoin, onPlayerLeave, onProjectileUpdate, onProjectileFired, onProjectileRemove, onProjectileCollision, onHealthUpdate, onKill }) {
         this.onPlayerUpdate = onPlayerUpdate;
         this.onPlayerJoin = onPlayerJoin;
         this.onPlayerLeave = onPlayerLeave;
         this.onProjectileUpdate = onProjectileUpdate;
+        this.onProjectileFired = onProjectileFired;
         this.onProjectileRemove = onProjectileRemove;
         this.onProjectileCollision = onProjectileCollision;
         this.onHealthUpdate = onHealthUpdate;
@@ -521,9 +527,7 @@ export class NetworkManager {
         if (!this.connected || !this.ws || this.ws.readyState !== WebSocket.OPEN) {
             return;
         }
-        
-        console.log(`[NetworkManager] Solicitando sincronización de marcadores al servidor`);
-        
+
         const message = {
             type: 'requestScoreSync'
         };

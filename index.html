@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Calavera Arena</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Henny+Penny&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
     <script type="importmap">
         {
@@ -26,19 +29,21 @@
                 <div class="shortcut"><span class="key">W</span> <span class="key">A</span> <span class="key">S</span> <span class="key">D</span> Move ship</div>
                 <div class="shortcut"><span class="key">SHIFT</span> Show scoreboard</div>
                 <div class="shortcut"><span class="key">CLICK</span> Fire cannon</div>
-                <div class="shortcut"><span class="key">M</span> Toggle music</div>
+                <!-- <div class="shortcut"><span class="key">M</span> Toggle music</div> -->
             </div>
             
             <form id="player-form" class="player-form">
                 <input type="text" id="player-name" placeholder="Username" required>
                 <button type="submit">Join</button>
             </form>
+
+            <p style="margin-top: 20px;font-size:.8em">Follow updates on <a href="https://x.com/williampreneur" style="color: #fff;" target="_blank">Twitter</a></p>
         </div>
     </div>
 
     <!-- UI de Salud -->
     <div id="health-container" class="ui-container health-container">
-        <div id="health-title" class="health-title">Estado del Barco</div>
+        <div id="health-title" class="health-title">Ship Status</div>
         <div id="health-bar-container" class="health-bar-container">
             <div id="health-bar" class="health-bar"></div>
             <div id="health-text" class="health-text">100 / 100</div>
@@ -73,7 +78,7 @@
 
     <!-- UI de Modo Calavera -->
     <div id="skull-mode-container" class="ui-container skull-mode-container">
-        <div id="skull-timer">Próximo modo calavera: 0:00</div>
+        <div id="skull-timer">Next Calavera mode: 0:00</div>
     </div>
 
     <!-- UI de Mensajes -->
@@ -83,11 +88,12 @@
 
     <!-- UI de Marcadores (Scoreboard) -->
     <div id="scoreboard-container" class="scoreboard-container">
-        <h2 id="scoreboard-title" class="scoreboard-title">Tabla de Puntuaciones</h2>
+        <h2 id="scoreboard-title" class="scoreboard-title">Scoreboard</h2>
         <div id="scores-container" class="scores-container"></div>
     </div>
 
     <a target="_blank" href="https://jam.pieter.com" class="jam-link">🕹️ Vibe Jam 2025</a>
+    <a target="_blank" href="https://x.com/williampreneur" class="twitter-link">👾 @williampreneur</a>
     
     <script type="module">
         import { Game } from './src/game.js';
@@ -99,7 +105,7 @@
         try {
             await game.start();
         } catch (error) {
-            console.error('Error al inicializar el juego:', error);
+            console.error('Error initializing game:', error);
             // Aquí podrías mostrar un mensaje de error al usuario
         }
     </script>

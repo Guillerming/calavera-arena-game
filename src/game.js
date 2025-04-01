@@ -131,7 +131,7 @@ export class Game {
 
         // Asegurarnos de que el terreno está disponible
         if (!this.terrain) {
-            console.error('El terreno no está inicializado');
+            console.error('Terrain is not initialized');
             return;
         }
 
@@ -143,7 +143,7 @@ export class Game {
         // Crear el personaje del jugador
         this.player = this.characterManager.createPlayer(this.playerName);
         if (!this.player) {
-            console.error('No se pudo crear el jugador');
+            console.error('Could not create player');
             return;
         }
 
@@ -256,17 +256,17 @@ export class Game {
         };
 
         // Añadir callbacks para proyectiles
-        this.networkManager.onProjectileUpdate = (projectileData) => {
-            this.characterManager.handleProjectileUpdate(projectileData);
+        this.networkManager.onProjectileFired = (projectileData) => {
+            // Solo reproducir el sonido si no es el jugador local quien disparó
+            if (projectileData.playerId !== this.networkManager.playerId) {
+                // Siempre reproducir el sonido, independientemente de si tenemos posición o no
+                // Usar volumen alto para asegurar que se escuche
+                this.audioManager.playSound('canon', 1.0);
+            }
         };
 
-        this.networkManager.onProjectileRemove = (projectileId, playerId) => {
-            // Construir el objeto projectileData con el formato esperado por handleProjectileRemove
-            const projectileData = {
-                projectileId: projectileId,
-                playerId: playerId
-            };
-            this.characterManager.handleProjectileRemove(projectileData);
+        this.networkManager.onProjectileUpdate = (projectileData) => {
+            this.characterManager.handleProjectileUpdate(projectileData);
         };
 
         // Añadir callback para colisiones de proyectiles
@@ -371,9 +371,6 @@ export class Game {
             requestAnimationFrame(this.gameLoop.bind(this));
             return;
         }
-        
-        // Actualizar la posición del personaje
-        this.player.update(boundedDeltaTime, this.inputManager);
         
         // Enviar actualizaciones de posición por red solo para el jugador local
         if (this.networkManager) {
@@ -625,8 +622,18 @@ export class Game {
         // Iniciar la primera reproducción después de un tiempo inicial
         const initialDelay = 10000 + Math.random() * 5000;  // 10-15 segundos
         setTimeout(playRandomArr, initialDelay);
+        // Verificaciones periódicas cada 15 segundos
+        setInterval(async () => {
+            await this.checkAudioPlayback();
+        }, 15000);
     }
     
+    // Método para buscar un personaje por su ID
+    findCharacterById(characterId) {
+        if (!this.characterManager) return null;
+        return this.characterManager.getCharacter(characterId);
+    }
+
     // Verificar si el audio está reproduciéndose correctamente
     async checkAudioPlayback() {
         if (!this.audioManager) return;
