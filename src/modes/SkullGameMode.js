@@ -54,6 +54,10 @@ export class SkullGameMode {
         this.skullFogFar = 80;   // Distancia donde la niebla es completamente opaca (más cerca)
         this.skullLightColor = new THREE.Color(0xCCCC99);  // Color amarillo claro
         
+        // Referencia al iframe de YouTube
+        this.youtubeIframe = null;
+        this.preSkullModeYoutubeShown = false; // Flag para controlar si ya se mostró el iframe pre-modo calavera
+        
         this.initializeVisualEffects();
     }
     
@@ -122,6 +126,13 @@ export class SkullGameMode {
         if (deltaTime > 0) {
             this.countdown -= deltaTime;
             
+            // Si faltan 10 segundos para activar el modo calavera, mostrar el iframe
+            if (!this.isSkullModeActive && this.countdown <= 16 && !this.youtubeIframe && !this.preSkullModeYoutubeShown) {
+                this.createYoutubeIframe();
+                this.preSkullModeYoutubeShown = true; // Marcar que ya se mostró el iframe pre-modo
+                console.log("[SkullMode] Mostrando iframe 10 segundos antes del modo calavera");
+            }
+            
             // If counter reaches zero, change mode
             if (this.countdown <= 0) {
                 // If we were in normal mode, activate skull mode
@@ -141,6 +152,9 @@ export class SkullGameMode {
                     if (this.skullModeColorFilter && !this.isTransitioning) {
                         this.skullModeColorFilter.style.opacity = '0';
                     }
+                    
+                    // Reiniciar el flag para el iframe pre-modo
+                    this.preSkullModeYoutubeShown = false;
                 }
             }
         }
@@ -391,6 +405,12 @@ export class SkullGameMode {
             this.messageContainer.style.opacity = '0';
         }
         
+        // Eliminar el iframe de YouTube si existe
+        this.removeYoutubeIframe();
+        
+        // Reiniciar el flag para el iframe pre-modo
+        this.preSkullModeYoutubeShown = false;
+        
         // Detener cualquier transición en curso
         this.isTransitioning = false;
         
@@ -424,10 +444,24 @@ export class SkullGameMode {
                     this.showMessage("CALAVERA MODE ACTIVATED! Capture the skull!");
                     // Aplicar efectos visuales cuando el modo se activa por sincronización
                     this.applySkullModeVisuals();
+                    
+                    // El iframe ya debería estar mostrándose (pre-modo), pero verificamos
+                    if (!this.youtubeIframe) {
+                        this.createYoutubeIframe();
+                    }
+                    
+                    // No reproducir sonido calaveramode.mp3, pero sí iniciar sonidos fantasma
+                    if (this.game && this.game.audioManager) {
+                        this._startRandomCalaveraAudio();
+                    }
                 } else {
                     this.showMessage("Normal mode restored");
                     // Restaurar visuales normales cuando el modo se desactiva por sincronización
                     this.restoreNormalVisuals();
+                    // Eliminar el iframe de YouTube
+                    this.removeYoutubeIframe();
+                    // Reiniciar el flag para el próximo modo
+                    this.preSkullModeYoutubeShown = false;
                 }
             }
         }
@@ -495,13 +529,15 @@ export class SkullGameMode {
         // Show start message
         this.showMessage("CALAVERA MODE ACTIVATED! Capture the skull!");
         
-        // Play skull mode music if exists audioManager
+        // Iniciar sistema de sonidos de fantasma aleatorios durante el modo calavera
         if (this.game && this.game.audioManager) {
-            // Play for 12 seconds (track duration)
-            this.game.audioManager.playTemporaryMusic('calaveramode', 12000);
-            
-            // Iniciar sistema de sonidos de fantasma aleatorios durante el modo calavera
             this._startRandomCalaveraAudio();
+        }
+        
+        // El iframe de YouTube ya estará mostrándose (se creó 10 segundos antes)
+        // Si por alguna razón no existe, lo creamos ahora
+        if (!this.youtubeIframe) {
+            this.createYoutubeIframe();
         }
     }
     
@@ -619,6 +655,10 @@ export class SkullGameMode {
         
         // Detener el sistema de audio aleatorio de calavera
         this._stopCalaveraAudio();
+        
+        // Eliminar el iframe de YouTube
+        this.removeYoutubeIframe();
+        
         // Restore normal visuals with transition
         this.restoreNormalVisuals();
         
@@ -755,6 +795,84 @@ export class SkullGameMode {
             this.isTransitioning = true;
             this.transitionProgress = 0;
             this.transitionDirection = -1; // Dirección: calavera -> normal
+        }
+    }
+
+    // Crear el iframe de YouTube para el modo calavera
+    createYoutubeIframe() {
+        // Si ya existe un iframe, eliminarlo primero
+        this.removeYoutubeIframe();
+        
+        // Crear el contenedor para el iframe
+        const container = document.createElement('div');
+        container.id = 'skull-mode-youtube';
+        container.style.position = 'fixed';
+        container.style.bottom = '80px';
+        container.style.right = '20px';  // Cambiar de 80px a 20px
+        container.style.width = '280px';  // Más pequeño que el original
+        container.style.height = '158px'; // Mantener proporción 16:9
+        container.style.zIndex = '1100';  // Por encima del filtro de color
+        container.style.boxShadow = '0 0 10px rgba(255, 255, 0, 0.5)'; // Borde amarillo suave
+        container.style.borderRadius = '8px';
+        container.style.overflow = 'hidden';
+        
+        // Crear el iframe de YouTube
+        const iframe = document.createElement('iframe');
+        iframe.width = '100%';
+        iframe.height = '100%';
+        iframe.src = 'https://www.youtube.com/embed/VpIhbDN58mA?si=-41UySrM4i7_QxvT&autoplay=1';
+        iframe.title = 'YouTube video player';
+        iframe.frameBorder = '0';
+        iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';
+        iframe.allowFullscreen = true;
+        iframe.referrerPolicy = 'strict-origin-when-cross-origin';
+        
+        // Añadir el iframe al contenedor
+        container.appendChild(iframe);
+        
+        // Crear un botón para cerrar/pausar el video
+        const closeButton = document.createElement('button');
+        closeButton.textContent = '✕';
+        closeButton.style.position = 'absolute';
+        closeButton.style.top = '5px';
+        closeButton.style.right = '5px';
+        closeButton.style.background = 'rgba(0, 0, 0, 0.7)';
+        closeButton.style.color = 'white';
+        closeButton.style.border = 'none';
+        closeButton.style.borderRadius = '50%';
+        closeButton.style.width = '24px';
+        closeButton.style.height = '24px';
+        closeButton.style.cursor = 'pointer';
+        closeButton.style.fontSize = '12px';
+        closeButton.style.display = 'flex';
+        closeButton.style.alignItems = 'center';
+        closeButton.style.justifyContent = 'center';
+        closeButton.style.zIndex = '1101';
+        
+        // Añadir evento para cerrar/pausar
+        closeButton.addEventListener('click', () => {
+            this.removeYoutubeIframe();
+        });
+        
+        // Añadir el botón al contenedor
+        container.appendChild(closeButton);
+        
+        // Añadir el contenedor al body
+        document.body.appendChild(container);
+        
+        // Guardar referencia
+        this.youtubeIframe = container;
+    }
+    
+    // Eliminar el iframe de YouTube
+    removeYoutubeIframe() {
+        if (this.youtubeIframe) {
+            // Eliminar el elemento del DOM
+            if (document.body.contains(this.youtubeIframe)) {
+                document.body.removeChild(this.youtubeIframe);
+            }
+            // Limpiar la referencia
+            this.youtubeIframe = null;
         }
     }
 } 
