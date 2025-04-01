@@ -606,7 +606,7 @@ export class SkullGameMode {
                 }
                 
                 // Reproducir el evento de sonido 'calaveramode' en la posición calculada
-                this.game.playAudioEvent('calaveramode', soundPosition);
+                // this.game.playAudioEvent('calaveramode', soundPosition);
             }
             
             // Programar el próximo sonido con tiempo aleatorio

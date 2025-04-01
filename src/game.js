@@ -240,14 +240,14 @@ export class Game {
         // La música de intro (osd.mp3) ya debería estar sonando desde initialize()
         // Programar el cambio a la música del juego después de 10 segundos
         // para dar tiempo a escuchar la intro
-        if (this.audioManager.currentMusic === 'osd') {
-            setTimeout(() => {
-                this.audioManager.playMusic('sailing');
-            }, 10000); // 10 segundos para escuchar la intro
-        } else {
+        // if (this.audioManager.currentMusic === 'osd') {
+        //     setTimeout(() => {
+        //         this.audioManager.playMusic('sailing');
+        //     }, 10000); // 10 segundos para escuchar la intro
+        // } else {
             // Si por alguna razón no está sonando osd, reproducir sailing directamente
             this.audioManager.playMusic('sailing');
-        }
+        // }
         
         // Programar una verificación periódica de la música si no se ha hecho ya
         if (!this._audioCheckScheduled) {
@@ -524,13 +524,13 @@ export class Game {
             }
             
             try {
-                const playPromise = this.audioManager.playMusic('osd');
-                if (playPromise) {
-                    await playPromise;
-                }
+                // const playPromise = this.audioManager.playMusic('osd');
+                // if (playPromise) {
+                //     await playPromise;
+                // }
             } catch (e) {
                 console.warn('[Game] Error al reproducir música de intro, intentando reproducir directamente:', e);
-                this.audioManager.playMusic('osd');
+                // this.audioManager.playMusic('osd');
             }
         }
         

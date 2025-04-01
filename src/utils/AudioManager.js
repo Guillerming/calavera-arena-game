@@ -154,9 +154,9 @@ export class AudioManager {
         
         try {
             // Cargar música de fondo
-            await this.loadMusicBuffer('osd', 'assets/audio/osd/osd.mp3');
+            // await this.loadMusicBuffer('osd', 'assets/audio/osd/osd.mp3');
             await this.loadMusicBuffer('sailing', 'assets/audio/fx/sailing.mp3');
-            await this.loadMusicBuffer('calaveramode', 'assets/audio/osd/calaveramode.mp3');
+            // await this.loadMusicBuffer('calaveramode', 'assets/audio/osd/calaveramode.mp3');
     
             // Cargar efectos de sonido básicos
             await this.loadSoundBuffer('canon', 'assets/audio/fx/canon.mp3');
