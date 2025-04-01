@@ -166,17 +166,17 @@ export class AudioManager {
             
             // Cargar sonidos adicionales definidos en soundEvents
             const soundsToLoad = this.getAllRequiredSounds();
-            for (const sound of soundsToLoad) {
+            for (let soundToLoad of soundsToLoad) {
                 // Solo cargar si no existe ya y no es uno de los básicos que ya cargamos
-                if (!this.sounds.has(sound) && !['canon', 'impact', 'splash'].includes(sound)) {
+                if (!this.sounds.has(soundToLoad) && !['canon', 'impact', 'splash'].includes(soundToLoad)) {
                     // Intentar cargarlo desde varias carpetas comunes
                     const folders = ['fx', 'osd', 'events'];
                     for (const folder of folders) {
-                        await this.verifyAndLoadSound(sound, `assets/audio/${folder}/${sound}.mp3`)
+                        await this.verifyAndLoadSound(soundToLoad, `assets/audio/${folder}/${soundToLoad}.mp3`)
                             .catch(() => {}); // Ignorar errores, probaremos la siguiente carpeta
                         
                         // Si ya se cargó, salir del bucle
-                        if (this.sounds.has(sound)) break;
+                        if (this.sounds.has(soundToLoad)) break;
                     }
                 }
             }
@@ -293,6 +293,9 @@ export class AudioManager {
         if (!eventConfig) {
             console.warn(`[AudioManager] Evento de sonido desconocido: ${eventName}`);
             return null;
+        }
+    }
+
     // Reproducir un efecto de sonido
     playSound(id, volume = null, loop = false, position = null) {
         if (!this.enabled) {
@@ -404,11 +407,11 @@ export class AudioManager {
         const volume = eventConfig.volume !== undefined ? eventConfig.volume : this.sfxVolume;
 
         // Crear una copia del sonido para reproducción
-        let sound = this.cloneSound(soundName, volume);
+        let clonedSound = this.cloneSound(soundName, volume);
 
         // Aplicar distorsión si está habilitada para este evento
-        if (eventConfig.distortion && sound) {
-            this.applyRandomDistortion(sound);
+        if (eventConfig.distortion && clonedSound) {
+            this.applyRandomDistortion(clonedSound);
         }
         
         // Si tiene una distancia especificada y posición, usar audio posicional
