@@ -71,6 +71,9 @@ export class Game {
             }
         });
         this.loadingScreen.show();
+
+        // Inicializar controles de niebla
+        this.fogControls = new FogControls(this);
     }
 
     async setupWorld() {
@@ -129,8 +132,8 @@ export class Game {
             // Inicializar los controles de niebla (ocultos por defecto)
             this.fogControls = new FogControls(this);
             
-            // Mostrar mensaje temporal sobre controles
-            this.showFogControlsMessage();
+            // DESACTIVADO PARA PRODUCCIÓN
+            // this.showFogControlsMessage();
         } else {
             console.warn('[Game] No se pudo inicializar la niebla volumétrica - motor no disponible');
         }

@@ -20,6 +20,8 @@ export class FogControls {
         this.hide();
         
         // Registrar combinación de teclas para mostrar/ocultar los controles
+        // DESACTIVADO PARA PRODUCCIÓN
+        /*
         document.addEventListener('keydown', (e) => {
             // Ctrl + F para mostrar/ocultar controles de niebla
             if (e.ctrlKey && e.key === 'f') {
@@ -27,6 +29,7 @@ export class FogControls {
                 this.toggleVisibility();
             }
         });
+        */
     }
     
     createUI() {
