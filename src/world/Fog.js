@@ -14,8 +14,17 @@ export class VolumetricFog {
             fogStart: options.fogStart || 10,
             fogEnd: options.fogEnd || 100,
             staticColor: options.staticColor || false,
-            numLayers: options.numLayers || 50,        // ¡Mucho más elementos iniciales!
-            maxLayers: options.maxLayers || 300        // Permitir muchas más capas
+            numLayers: options.numLayers ?? 50,        // ¡Mucho más elementos iniciales!
+            maxLayers: options.maxLayers ?? 300,       // Permitir muchas más capas
+            // Límites del mapa (valores por defecto)
+            mapLimits: options.mapLimits ?? {
+                minX: -200,
+                maxX: 200,
+                minZ: -200,
+                maxZ: 200
+            },
+            // Comportamiento en los límites: 'bounce' o 'fade'
+            boundaryBehavior: options.boundaryBehavior ?? 'bounce'
         };
         
         this.time = 0;
@@ -168,13 +177,46 @@ export class VolumetricFog {
         // Crear malla para la capa de niebla
         const fogMesh = new THREE.Mesh(geometry, material);
         
-        // Posicionar la capa (distribución aleatoria)
-        const angleRad = Math.random() * Math.PI * 2;
-        const distance = isInitial ? (50 + Math.random() * 300) : 600 + Math.random() * 200;
+        // Posicionar la capa dentro de los límites del mapa
+        let posX, posZ;
         
-        fogMesh.position.x = Math.cos(angleRad) * distance;
-        fogMesh.position.z = Math.sin(angleRad) * distance;
-        fogMesh.position.y = Math.random() * 4;  // Mantener cerca del suelo (0-4 unidades)
+        // Obtener los límites del mapa
+        const { minX, maxX, minZ, maxZ } = this.options.mapLimits;
+        
+        if (isInitial) {
+            // Para capas iniciales, distribuir por todo el mapa pero siempre dentro de los límites
+            const paddingX = width / 2;  // Mantener cierta distancia del borde para que la niebla no se corte
+            const paddingZ = width / 2;
+            
+            posX = minX + paddingX + Math.random() * (maxX - minX - paddingX * 2);
+            posZ = minZ + paddingZ + Math.random() * (maxZ - minZ - paddingZ * 2);
+        } else {
+            // Para nuevas capas que se crean durante el juego, generarlas en los bordes
+            // para que parezca que la niebla viene de fuera del mapa hacia dentro
+            const side = Math.floor(Math.random() * 4); // 0: arriba, 1: derecha, 2: abajo, 3: izquierda
+            const paddingFromEdge = 50; // Distancia desde la que aparecen las nuevas capas
+            
+            switch (side) {
+                case 0: // Arriba (norte)
+                    posX = minX + Math.random() * (maxX - minX);
+                    posZ = maxZ - paddingFromEdge;
+                    break;
+                case 1: // Derecha (este)
+                    posX = maxX - paddingFromEdge;
+                    posZ = minZ + Math.random() * (maxZ - minZ);
+                    break;
+                case 2: // Abajo (sur)
+                    posX = minX + Math.random() * (maxX - minX);
+                    posZ = minZ + paddingFromEdge;
+                    break;
+                case 3: // Izquierda (oeste)
+                    posX = minX + paddingFromEdge;
+                    posZ = minZ + Math.random() * (maxZ - minZ);
+                    break;
+            }
+        }
+        
+        fogMesh.position.set(posX, Math.random() * 4, posZ);
         
         // Rotación aleatoria - mantener casi horizontal
         fogMesh.rotation.y = Math.random() * Math.PI * 2;
@@ -182,10 +224,14 @@ export class VolumetricFog {
         
         // Propiedades específicas de la capa
         fogMesh.userData = {
-            // Velocidad de desplazamiento
-            velocityX: (Math.random() * 2 - 1) * 2.0,  // Movimiento más rápido
+            // Velocidad de desplazamiento - dirigida hacia el centro del mapa si es una nueva capa
+            velocityX: isInitial ? 
+                      (Math.random() * 2 - 1) * 2.0 : 
+                      ((0 - posX) / Math.abs(posX) || 0) * (1 + Math.random()),
             velocityY: (Math.random() * 0.1 - 0.05) * 0.1, // Movimiento vertical mínimo
-            velocityZ: (Math.random() * 2 - 1) * 2.0,  // Movimiento más rápido
+            velocityZ: isInitial ? 
+                      (Math.random() * 2 - 1) * 2.0 : 
+                      ((0 - posZ) / Math.abs(posZ) || 0) * (1 + Math.random()),
             
             // Velocidad de rotación - muy lenta
             rotationSpeed: (Math.random() * 0.01 - 0.005) * 0.3,
@@ -301,6 +347,10 @@ export class VolumetricFog {
             this.nextLayerTime = this.layerCreationInterval;
         }
         
+        // Obtener los límites del mapa
+        const { minX, maxX, minZ, maxZ } = this.options.mapLimits;
+        const bounceMode = this.options.boundaryBehavior === 'bounce';
+        
         // Actualizar todas las capas de niebla
         for (let i = this.fogMeshes.length - 1; i >= 0; i--) {
             const fogMesh = this.fogMeshes[i];
@@ -336,6 +386,47 @@ export class VolumetricFog {
             fogMesh.position.y += userData.velocityY * deltaTime;
             fogMesh.position.z += userData.velocityZ * deltaTime;
             
+            // Verificar y ajustar la posición para mantenerla dentro de los límites del mapa
+            const width = fogMesh.geometry.parameters.width / 2;  // Mitad del ancho de la capa
+            
+            // Calcular los límites reales considerando el tamaño de la capa
+            const effectiveMinX = minX + width;
+            const effectiveMaxX = maxX - width;
+            const effectiveMinZ = minZ + width;
+            const effectiveMaxZ = maxZ - width;
+            
+            // Comprobar si se está saliendo del mapa
+            if (fogMesh.position.x < effectiveMinX || fogMesh.position.x > effectiveMaxX ||
+                fogMesh.position.z < effectiveMinZ || fogMesh.position.z > effectiveMaxZ) {
+                
+                // Si está configurado para rebotar en los bordes o es una capa joven en modo de rebote
+                if (bounceMode || (this.options.boundaryBehavior === 'mixed' && userData.age < userData.lifetime * 0.5)) {
+                    // Rebotar en los bordes
+                    if (fogMesh.position.x < effectiveMinX) {
+                        fogMesh.position.x = effectiveMinX;
+                        userData.velocityX = Math.abs(userData.velocityX) * (0.8 + Math.random() * 0.4);
+                    } else if (fogMesh.position.x > effectiveMaxX) {
+                        fogMesh.position.x = effectiveMaxX;
+                        userData.velocityX = -Math.abs(userData.velocityX) * (0.8 + Math.random() * 0.4);
+                    }
+                    
+                    if (fogMesh.position.z < effectiveMinZ) {
+                        fogMesh.position.z = effectiveMinZ;
+                        userData.velocityZ = Math.abs(userData.velocityZ) * (0.8 + Math.random() * 0.4);
+                    } else if (fogMesh.position.z > effectiveMaxZ) {
+                        fogMesh.position.z = effectiveMaxZ;
+                        userData.velocityZ = -Math.abs(userData.velocityZ) * (0.8 + Math.random() * 0.4);
+                    }
+                } 
+                // Si está configurado para desvanecerse
+                else {
+                    if (userData.state !== 'fading') {
+                        userData.state = 'fading';
+                        userData.opacitySpeed *= 1.5; // Desvanecer más rápidamente
+                    }
+                }
+            }
+            
             // Mantener la niebla cerca del suelo si se eleva demasiado
             if (fogMesh.position.y > 10) {
                 fogMesh.position.y = 10;
@@ -347,15 +438,6 @@ export class VolumetricFog {
             
             // Rotación suave
             fogMesh.rotation.y += userData.rotationSpeed * deltaTime;
-            
-            // Limitar la distancia máxima y eliminar capas muy lejanas
-            const distanceToOrigin = fogMesh.position.length();
-            if (distanceToOrigin > 1000) { // Aumentar la distancia de eliminación
-                // Si está demasiado lejos, empezar a desvanecerla
-                if (userData.state !== 'fading') {
-                    userData.state = 'fading';
-                }
-            }
             
             // Actualizar uniforms
             if (fogMesh.material.uniforms) {
@@ -437,6 +519,16 @@ export class VolumetricFog {
         // Actualizar el material base para futuras capas
         if (this.fogMaterial && this.fogMaterial.uniforms) {
             this.fogMaterial.uniforms.noiseSpeed.value = speed;
+        }
+    }
+    
+    // Método para cambiar el comportamiento en los límites
+    setBoundaryBehavior(behavior) {
+        if (behavior === 'bounce' || behavior === 'fade' || behavior === 'mixed') {
+            this.options.boundaryBehavior = behavior;
+            console.log(`[Fog] Comportamiento en límites cambiado a: ${behavior}`);
+        } else {
+            console.warn(`[Fog] Comportamiento no válido: ${behavior}. Usar 'bounce', 'fade' o 'mixed'`);
         }
     }
 } 

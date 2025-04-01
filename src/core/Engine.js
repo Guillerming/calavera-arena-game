@@ -33,10 +33,12 @@ export class Engine {
         window.addEventListener('resize', () => this.onWindowResize());
     }
     
-    // Método para inicializar la niebla volumétrica
+    // Inicializar la niebla volumétrica
     async initFog() {
         try {
-            // Configuración personalizada para la niebla
+            console.log("[Engine] Inicializando niebla volumétrica...");
+            
+            // Opciones de configuración para la niebla
             const fogOptions = {
                 fogColor: new THREE.Color(0xcccccc),
                 fogDensity: 0.015,
@@ -46,8 +48,20 @@ export class Engine {
                 fogEnd: 100,
                 staticColor: false,
                 numLayers: 50,         // Muchas más capas iniciales
-                maxLayers: 300         // Permitir cientos de capas simultáneas
+                maxLayers: 300,        // Permitir cientos de capas simultáneas
+                mapLimits: {           // Límites del mapa - niebla solo aparecerá aquí
+                    minX: -200,
+                    maxX: 200,
+                    minZ: -200, 
+                    maxZ: 200
+                },
+                boundaryBehavior: 'bounce'  // Comportamiento en los límites
             };
+            
+            // Comprobar si hay un juego con límites de mapa definidos
+            if (this.scene && this.scene.game && this.scene.game.mapLimits) {
+                fogOptions.mapLimits = this.scene.game.mapLimits;
+            }
             
             // Crear la niebla volumétrica
             this.fog = new VolumetricFog(this.scene, this.camera, fogOptions);

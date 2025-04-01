@@ -295,6 +295,60 @@ export class FogControls {
         layerDensityContainer.appendChild(densityButtonsContainer);
         this.container.appendChild(layerDensityContainer);
         
+        // Control para el comportamiento en los límites
+        const boundaryBehaviorContainer = document.createElement('div');
+        boundaryBehaviorContainer.style.marginBottom = '15px';
+        
+        const boundaryLabel = document.createElement('div');
+        boundaryLabel.textContent = 'Comportamiento en límites:';
+        boundaryBehaviorContainer.appendChild(boundaryLabel);
+        
+        // Crear botones para el comportamiento en los límites
+        const boundaryButtonsContainer = document.createElement('div');
+        boundaryButtonsContainer.style.display = 'flex';
+        boundaryButtonsContainer.style.marginTop = '5px';
+        
+        const boundaryOptions = [
+            { name: 'Rebotar', id: 'bounce' },
+            { name: 'Desvanecer', id: 'fade' }
+        ];
+        
+        let activeBoundaryOption = 'bounce'; // Valor por defecto
+        
+        boundaryOptions.forEach(option => {
+            const button = document.createElement('button');
+            button.textContent = option.name;
+            button.style.flex = '1';
+            button.style.margin = '0 2px';
+            button.style.padding = '5px';
+            button.style.background = option.id === activeBoundaryOption ? '#3a7ca5' : '#2f4858';
+            button.style.color = 'white';
+            button.style.border = 'none';
+            button.style.borderRadius = '3px';
+            button.style.cursor = 'pointer';
+            
+            button.addEventListener('click', () => {
+                // Actualizar estilo de los botones
+                boundaryButtonsContainer.querySelectorAll('button').forEach(btn => {
+                    btn.style.background = '#2f4858';
+                });
+                button.style.background = '#3a7ca5';
+                
+                // Actualizar la opción activa
+                activeBoundaryOption = option.id;
+                
+                // Aplicar el cambio a la niebla
+                if (this.engine && this.engine.fog) {
+                    this.engine.fog.setBoundaryBehavior(option.id);
+                }
+            });
+            
+            boundaryButtonsContainer.appendChild(button);
+        });
+        
+        boundaryBehaviorContainer.appendChild(boundaryButtonsContainer);
+        this.container.appendChild(boundaryBehaviorContainer);
+        
         // Botón para ocultar los controles
         const hideButton = document.createElement('button');
         hideButton.textContent = 'Ocultar controles (Ctrl+F)';
