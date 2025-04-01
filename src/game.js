@@ -489,8 +489,7 @@ export class Game {
                 console.error('[Game] THREE no está disponible, el audio posicional no funcionará');
                 return;
             }
-            
-            console.log('[Game] Inicializando sistema de audio 3D...');
+
             
             // Crear un AudioListener de Three.js para audio posicional
             this.audioListener = new window.THREE.AudioListener();
@@ -546,24 +545,34 @@ export class Game {
             console.log('[Game] Reconectando AudioListener a la cámara');
             this.engine.camera.add(this.audioListener);
             needsUpdate = true;
-        }
-        
-        // Si la posición del listener es (0,0,0) pero la cámara no está ahí, algo está mal
-        if (this.audioListener.position.x === 0 && 
-            this.audioListener.position.y === 0 && 
-            this.audioListener.position.z === 0 &&
-            (this.engine.camera.position.x !== 0 ||
-             this.engine.camera.position.y !== 0 ||
-             this.engine.camera.position.z !== 0)) {
             
-            // Actualizar manualmente la matriz del listener
-            this.audioListener.updateMatrixWorld(true);
-            needsUpdate = true;
+            // Actualizar la referencia en el AudioManager
+            this.audioManager.setListener(this.audioListener);
         }
         
-        if (needsUpdate) {
-            console.log('[Game] AudioListener actualizado: ', 
-                this.audioListener.getWorldPosition(new THREE.Vector3()));
+        // Forzar actualización de la matriz del listener para asegurar que tenga la posición correcta
+        if (this.audioListener) {
+            this.audioListener.updateMatrixWorld(true);
+            
+            // Verificar que la posición mundial sea correcta (debug)
+            const listenerWorldPos = new THREE.Vector3();
+            this.audioListener.getWorldPosition(listenerWorldPos);
+            
+            // Si la posición del listener difiere mucho de la cámara, algo está mal
+            if (this.engine.camera.position.distanceTo(listenerWorldPos) > 1) {
+                console.warn('[Game] Posición incorrecta del AudioListener:', 
+                    listenerWorldPos.x.toFixed(2), listenerWorldPos.y.toFixed(2), listenerWorldPos.z.toFixed(2),
+                    'Cámara:', 
+                    this.engine.camera.position.x.toFixed(2), 
+                    this.engine.camera.position.y.toFixed(2), 
+                    this.engine.camera.position.z.toFixed(2));
+                
+                // Reconectar listener de emergencia
+                this.engine.camera.remove(this.audioListener);
+                this.engine.camera.add(this.audioListener);
+                this.audioListener.updateMatrixWorld(true);
+                this.audioManager.setListener(this.audioListener);
+            }
         }
     }
     
@@ -705,43 +714,90 @@ export class Game {
             if (this.engine && this.engine.camera) {
                 this.engine.camera.add(this.audioListener);
                 this.audioManager.setListener(this.audioListener);
-                console.log('[Game Debug] AudioListener recreado y conectado');
             } else {
                 console.warn('[Game Debug] No se pudo recrear el AudioListener - cámara no disponible');
+            }
+        } else {
+            // IMPORTANTE: Verificar que el AudioListener siga conectado a la cámara
+            if (this.engine && this.engine.camera && this.audioListener.parent !== this.engine.camera) {
+                console.log('[Game] Reconectando AudioListener a la cámara');
+                this.engine.camera.add(this.audioListener);
+                this.audioManager.setListener(this.audioListener);
             }
         }
         
         // Validar la posición antes de pasarla
         let validatedPosition = null;
         
-        if (position) {
-            // Si la posición es un objeto THREE.Vector3, validar sus propiedades
+        // Si no se proporcionó una posición pero sí un sourcePlayer
+        if (!position && sourcePlayer) {
+            // Si el sourcePlayer es un ID y es el jugador local
+            if (typeof sourcePlayer === 'string' && sourcePlayer === this.networkManager.playerId && this.player) {
+                // Usar la posición del player local
+                if (this.player.position) {
+                    validatedPosition = this.player.position.clone();
+                }
+                // Usar el objeto del player como sourcePlayer
+                sourcePlayer = this.player;
+            }
+            // Si el sourcePlayer es un ID de otro jugador
+            else if (typeof sourcePlayer === 'string' && this.characterManager) {
+                const character = this.characterManager.getCharacter(sourcePlayer);
+                if (character && character.object && character.object.position) {
+                    validatedPosition = character.object.position.clone();
+                }
+            }
+        }
+        // Si se proporcionó una posición explícita
+        else if (position) {
+            // Si la posición es un objeto THREE.Vector3
             if (position instanceof THREE.Vector3) {
                 if (isFinite(position.x) && isFinite(position.y) && isFinite(position.z)) {
-                    validatedPosition = position; // Ya es un Vector3 válido
-                } else {
-                    console.warn('[Game Debug] Vector3 con componentes no válidos:', position);
+                    validatedPosition = position.clone();
                 }
             } 
-            // Si es un objeto con propiedades x, y, z, crear un Vector3
+            // Si es un objeto con propiedades x, y, z
             else if (position.x !== undefined && position.z !== undefined) {
                 try {
-                    // Intentar crear un Vector3 con valores válidos
                     validatedPosition = new THREE.Vector3(
                         Number(position.x) || 0,
                         Number(position.y) || 0,
                         Number(position.z) || 0
                     );
                 } catch (error) {
-                    console.warn('[Game Debug] Error al crear Vector3:', error);
+                    console.warn('[Game Debug] Error al crear Vector3 para audio:', error);
                 }
-            } else {
-                console.warn('[Game Debug] Formato de posición no reconocido:', position);
             }
         }
+
+        // Asegurar que se use el objeto 3D del jugador si es el jugador local
+        if (sourcePlayer === this.networkManager.playerId && this.player) {
+            sourcePlayer = this.player;
+        }
         
-        // Verificar explícitamente que el listener está bien inicializado
-        console.log(`[Game Debug] Reproduciendo evento: ${eventName}, Listener disponible: ${!!this.audioListener}, Posición válida: ${!!validatedPosition}`);
+        // Registrar datos del evento de sonido para depuración
+        console.log(`[Game] Evento de sonido: "${eventName}" - Datos:`, {
+            tienePlayerLocal: !!this.player,
+            tieneCharacterManager: !!this.characterManager,
+            tieneValidPosition: !!validatedPosition,
+            sourcePlayerType: typeof sourcePlayer,
+            playerIdLocal: this.networkManager ? this.networkManager.playerId : 'desconocido'
+        });
+        
+        // Si tenemos posición validada, mostrarla
+        if (validatedPosition) {
+            console.log(`[Game] Posición para evento "${eventName}":`, 
+                validatedPosition.x.toFixed(2), validatedPosition.y.toFixed(2), validatedPosition.z.toFixed(2));
+        }
+        
+        // Verificar y mostrar la posición actual del AudioListener
+        if (this.audioListener && this.audioListener.parent) {
+            // Obtener posición mundial del AudioListener
+            const listenerPosition = new THREE.Vector3();
+            this.audioListener.getWorldPosition(listenerPosition);
+            console.log(`[Game] Posición del AudioListener:`, 
+                listenerPosition.x.toFixed(2), listenerPosition.y.toFixed(2), listenerPosition.z.toFixed(2));
+        }
         
         // Reproducir el evento de sonido
         return this.audioManager.playSoundEvent(eventName, validatedPosition, sourcePlayer);

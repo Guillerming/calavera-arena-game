@@ -294,13 +294,56 @@ export class AudioManager {
         const soundVolume = eventConfig.volume !== undefined ? eventConfig.volume : this.sfxVolume;
         const finalVolume = soundVolume * this.masterVolume;
         
+        // Intentar encontrar un objeto parent para sonidos posicionales
+        let parentObject = null;
+        let playerPosition = null;
+
+        // Si el evento está asociado a un jugador, intentar obtener su objeto 3D
+        if (sourcePlayer) {
+            if (typeof sourcePlayer === 'object' && sourcePlayer.position) {
+                // Si es un objeto jugador con posición
+                parentObject = sourcePlayer;
+                playerPosition = sourcePlayer.position.clone();
+                console.log(`[AudioManager] Evento: ${eventName}, Sonido: ${soundName} - Jugador proporciona posición:`, 
+                    playerPosition.x.toFixed(2), playerPosition.y.toFixed(2), playerPosition.z.toFixed(2));
+            } else if (window.game && window.game.characterManager) {
+                // Si es un ID de jugador
+                const character = window.game.characterManager.getCharacter(sourcePlayer);
+                if (character && character.object) {
+                    parentObject = character.object;
+                    playerPosition = character.object.position.clone();
+                    console.log(`[AudioManager] Evento: ${eventName}, Sonido: ${soundName} - Personaje proporciona posición:`, 
+                        playerPosition.x.toFixed(2), playerPosition.y.toFixed(2), playerPosition.z.toFixed(2));
+                }
+            }
+        }
+        
+        // Si la posición no se obtuvo del jugador pero se proporcionó externamente
+        if (!playerPosition && position) {
+            if (position instanceof THREE.Vector3) {
+                playerPosition = position.clone();
+            } else if (position.x !== undefined && position.z !== undefined) {
+                playerPosition = new THREE.Vector3(
+                    position.x, 
+                    position.y !== undefined ? position.y : 0, 
+                    position.z
+                );
+            }
+            
+            if (playerPosition) {
+                console.log(`[AudioManager] Evento: ${eventName}, Sonido: ${soundName} - Posición proporcionada:`, 
+                    playerPosition.x.toFixed(2), playerPosition.y.toFixed(2), playerPosition.z.toFixed(2));
+            }
+        }
+        
         // Si tiene una distancia especificada y posición, usar audio posicional
-        if (eventConfig.distance !== null && position) {
-            return this.playPositionalSound(soundName, position, {
+        if (eventConfig.distance !== null && (playerPosition || parentObject)) {
+            return this.playPositionalSound(soundName, playerPosition || parentObject.position, {
                 volume: finalVolume,
                 loop: eventConfig.loop || false,
                 distance: eventConfig.distance,
-                distortion: eventConfig.distortion
+                distortion: eventConfig.distortion,
+                parentObject: parentObject
             });
         } else {
             // Reproducir como audio global
@@ -350,7 +393,8 @@ export class AudioManager {
             volume = this.sfxVolume * this.masterVolume,
             loop = false,
             distance = 50,
-            distortion = false
+            distortion = false,
+            parentObject = null
         } = options;
         
         // Validar posición
@@ -387,19 +431,63 @@ export class AudioManager {
         positionalAudio.setVolume(volume);
         positionalAudio.setLoop(loop);
         
-        // Configurar parámetros posicionales
-        positionalAudio.setRefDistance(10);  // Distancia a la que el volumen es normal
+        // Configurar parámetros posicionales - ajustar para mejor audibilidad
+        positionalAudio.setRefDistance(15);  // Aumentar distancia de referencia (antes era 10)
         positionalAudio.setMaxDistance(distance);  // Distancia máxima a la que se oye
         positionalAudio.setDistanceModel('linear');  // Modelo de atenuación
-        positionalAudio.setRolloffFactor(1);  // Factor de disminución con la distancia
+        positionalAudio.setRolloffFactor(0.8);  // Reducir rolloff para que se escuche mejor (antes era 1)
         
         // Aplicar distorsión si está habilitada
         if (distortion) {
             this.applyDistortionToPositionalAudio(positionalAudio);
         }
         
-        // Posicionar el audio en el espacio 3D
-        positionalAudio.position.copy(validPosition);
+        // IMPORTANTE: Obtener acceso a la escena de THREE.js 
+        // Intentar diferentes formas de acceder a la escena
+        let sceneFound = false;
+        let scene = null;
+        
+        // Si tenemos un objeto padre, adjuntar el audio a él
+        if (parentObject) {
+            parentObject.add(positionalAudio);
+            console.log(`[AudioManager] Reproduciendo sonido "${id}" adjuntado a objeto en posición:`, 
+                parentObject.position.x.toFixed(2), parentObject.position.y.toFixed(2), parentObject.position.z.toFixed(2));
+            return positionalAudio; // Si hay parent, ya está añadido a la escena a través del parent
+        } 
+        
+        // Intentar obtener la escena de formas diferentes
+        // 1. Intentar a través de window.game
+        if (window.game && window.game.engine && window.game.engine.scene) {
+            scene = window.game.engine.scene;
+            sceneFound = true;
+        }
+        // 2. Intentar acceder directamente a través de this.listener
+        else if (this.listener && this.listener.parent) {
+            // Obtener la raíz de la escena subiendo en la jerarquía
+            let root = this.listener.parent;
+            while (root.parent) {
+                root = root.parent;
+            }
+            scene = root;
+            sceneFound = true;
+        }
+        
+        if (sceneFound && scene) {
+            // Añadir el audio a la escena
+            scene.add(positionalAudio);
+            positionalAudio.position.copy(validPosition);
+            console.log(`[AudioManager] Reproduciendo sonido "${id}" en la escena en posición:`, 
+                validPosition.x.toFixed(2), validPosition.y.toFixed(2), validPosition.z.toFixed(2));
+            
+            // Limpieza automática después de que termine el sonido
+            positionalAudio.onEnded = () => {
+                scene.remove(positionalAudio);
+            };
+        } else {
+            // FALLBACK: Si no pudimos encontrar la escena, intentar reproducir como audio global
+            console.warn(`[AudioManager] No se pudo encontrar la escena para añadir audio posicional "${id}" - usando fallback a audio global`);
+            return this.playSound(id, volume, loop);
+        }
         
         // Reproducir el sonido
         positionalAudio.play();
