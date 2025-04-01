@@ -10,6 +10,26 @@ export class LoadingScreen {
             return;
         }
         
+        // Buscar el elemento de mensaje de carga si existe
+        this.loadingMessageElement = this.element.querySelector('.loading-message') || null;
+        
+        // Crear uno si no existe
+        if (!this.loadingMessageElement) {
+            this.loadingMessageElement = document.createElement('div');
+            this.loadingMessageElement.className = 'loading-message';
+            this.loadingMessageElement.style.marginTop = '10px';
+            this.loadingMessageElement.style.color = '#fff';
+            this.loadingMessageElement.style.textAlign = 'center';
+            
+            // Añadirlo al elemento principal (preferiblemente después del formulario)
+            const form = this.element.querySelector('#player-form');
+            if (form) {
+                form.after(this.loadingMessageElement);
+            } else {
+                this.element.appendChild(this.loadingMessageElement);
+            }
+        }
+        
         // Manejar el envío del formulario
         const playerForm = this.element.querySelector('#player-form');
         if (playerForm) {
@@ -18,7 +38,11 @@ export class LoadingScreen {
                 const name = this.element.querySelector('#player-name').value.trim();
                 if (name) {
                     localStorage.setItem('playerName', name);
-                    this.hide();
+                    
+                    // No ocultar pantalla de carga inmediatamente para mostrar progreso de precarga
+                    this.showLoadingMessage('Cargando recursos del juego...');
+                    
+                    // Llamar al callback con el nombre
                     this.onComplete(name);
                 }
             });
@@ -33,6 +57,26 @@ export class LoadingScreen {
             if (savedName) {
                 playerNameInput.value = savedName;
             }
+        }
+    }
+    
+    // Mostrar mensaje en la pantalla de carga
+    showLoadingMessage(message) {
+        if (this.loadingMessageElement) {
+            this.loadingMessageElement.textContent = message;
+        }
+    }
+    
+    // Actualizar el progreso de carga (0-100)
+    updateProgress(percent, message = null) {
+        if (message) {
+            this.showLoadingMessage(message);
+        }
+        
+        // Si hay una barra de progreso, actualizarla
+        const progressBar = this.element.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${percent}%`;
         }
     }
 

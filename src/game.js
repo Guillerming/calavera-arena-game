@@ -60,14 +60,40 @@ export class Game {
         this.worldInitialized = false;
         
         // Crear pantalla de carga
-        this.loadingScreen = new LoadingScreen((playerName) => {
+        this.loadingScreen = new LoadingScreen(async (playerName) => {
             // Cuando el usuario completa la pantalla de carga
             this.playerName = playerName;
+            
+            // Precargar archivos de audio mientras se muestra la pantalla de carga
+            this.loadingScreen.showLoadingMessage('Precargando archivos de audio...');
+            
+            if (this.audioManager) {
+                try {
+                    await this.audioManager.preloadAudioAssets();
+                    this.loadingScreen.showLoadingMessage('Archivos de audio cargados con éxito');
+                    
+                    // Breve pausa para mostrar mensaje de éxito
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                    
+                    // Continuar con la inicialización normal
+                    this.loadingScreen.showLoadingMessage('Preparando el juego...');
+                } catch (error) {
+                    console.warn('[Game] Error en precarga de audio:', error);
+                    this.loadingScreen.showLoadingMessage('Error en precarga de audio, continuando...');
+                    
+                    // Breve pausa para mostrar mensaje de error
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+            
             this.initialized = true;
             
             // Si el mundo ya está cargado, iniciar el juego
             if (this.worldInitialized) {
+                this.loadingScreen.hide();
                 this.startGame();
+            } else {
+                this.loadingScreen.showLoadingMessage('Cargando mundo del juego...');
             }
         });
         this.loadingScreen.show();
@@ -175,13 +201,7 @@ export class Game {
             return;
         }
         
-        // Ocultar la pantalla de carga de forma segura
-        const loadingScreen = document.getElementById('loading-screen');
-        if (loadingScreen) {
-            loadingScreen.style.display = 'none';
-        } else {
-            console.warn('No se encontró el elemento loading-screen para ocultar');
-        }
+        // Ya no es necesario ocultar la pantalla de carga aquí, se hace en initialize
         
         // Cambiar la música a "sailing" al iniciar el juego real
         if (this.audioManager && this.audioManager.initialized) {
@@ -509,8 +529,17 @@ export class Game {
     }
 
     async initialize() {
+        // Mostrar mensajes en pantalla de carga si está visible
+        if (this.loadingScreen) {
+            this.loadingScreen.showLoadingMessage('Configurando mundo del juego...');
+        }
+        
         // Configurar escenario del juego
         await this.setupWorld();
+        
+        if (this.loadingScreen) {
+            this.loadingScreen.showLoadingMessage('Inicializando sistema de audio...');
+        }
         
         // Inicializar el sistema de audio
         await this.initializeAudio();
@@ -537,8 +566,18 @@ export class Game {
         // Marcar como initializado una vez que el mundo esté listo
         this.worldInitialized = true;
         
+        if (this.loadingScreen) {
+            this.loadingScreen.showLoadingMessage('¡Listo para jugar!');
+            // Breve pausa para mostrar mensaje final
+            await new Promise(resolve => setTimeout(resolve, 500));
+        }
+        
         // Si el usuario ya completó la pantalla de carga, iniciar el juego
         if (this.initialized) {
+            // Ocultar pantalla de carga
+            if (this.loadingScreen) {
+                this.loadingScreen.hide();
+            }
             this.startGame();
         }
     }
@@ -670,6 +709,11 @@ export class Game {
     
     // Sistema para reproducir "arr" aleatoriamente mientras el jugador navega
     _startPirateArrSystem() {
+        // Sonido desactivado, no iniciar el sistema
+        console.log('[Game] Sistema de "arr" aleatorio DESACTIVADO');
+        return;
+        
+        /*
         // Solo iniciar si aún no está iniciado
         if (this._arrSystemActive) return;
         
@@ -694,10 +738,7 @@ export class Game {
         // Iniciar la primera reproducción después de un tiempo inicial
         const initialDelay = 10000 + Math.random() * 5000;  // 10-15 segundos
         setTimeout(playRandomArr, initialDelay);
-        // Verificaciones periódicas cada 15 segundos
-        setInterval(async () => {
-            await this.checkAudioPlayback();
-        }, 15000);
+        */
     }
     
     // Método para buscar un personaje por su ID
@@ -951,6 +992,8 @@ export class Game {
         this.networkManager.onPlayerKilled = (killData) => {
             // ... código existente ...
             
+            // Sonidos desactivados
+            /*
             // Reproducir sonido de muerte para la víctima
             if (killData.position) {
                 this.playAudioEvent('die', killData.position, killData.victimId);
@@ -960,15 +1003,19 @@ export class Game {
             if (killData.killerPosition) {
                 this.playAudioEvent('kill', killData.killerPosition, killData.killerId);
             }
+            */
         };
         
         this.networkManager.onSkullCaptured = (captureData) => {
             // ... código existente ...
             
+            // Sonido desactivado
+            /*
             // Reproducir sonido de captura de calavera
             if (captureData.position) {
                 this.playAudioEvent('score', captureData.position, captureData.playerId);
             }
+            */
         };
     }
 

@@ -7,6 +7,7 @@ export class AudioManager {
         this.currentMusic = null; // Audio de Three.js actualmente reproducido
         this.musicInstances = new Map(); // Instancias de THREE.Audio para música
         this.initialized = false;
+        this.preloaded = false;  // Flag para saber si ya se ha hecho la precarga
         this.masterVolume = 0.8; // Volumen maestro (aumentado de 0.5 a 0.8)
         this.musicVolume = 0.6;  // Volumen de música (aumentado de 0.3 a 0.6)
         this.sfxVolume = 0.7;    // Volumen de efectos (0-1)
@@ -20,19 +21,19 @@ export class AudioManager {
         this.soundEvents = {
             // Eventos del jugador
             idle: {
-                sounds: ['arr'],
+                sounds: ['arr_disabled'],  // Desactivado
                 volume: 0.4,
                 loop: false,
                 randomSound: true,
                 distance: null,  // Todos lo oyen
-                description: 'Sonido aleatorio de navegación ("Arr")'
+                description: 'Sonido aleatorio de navegación ("Arr") - DESACTIVADO'
             },
             maxspeed: {
-                sounds: ['maxspeed'],
+                sounds: ['maxspeed_disabled'],  // Desactivado
                 volume: 0.5,
                 loop: false,
                 distance: 30,    // Audible hasta 30 unidades
-                description: 'Sonido al alcanzar velocidad máxima'
+                description: 'Sonido al alcanzar velocidad máxima - DESACTIVADO'
             },
             hit: {
                 sounds: ['hit01', 'hit02'],
@@ -50,18 +51,18 @@ export class AudioManager {
                 description: 'Sonido al impactar un proyectil contra algo'
             },
             kill: {
-                sounds: ['victory'],
+                sounds: ['victory_disabled'],  // Desactivado
                 volume: 1.0,
                 loop: false,
                 distance: null,  // Todos lo oyen
-                description: 'Sonido al eliminar a otro jugador'
+                description: 'Sonido al eliminar a otro jugador - DESACTIVADO'
             },
             die: {
-                sounds: ['death'],
+                sounds: ['death_disabled'],  // Desactivado
                 volume: 1.0,
                 loop: false,
                 distance: null,  // Todos lo oyen
-                description: 'Sonido al morir'
+                description: 'Sonido al morir - DESACTIVADO'
             },
             shoot: {
                 sounds: ['canon'],
@@ -86,11 +87,11 @@ export class AudioManager {
                 description: 'Sonido de algo cayendo al agua'
             },
             score: {
-                sounds: ['score'],
+                sounds: ['score_disabled'],  // Desactivado
                 volume: 0.8,
                 loop: false,
                 distance: null,  // Todos lo oyen
-                description: 'Sonido al capturar una calavera'
+                description: 'Sonido al capturar una calavera - DESACTIVADO'
             },
             calaveramode: {
                 sounds: ['ghost01', 'ghost02', 'ghost03', 'ghost04', 'ghost05'],
@@ -149,39 +150,37 @@ export class AudioManager {
         // Guardar el listener de Three.js
         this.listener = listener;
         
-        // Crear el cargador de audio
-        this.audioLoader = new THREE.AudioLoader();
+        // Crear el cargador de audio si no existe (puede existir de la precarga)
+        if (!this.audioLoader) {
+            this.audioLoader = new THREE.AudioLoader();
+        }
         
         try {
-            // Cargar música de fondo
-            // await this.loadMusicBuffer('osd', 'assets/audio/osd/osd.mp3');
-            await this.loadMusicBuffer('sailing', 'assets/audio/fx/sailing.mp3');
-            // await this.loadMusicBuffer('calaveramode', 'assets/audio/osd/calaveramode.mp3');
-    
-            // Cargar efectos de sonido básicos
-            await this.loadSoundBuffer('canon', 'assets/audio/fx/canon.mp3');
-            await this.loadSoundBuffer('impact', 'assets/audio/fx/impact.mp3');
-            await this.loadSoundBuffer('splash', 'assets/audio/fx/splash.mp3');
+            console.log('[AudioManager] Inicializando sistema de audio...');
+            
+            // Si no se ha hecho precarga, cargar la música básica
+            if (!this.preloaded) {
+                console.log('[AudioManager] Cargando música básica (no precargada)...');
+                await this.loadMusicBuffer('sailing', 'assets/audio/fx/sailing.mp3');
+            } else {
+                console.log('[AudioManager] Usando archivos de audio precargados');
+            }
+            
+            // Siempre cargar efectos básicos que no se hayan precargado
+            const basicSounds = ['canon', 'impact', 'splash'];
+            for (const sound of basicSounds) {
+                if (!this.sounds.has(sound)) {
+                    await this.loadSoundBuffer(sound, `assets/audio/fx/${sound}.mp3`)
+                        .catch(err => console.warn(`[AudioManager] No se pudo cargar ${sound}:`, err));
+                }
+            }
             
             // Cargar sonidos adicionales definidos en soundEvents
             const soundsToLoad = this.getAllRequiredSounds();
-            for (let soundName of soundsToLoad) {
-                // Solo cargar si no existe ya y no es uno de los básicos que ya cargamos
-                if (!this.sounds.has(soundName) && !['canon', 'impact', 'splash'].includes(soundName)) {
-                    // Intentar cargarlo desde varias carpetas comunes
-                    const folders = ['fx', 'osd', 'events'];
-                    for (const folder of folders) {
-                        try {
-                            await this.loadSoundBuffer(soundName, `assets/audio/${folder}/${soundName}.mp3`);
-                            // Si ya se cargó, salir del bucle
-                            if (this.sounds.has(soundName)) break;
-                        } catch (e) {
-                            // Ignorar errores, probaremos la siguiente carpeta
-                        }
-                    }
-                }
-            }
-    
+            
+            // Carga asíncrona en segundo plano de sonidos restantes (no bloquea la inicialización)
+            this._loadRemainingAudioAsync(soundsToLoad);
+            
             this.initialized = true;
             
             // Verificar que todo esté cargado
@@ -191,6 +190,49 @@ export class AudioManager {
         }
     }
     
+    // Cargar los sonidos restantes en segundo plano
+    async _loadRemainingAudioAsync(soundsToLoad) {
+        console.log('[AudioManager] Cargando sonidos adicionales en segundo plano...');
+        
+        // Utilizamos un sistema de carga en bloques para no saturar la red
+        const chunkSize = 3; // Cargar 3 sonidos a la vez como máximo
+        
+        for (let i = 0; i < soundsToLoad.length; i += chunkSize) {
+            const chunk = soundsToLoad.slice(i, i + chunkSize);
+            
+            // Cargar este grupo de sonidos en paralelo
+            const loadPromises = chunk.map(soundName => {
+                // Solo cargar si no existe ya
+                if (!this.sounds.has(soundName)) {
+                    // Intentar cargarlo desde varias carpetas comunes
+                    const folders = ['fx', 'osd', 'events'];
+                    return this._tryLoadSoundFromFolders(soundName, folders);
+                }
+                return Promise.resolve(); // Sonido ya cargado
+            });
+            
+            // Esperar a que este grupo termine antes de continuar con el siguiente
+            await Promise.all(loadPromises);
+        }
+        
+        console.log('[AudioManager] Carga de sonidos adicionales completada');
+    }
+    
+    // Intentar cargar un sonido desde diferentes carpetas
+    async _tryLoadSoundFromFolders(soundName, folders) {
+        for (const folder of folders) {
+            try {
+                await this.loadSoundBuffer(soundName, `assets/audio/${folder}/${soundName}.mp3`);
+                // Si ya se cargó, salir del bucle
+                if (this.sounds.has(soundName)) {
+                    return;
+                }
+            } catch (e) {
+                // Ignorar errores, probaremos la siguiente carpeta
+            }
+        }
+    }
+
     // Obtener todos los sonidos requeridos en la configuración
     getAllRequiredSounds() {
         const uniqueSounds = new Set();
@@ -717,5 +759,39 @@ export class AudioManager {
         this.listener = listener;
         
         console.log('[AudioManager] Listener actualizado');
+    }
+
+    // Precargar archivos de audio (llamar desde la pantalla de carga)
+    async preloadAudioAssets() {
+        if (this.preloaded) return true; // Evitar duplicar la precarga
+        
+        console.log('[AudioManager] Iniciando precarga de archivos de audio...');
+        
+        // Crear el cargador de audio si no existe
+        if (!this.audioLoader) {
+            this.audioLoader = new THREE.AudioLoader();
+        }
+        
+        try {
+            // Precargar música esencial
+            console.log('[AudioManager] Precargando música...');
+            await this.loadMusicBuffer('sailing', 'assets/audio/fx/sailing.mp3');
+            
+            // Precargar efectos esenciales
+            console.log('[AudioManager] Precargando efectos de sonido básicos...');
+            // Solo cargamos los que sabemos que son necesarios
+            const basicSounds = ['canon', 'impact', 'splash', 'hit01', 'hit02'];
+            for (const sound of basicSounds) {
+                await this.loadSoundBuffer(sound, `assets/audio/fx/${sound}.mp3`)
+                    .catch(err => console.warn(`[AudioManager] No se pudo precargar ${sound}:`, err));
+            }
+            
+            this.preloaded = true;
+            console.log('[AudioManager] Precarga completada con éxito');
+            return true;
+        } catch (error) {
+            console.error('[AudioManager] Error durante la precarga:', error);
+            return false;
+        }
     }
 } 
