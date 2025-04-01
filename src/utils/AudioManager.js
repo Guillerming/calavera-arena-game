@@ -773,25 +773,51 @@ export class AudioManager {
         }
         
         try {
+            // Configurar para seguimiento de progreso
+            this.preloadProgress = {
+                completed: 0,
+                total: 0,
+                status: '' // Para información adicional
+            };
+            
             // Precargar música esencial
             console.log('[AudioManager] Precargando música...');
+            this.preloadProgress.total++;
+            this.preloadProgress.status = 'Loading music: sailing.mp3';
             await this.loadMusicBuffer('sailing', 'assets/audio/fx/sailing.mp3');
+            this.preloadProgress.completed++;
             
             // Precargar efectos esenciales
             console.log('[AudioManager] Precargando efectos de sonido básicos...');
             // Solo cargamos los que sabemos que son necesarios
             const basicSounds = ['canon', 'impact', 'splash', 'hit01', 'hit02'];
+            this.preloadProgress.total += basicSounds.length;
+            
             for (const sound of basicSounds) {
+                this.preloadProgress.status = `Loading sound: ${sound}.mp3`;
                 await this.loadSoundBuffer(sound, `assets/audio/fx/${sound}.mp3`)
                     .catch(err => console.warn(`[AudioManager] No se pudo precargar ${sound}:`, err));
+                this.preloadProgress.completed++;
             }
             
             this.preloaded = true;
+            this.preloadProgress.status = 'All audio files loaded';
             console.log('[AudioManager] Precarga completada con éxito');
             return true;
         } catch (error) {
             console.error('[AudioManager] Error durante la precarga:', error);
+            if (this.preloadProgress) {
+                this.preloadProgress.status = 'Error loading audio';
+            }
             return false;
         }
+    }
+    
+    // Obtener información de progreso de precarga
+    getPreloadProgress() {
+        if (!this.preloadProgress) {
+            return { completed: 0, total: 1, status: 'Not started' };
+        }
+        return { ...this.preloadProgress };
     }
 } 

@@ -52,6 +52,7 @@ export class Game {
         
         // Sistema de audio
         this.audioManager = new AudioManager();
+        this.audioPreloaded = false; // Flag para controlar si el audio ya se precargó
         
         this.logger.end('constructor');
         
@@ -64,26 +65,19 @@ export class Game {
             // Cuando el usuario completa la pantalla de carga
             this.playerName = playerName;
             
-            // Precargar archivos de audio mientras se muestra la pantalla de carga
-            this.loadingScreen.showLoadingMessage('Precargando archivos de audio...');
-            
-            if (this.audioManager) {
-                try {
-                    await this.audioManager.preloadAudioAssets();
-                    this.loadingScreen.showLoadingMessage('Archivos de audio cargados con éxito');
-                    
-                    // Breve pausa para mostrar mensaje de éxito
-                    await new Promise(resolve => setTimeout(resolve, 500));
-                    
-                    // Continuar con la inicialización normal
-                    this.loadingScreen.showLoadingMessage('Preparando el juego...');
-                } catch (error) {
-                    console.warn('[Game] Error en precarga de audio:', error);
-                    this.loadingScreen.showLoadingMessage('Error en precarga de audio, continuando...');
-                    
-                    // Breve pausa para mostrar mensaje de error
-                    await new Promise(resolve => setTimeout(resolve, 1000));
-                }
+            // Verificar si el audio aún está precargando
+            if (!this.audioPreloaded) {
+                this.loadingScreen.showLoadingMessage('Preloading audio files...');
+                
+                // Esperar a que termine la precarga
+                await this._waitForAudioPreload();
+                
+                // Breve pausa para mostrar mensaje de éxito
+                this.loadingScreen.showLoadingMessage('Audio files loaded successfully');
+                await new Promise(resolve => setTimeout(resolve, 500));
+                
+                // Continuar con la inicialización normal
+                this.loadingScreen.showLoadingMessage('Preparing the game...');
             }
             
             this.initialized = true;
@@ -93,13 +87,100 @@ export class Game {
                 this.loadingScreen.hide();
                 this.startGame();
             } else {
-                this.loadingScreen.showLoadingMessage('Cargando mundo del juego...');
+                this.loadingScreen.showLoadingMessage('Loading game world...');
             }
         });
         this.loadingScreen.show();
 
         // Inicializar controles de niebla
         this.fogControls = new FogControls(this);
+        
+        // Comenzar a precargar audio inmediatamente, sin esperar al usuario
+        this._startAudioPreloading();
+    }
+    
+    // Iniciar la precarga de audio en segundo plano
+    async _startAudioPreloading() {
+        if (this.audioManager) {
+            try {
+                this.loadingScreen.showLoadingMessage('Preloading audio files... (0/6)');
+                
+                // Configurar un intervalo para actualizar el mensaje de progreso
+                const progressInterval = setInterval(() => {
+                    if (this.audioManager && typeof this.audioManager.getPreloadProgress === 'function') {
+                        const { completed, total } = this.audioManager.getPreloadProgress();
+                        if (total > 0 && !this.audioPreloaded) {
+                            this.loadingScreen.showLoadingMessage(`Preloading audio files... (${completed}/${total})`);
+                        }
+                    }
+                }, 500);
+                
+                // Iniciar la precarga de audio
+                const preloadResult = await this.audioManager.preloadAudioAssets();
+                
+                // Detener el intervalo de actualización
+                clearInterval(progressInterval);
+                
+                // Marcar como completado
+                this.audioPreloaded = true;
+                
+                // Mostrar mensaje si el usuario aún está en la pantalla de inicio
+                if (!this.initialized) {
+                    this.loadingScreen.showLoadingMessage('Audio files loaded - Enter your name to start');
+                }
+                
+                console.log('[Game] Audio preloading completed successfully');
+                return preloadResult;
+            } catch (error) {
+                console.warn('[Game] Error preloading audio:', error);
+                this.audioPreloaded = true; // Marcar como completado de todos modos para no bloquear
+                return false;
+            }
+        }
+        
+        this.audioPreloaded = true; // Marcar como completado si no hay audioManager
+        return false;
+    }
+    
+    // Esperar a que termine la precarga de audio
+    async _waitForAudioPreload() {
+        if (this.audioPreloaded) {
+            return true; // Ya está precargado
+        }
+        
+        // Esperar a que termine la precarga (máximo 10 segundos)
+        let attempts = 0;
+        const maxAttempts = 20; // 20 * 500ms = 10 seconds timeout
+        
+        while (!this.audioPreloaded && attempts < maxAttempts) {
+            await new Promise(resolve => setTimeout(resolve, 500));
+            attempts++;
+            
+            // Obtener información de progreso actualizada
+            let progressInfo = { completed: 0, total: 0, status: '' };
+            if (this.audioManager && typeof this.audioManager.getPreloadProgress === 'function') {
+                progressInfo = this.audioManager.getPreloadProgress();
+            }
+            
+            // Mostrar progreso como "completados/total"
+            const { completed, total, status } = progressInfo;
+            
+            if (total > 0) {
+                // Mostrar el progreso con formato X/Y
+                this.loadingScreen.showLoadingMessage(`Preloading audio files... (${completed}/${total})`);
+            } else {
+                // Fallback si no hay información de progreso disponible
+                this.loadingScreen.showLoadingMessage(`Preloading audio files... (${Math.min(attempts * 5, 99)}%)`);
+            }
+        }
+        
+        // Si llegamos al timeout, marcamos como completado de todos modos
+        if (!this.audioPreloaded) {
+            console.warn('[Game] Audio preloading timeout - continuing anyway');
+            this.audioPreloaded = true;
+        }
+        
+        return true;
     }
 
     async setupWorld() {
@@ -531,14 +612,14 @@ export class Game {
     async initialize() {
         // Mostrar mensajes en pantalla de carga si está visible
         if (this.loadingScreen) {
-            this.loadingScreen.showLoadingMessage('Configurando mundo del juego...');
+            this.loadingScreen.showLoadingMessage('Setting up game world...');
         }
         
         // Configurar escenario del juego
         await this.setupWorld();
         
         if (this.loadingScreen) {
-            this.loadingScreen.showLoadingMessage('Inicializando sistema de audio...');
+            this.loadingScreen.showLoadingMessage('Initializing audio system...');
         }
         
         // Inicializar el sistema de audio
@@ -567,7 +648,7 @@ export class Game {
         this.worldInitialized = true;
         
         if (this.loadingScreen) {
-            this.loadingScreen.showLoadingMessage('¡Listo para jugar!');
+            this.loadingScreen.showLoadingMessage('Ready to play!');
             // Breve pausa para mostrar mensaje final
             await new Promise(resolve => setTimeout(resolve, 500));
         }
